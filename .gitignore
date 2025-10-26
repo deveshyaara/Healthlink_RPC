@@ -1,0 +1,124 @@
+# Root .gitignore for monorepo
+# This file covers the monorepo top-level, with scoped rules for
+# - Node.js project in `my-project/`
+# - Hyperledger Fabric samples in `fabric-samples/`
+# - Go build artifacts
+# - General OS and editor files
+
+
+########################################
+# Node.js (my-project)
+########################################
+# Dependencies
+my-project/node_modules/
+
+# Environment files
+my-project/.env
+my-project/.env.*
+
+# Build outputs
+my-project/dist/
+my-project/build/
+my-project/.next/
+my-project/out/
+
+# Logs
+my-project/*.log
+my-project/npm-debug.log*
+my-project/yarn-error.log*
+my-project/pnpm-debug.log*
+
+# caches and misc
+my-project/.cache/
+my-project/.parcel-cache/
+
+
+########################################
+# Hyperledger Fabric (fabric-samples)
+########################################
+# Fabric binaries and local tools
+fabric-samples/bin/
+
+# Generated configuration artifacts and channel artifacts
+fabric-samples/config/
+fabric-samples/*.tx
+fabric-samples/*.block
+fabric-samples/**/*.tx
+fabric-samples/**/*.block
+fabric-samples/channel-artifacts/
+
+# Crypto material and identities
+fabric-samples/organizations/
+fabric-samples/crypto-config/
+
+# Common Fabric directories often created by samples
+fabric-samples/logs/
+fabric-samples/*.log
+
+# Optional: ignore large archives or build bundles placed in samples
+fabric-samples/*.tar
+fabric-samples/*.tar.gz
+
+
+########################################
+# Go build artifacts (chaincode, tools)
+########################################
+# Binaries and object files
+*.exe
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+
+# Common Go directories (scoped to fabric-samples where relevant)
+fabric-samples/**/bin/
+fabric-samples/**/pkg/
+fabric-samples/**/vendor/
+
+# Generic go build outputs at repo root (safe to ignore)
+/bin/
+/pkg/
+
+
+########################################
+# General OS, editor, and IDE files
+########################################
+# macOS
+.DS_Store
+
+# Windows
+Thumbs.db
+desktop.ini
+
+# Swap and temporary
+*.swp
+*~
+
+# Logs (global)
+*.log
+
+# IDEs
+.vscode/
+.idea/
+*.sublime-workspace
+*.sublime-project
+
+# Node/npm
+node_modules/
+npm-debug.log*
+.yarn-integrity
+.pnpm-debug.log*
+
+# npm lock files — keep if you want them committed; comment out if not desired
+# package-lock.json
+# yarn.lock
+
+# Coverage
+coverage/
+
+# Other
+.env
+.env.*
+
+# End of .gitignore
