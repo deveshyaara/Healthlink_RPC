@@ -24,7 +24,7 @@
     },
     "orderers": {
         "orderer.example.com": {
-            "url": "grpcs://orderer.example.com:7050",
+            "url": "grpcs://10.255.255.254:7050",
             "tlsCACerts": {
                 "path": "../../fabric-samples/test-network/organizations/ordererOrganizations/example.com/tlsca/tlsca.example.com-cert.pem"
             },
@@ -36,7 +36,7 @@
     },
     "peers": {
         "peer0.org1.example.com": {
-            "url": "grpcs://peer0.org1.example.com:7051",
+            "url": "grpcs://10.255.255.254:7051",
             "tlsCACerts": {
                 "path": "../../fabric-samples/test-network/organizations/peerOrganizations/org1.example.com/tlsca/tlsca.org1.example.com-cert.pem"
             },
@@ -48,7 +48,7 @@
     },
     "certificateAuthorities": {
         "ca.org1.example.com": {
-            "url": "https.://ca.org1.example.com:7054",
+            "url": "https://10.255.255.254:7054",
             "caName": "ca-org1",
             "tlsCACerts": {
                 "path": "../../fabric-samples/test-network/organizations/peerOrganizations/org1.example.com/ca/ca.org1.example.com-cert.pem"
