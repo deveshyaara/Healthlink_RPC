@@ -24,6 +24,17 @@ const chaincodeName = 'healthlink';
 
 const fabricClient = new FabricClient(ccpPath, walletPath, userId, channelName);
 
+// A self-invoking function to initialize the client on startup
+(async () => {
+    try {
+        await fabricClient.init();
+        console.log('Fabric client initialized successfully.');
+    } catch (error) {
+        console.error('Failed to initialize Fabric client:', error);
+        process.exit(1);
+    }
+})();
+
 // --- Helper Function for API Responses ---
 const handleQuery = async (res, fn, ...args) => {
     try {
@@ -83,21 +94,27 @@ app.get('/api/patient-private/:id', (req, res) => {
 // Create a new patient
 app.post('/api/patient', async (req, res) => {
     try {
-        const patientPrivateData = req.body;
-        if (!patientPrivateData.patientId) {
-            return res.status(400).json({ error: 'patientId is required' });
+        const { patientId, publicData, privateData } = req.body;
+        if (!patientId || !publicData || !privateData) {
+            return res.status(400).json({ error: 'patientId, publicData, and privateData are required.' });
         }
 
-        const transientData = { patient: patientPrivateData };
-        // Use submitPrivate from your FabricClient
-        const chaincodeResponseString = await fabricClient.submitPrivate(chaincodeName, 'CreatePatient', transientData);
-        // Chaincode response contains { patient: publicPatient, txId: ... }
-        const result = JSON.parse(chaincodeResponseString);
-        res.status(201).json(result);
+        const transientData = {
+            patient_details: Buffer.from(JSON.stringify(privateData))
+        };
+
+        const resultString = await fabricClient.submitPrivate(
+            'CreatePatient',
+            [patientId, JSON.stringify(publicData)],
+            transientData
+        );
+        
+        const result = JSON.parse(resultString); // Parse the JSON response from chaincode
+        res.status(201).json({ message: 'Patient created successfully', ...result });
 
     } catch (error) {
-        console.error('Failed to create patient:', error);
-        res.status(500).json({ error: error.message });
+        console.error('Error creating patient:', error);
+        res.status(500).json({ error: 'Failed to create patient', details: error.message });
     }
 });
 
@@ -107,45 +124,93 @@ app.post('/api/patient', async (req, res) => {
  * Create a new consent record
  * Body: { "consentId", "patientId", "granteeId", "scope", "purpose", "validUntil" }
  */
-app.post('/api/consents', (req, res) => {
-    const { consentId, patientId, granteeId, scope, purpose, validUntil } = req.body;
-    if (!consentId || !patientId || !granteeId || !scope || !purpose || !validUntil) {
-        return res.status(400).json({ error: 'Missing required fields for consent' });
+app.post('/api/consents', async (req, res) => {
+    try {
+        const { consentId, patientId, granteeId, scope, purpose, validUntil } = req.body;
+        if (!consentId || !patientId || !granteeId || !scope || !purpose || !validUntil) {
+            return res.status(400).json({ error: 'consentId, patientId, granteeId, scope, purpose, and validUntil are required.' });
+        }
+
+        // CORRECTED: Arguments are now passed individually, not in an array.
+        const resultString = await fabricClient.submit(
+            'healthlink-contract',
+            'CreateConsent',
+            consentId, 
+            patientId, 
+            granteeId, 
+            scope, 
+            purpose, 
+            validUntil
+        );
+
+        const result = JSON.parse(resultString);
+        res.status(201).json({ message: 'Consent created successfully', ...result });
+
+    } catch (error) {
+        console.error('Error creating consent:', error);
+        res.status(500).json({ error: 'Failed to create consent', details: error.message });
     }
-    // Note: handleSubmit expects args as separate params, not an array
-    handleSubmit(res, 'CreateConsent', consentId, patientId, granteeId, scope, purpose, validUntil);
 });
 
 /**
  * Get a specific consent by its ID
  */
-app.get('/api/consents/:id', (req, res) => {
-    handleQuery(res, 'GetConsent', req.params.id);
+app.get('/api/consents/:id', async (req, res) => {
+    try {
+        const consentId = req.params.id;
+
+        // CORRECTED: The 'consentId' argument is passed directly.
+        const resultString = await fabricClient.evaluate(
+            'healthlink-contract', 
+            'GetConsent', 
+            consentId
+        );
+        res.status(200).json(JSON.parse(resultString));
+    } catch (error) {
+        console.error(`Error getting consent ${req.params.id}:`, error);
+        res.status(500).json({ error: 'Failed to get consent', details: error.message });
+    }
 });
 
 /**
  * Get all consents for a specific patient
  */
-app.get('/api/patient/:id/consents', (req, res) => {
-    handleQuery(res, 'GetConsentsByPatient', req.params.id);
+app.get('/api/patient/:id/consents', async (req, res) => {
+    try {
+        const patientId = req.params.id;
+
+        // CORRECT: Pass function name, then arguments array
+        const resultString = await fabricClient.evaluate('healthlink-contract', 'GetConsentsByPatient', [patientId]);
+        
+        res.status(200).json(JSON.parse(resultString));
+    } catch (error) {
+        console.error(`Error getting consents for patient ${req.params.id}:`, error);
+        res.status(500).json({ error: 'Failed to get consents', details: error.message });
+    }
 });
 
 /**
  * Revoke a consent
  */
-app.patch('/api/consents/:id/revoke', (req, res) => {
-    handleSubmit(res, 'RevokeConsent', req.params.id);
+app.patch('/api/consents/:id/revoke', async (req, res) => {
+    try {
+        const consentId = req.params.id;
+
+        // CORRECT: Pass function name, then arguments array
+        const resultString = await fabricClient.submit('healthlink-contract', 'RevokeConsent', [consentId]);
+        
+        const result = JSON.parse(resultString);
+        res.status(200).json({ message: 'Consent revoked successfully', ...result });
+    } catch (error) {
+        console.error(`Error revoking consent ${req.params.id}:`, error);
+        res.status(500).json({ error: 'Failed to revoke consent', details: error.message });
+    }
 });
 
-// ================== Audit Endpoints ==================
 
-/**
- * Get an audit record by its transaction ID
- */
-app.get('/api/audit/:txid', (req, res) => {
-    handleQuery(res, 'GetAuditRecord', req.params.txid);
+app.listen(PORT, () => {
+    console.log(`HealthLink Pro RPC server listening at http://localhost:${PORT}`);
 });
-
 
 // --- Start Server ---
 async function startServer() {

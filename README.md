@@ -1,24 +1,24 @@
-# HealthLink Blockchain Project
+# HealthLink Pro
 
 ## Description
 
-HealthLink is a blockchain-based project designed to demonstrate a secure and decentralized system for managing health-related data. It utilizes Hyperledger Fabric for the blockchain network and a Node.js application for client-side interaction.
+HealthLink Pro is an enhanced blockchain-based project designed to demonstrate a secure and decentralized system for managing health-related data. It utilizes Hyperledger Fabric for the blockchain network, with a focus on **private data collections**, robust **consent management**, and immutable **audit logging**. A Node.js application provides a RESTful API for client-side interaction.
 
 ## Project Structure
 
 The project is organized into two main directories:
 
--   `fabric-samples/`: This directory contains all the necessary Hyperledger Fabric components, chaincode (smart contracts), and scripts to launch and manage the blockchain network. The core business logic resides in the chaincode.
--   `my-project/`: This is the Node.js client application (an Express.js API server) that provides a RESTful API to interact with the blockchain network. It allows users to query the ledger and invoke transactions on the chaincode.
+-   `fabric-samples/`: Contains all necessary Hyperledger Fabric components, chaincode (smart contracts), and scripts to launch and manage the blockchain network.
+-   `my-project/`: The Node.js client application (an Express.js API server) that provides a RESTful API to interact with the blockchain network.
 
 ## Prerequisites
 
-Before you begin, ensure you have the following technologies installed on your system:
+Before you begin, ensure you have the following installed:
 
 -   [Node.js](https://nodejs.org/) (v16.x or higher)
--   [Docker](https://www.docker.com/get-started)
--   [Docker Compose](https://docs.docker.com/compose/install/)
--   [Go](https://golang.org/doc/install) (v1.17 or higher)
+-   [Docker](https://www.docker.com/get-started) and [Docker Compose](https://docs.docker.com/compose/install/)
+-   [Go](https://golang.org/doc/install) (v1.17 or higher, required for Fabric tooling)
+-   `jq` (a command-line JSON processor, recommended for viewing API output)
 
 ## Getting Started
 
@@ -26,7 +26,7 @@ Follow these steps to set up and run the project.
 
 ### 1. Set Up and Launch the Hyperledger Fabric Network
 
-First, we need to start the blockchain network and deploy the chaincode.
+First, start the blockchain network with CouchDB and deploy the chaincode.
 
 ```bash
 # Navigate to the test-network directory
@@ -35,11 +35,11 @@ cd fabric-samples/test-network
 # Bring down any existing network
 ./network.sh down
 
-# Start the network with a channel named "mychannel" and create certificate authorities
-./network.sh up createChannel -c mychannel -ca
+# Start the network with CouchDB and create a channel
+./network.sh up createChannel -c mychannel -ca -s couchdb
 
 # Deploy the HealthLink chaincode
-./network.sh deployCC -ccn healthlink-contract -ccp ../chaincode/healthlink-contract -ccl go
+./network.sh deployCC -ccn healthlink-contract -ccp ../chaincode/healthlink-contract -ccl javascript -ccv 1.0 -ccs 1 -ccep "OR('Org1MSP.member','Org2MSP.member')" -cccg ../chaincode/healthlink-contract/collections_config.json
 ```
 
 This will start the Fabric network, create a channel, and deploy the `healthlink-contract` chaincode.

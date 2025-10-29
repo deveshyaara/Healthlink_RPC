@@ -21,7 +21,7 @@ async function main() {
     );
 
     // Read the certificate and private key
-    const certPath = path.join(adminIdentityPath, 'signcerts', 'Admin@org1.example.com-cert.pem');
+    const certPath = path.join(adminIdentityPath, 'signcerts', 'cert.pem');
     const keyPath = path.join(adminIdentityPath, 'keystore');
 
     // The keystore directory should contain one file (the private key)

@@ -29,18 +29,20 @@ export class FabricClient {
     return this.network.getContract(name);
   }
 
-  async submit(contractName, fn, args = []) {
+  async submit(contractName, ...args) {
+    const fn = args.shift(); // Take the first argument as the function name
     console.log(`Submitting transaction: ${contractName}.${fn}(${args.join(',')})`);
     const contract = await this.getContract(contractName);
-    const tx = await contract.submitTransaction(fn, ...args);
+    const tx = await contract.submitTransaction(fn, ...args); // Spread the rest of the arguments
     console.log('Transaction submitted successfully');
     return tx.toString();
   }
 
-  async evaluate(contractName, fn, args = []) {
+  async evaluate(contractName, ...args) {
+    const fn = args.shift(); // Take the first argument as the function name
     console.log(`Evaluating transaction: ${contractName}.${fn}(${args.join(',')})`);
     const contract = await this.getContract(contractName);
-    const res = await contract.evaluateTransaction(fn, ...args);
+    const res = await contract.evaluateTransaction(fn, ...args); // Spread the rest of the arguments
     console.log('Transaction evaluated successfully');
     return res.toString();
   }
@@ -49,28 +51,28 @@ export class FabricClient {
     console.log('Disconnecting gateway...');
     this.gateway.disconnect();
   }
-// Add this method inside the FabricClient class
-async submitPrivate(contractName, fn, transientData) {
-  console.log(`Submitting private transaction: ${contractName}.${fn}`);
-  const contract = await this.getContract(contractName);
 
-  // 'transientData' should be an object like: { key: value }
-  // We need to bufferize the values
-  const transientForTransaction = {};
-  for (const [key, value] of Object.entries(transientData)) {
-    transientForTransaction[key] = Buffer.from(JSON.stringify(value));
+  async submitPrivate(contractName, fn, transientData) {
+    console.log(`Submitting private transaction: ${contractName}.${fn}`);
+    const contract = await this.getContract(contractName);
+
+    // 'transientData' should be an object like: { key: value }
+    // We need to bufferize the values
+    const transientForTransaction = {};
+    for (const [key, value] of Object.entries(transientData)) {
+      transientForTransaction[key] = Buffer.from(JSON.stringify(value));
+    }
+
+    // Build the transaction
+    const tx = contract.createTransaction(fn);
+
+    // Set the transient data
+    tx.setTransient(transientForTransaction);
+
+    // Submit
+    const txResponse = await tx.submit();
+
+    console.log('Private transaction submitted successfully');
+    return txResponse.toString();
   }
-
-  // Build the transaction
-  const tx = contract.createTransaction(fn);
-
-  // Set the transient data
-  tx.setTransient(transientForTransaction);
-
-  // Submit
-  const txResponse = await tx.submit();
-
-  console.log('Private transaction submitted successfully');
-  return txResponse.toString();
-}
 }

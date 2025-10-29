@@ -121,4 +121,39 @@ coverage/
 .env
 .env.*
 
-# End of .gitignore
+# Node.js specific
+# Ignore the node_modules directory
+/my-project/rpc-server/node_modules
+
+# Ignore logs and debug files
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+*.log
+
+# Hyperledger Fabric specific
+# Ignore generated cryptographic material and certificates
+/fabric-samples/test-network/organizations/
+
+# Ignore generated channel artifacts (genesis block, channel transactions)
+/fabric-samples/test-network/channel-artifacts/
+
+# Ignore packaged chaincode files
+*.tar.gz
+
+# Sensitive Application Data
+# The wallet directory contains private keys and should never be committed.
+/my-project/rpc-server/wallet/
+
+# Environment variables file
+.env
+
+# Operating System generated files
+.DS_Store
+Thumbs.db
+
+# IDE and editor configuration files
+.vscode/
+.idea/
+*.swp
+*.swo
