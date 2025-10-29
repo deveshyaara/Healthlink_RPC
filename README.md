@@ -613,12 +613,3 @@ This project is for educational and demonstration purposes.
 4. Push to the branch
 5. Create a Pull Request
 
----
-
-## 📧 Support
-
-For issues and questions, please open an issue in the repository.
-
----
-
-**Built with ❤️ using Hyperledger Fabric**
