@@ -207,9 +207,19 @@ app.patch('/api/consents/:id/revoke', async (req, res) => {
     }
 });
 
+// Get audit record for a transaction
+app.get('/api/audit/:txId', async (req, res) => {
+    try {
+        const txId = req.params.txId;
 
-app.listen(PORT, () => {
-    console.log(`HealthLink Pro RPC server listening at http://localhost:${PORT}`);
+        const resultString = await fabricClient.evaluate('healthlink-contract', 'GetAuditRecord', [txId]);
+        
+        const result = JSON.parse(resultString);
+        res.status(200).json(result);
+    } catch (error) {
+        console.error(`Error getting audit record for ${req.params.txId}:`, error);
+        res.status(500).json({ error: 'Failed to get audit record', details: error.message });
+    }
 });
 
 // --- Start Server ---

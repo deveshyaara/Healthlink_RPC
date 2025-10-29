@@ -141,19 +141,24 @@ class HealthlinkContract extends Contract {
             },
         };
 
-        const queryResults = await ctx.stub.getQueryResult(JSON.stringify(queryString));
-        const results = [];
-        for await (const { key, value } of queryResults) {
-            const strValue = Buffer.from(value).toString('utf8');
-            let record;
+        const iterator = await ctx.stub.getQueryResult(JSON.stringify(queryString));
+        const allResults = [];
+        let result = await iterator.next();
+        while (!result.done) {
+            const res = result.value;
+            const jsonRes = {};
+            jsonRes.Key = res.key;
             try {
-                record = JSON.parse(strValue);
+                jsonRes.Record = JSON.parse(res.value.toString('utf8'));
             } catch (err) {
-                record = strValue;
+                console.log(err);
+                jsonRes.Record = res.value.toString('utf8');
             }
-            results.push({ Key: key, Record: record });
+            allResults.push(jsonRes);
+            result = await iterator.next();
         }
-        return JSON.stringify(results);
+        await iterator.close();
+        return JSON.stringify(allResults);
     }
 
     // --- Audit Query Function ---
@@ -165,6 +170,7 @@ class HealthlinkContract extends Contract {
         if (!auditAsBytes || auditAsBytes.length === 0) {
             throw new Error(`Audit record with ID ${auditId} does not exist`);
         }
+        // CORRECTED: The record is already a string, no need to parse.
         return auditAsBytes.toString();
     }
 }
