@@ -1,0 +1,16 @@
+{
+    "name": "healthlink-shared-lib",
+    "version": "1.0.0",
+    "description": "Shared library for HealthLink Pro smart contracts",
+    "main": "base-contract.js",
+    "engines": {
+        "node": ">=16",
+        "npm": ">=8"
+    },
+    "dependencies": {
+        "fabric-contract-api": "^2.5.0",
+        "fabric-shim": "^2.5.0"
+    },
+    "author": "HealthLink Pro Team",
+    "license": "Apache-2.0"
+}
