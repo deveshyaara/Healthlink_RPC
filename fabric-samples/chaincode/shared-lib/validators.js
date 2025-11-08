@@ -14,11 +14,15 @@ class Validators {
     }
 
     /**
-     * Validate phone number (international format)
+     * Validate phone number (international format or common formats)
+     * Accepts: +1234567890, 1234567890, 123-456-7890, (123) 456-7890, etc.
      */
     static isValidPhone(phone) {
-        const phoneRegex = /^\+?[1-9]\d{1,14}$/;
-        return phoneRegex.test(phone);
+        if (!phone || typeof phone !== 'string') return false;
+        // Remove all non-digit characters for validation
+        const digitsOnly = phone.replace(/\D/g, '');
+        // Accept 7-15 digits (covers most international numbers)
+        return digitsOnly.length >= 7 && digitsOnly.length <= 15;
     }
 
     /**

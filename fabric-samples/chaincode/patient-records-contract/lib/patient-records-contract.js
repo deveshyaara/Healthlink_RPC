@@ -108,8 +108,13 @@ class PatientRecordsContract extends BaseHealthContract {
 
     /**
      * Update medical record (creates new version)
+     * @param {Context} ctx - Transaction context  
+     * @param {string} recordId - Record identifier
+     * @param {string} patientId - Patient identifier (for validation)
+     * @param {string} ipfsHash - New IPFS hash for updated file
+     * @param {string} updatedMetadataJson - JSON string with updated metadata
      */
-    async UpdateMedicalRecord(ctx, recordId, updatedMetadataJson, updateNotes) {
+    async UpdateMedicalRecord(ctx, recordId, patientId, ipfsHash, updatedMetadataJson) {
         console.info('============= START : Update Medical Record ===========');
 
         // Get existing record
@@ -117,6 +122,11 @@ class PatientRecordsContract extends BaseHealthContract {
 
         if (record.docType !== 'medicalRecord') {
             throw new ValidationError('Asset is not a medical record', 'recordId');
+        }
+
+        // Validate patient ID matches
+        if (record.patientId !== patientId) {
+            throw new ValidationError('Patient ID does not match record', 'patientId');
         }
 
         // Check authorization (only original doctor or patient can update)
@@ -132,19 +142,19 @@ class PatientRecordsContract extends BaseHealthContract {
 
         const timestamp = this.getCurrentTimestamp(ctx);
 
-        // Update record
+        // Update record with new IPFS hash and metadata
+        record.ipfsHash = ipfsHash;
         record.metadata = { ...record.metadata, ...updatedMetadata };
         record.version += 1;
         record.updatedAt = timestamp;
         record.updatedBy = callerId;
-        record.updateNotes = updateNotes || '';
 
         await ctx.stub.putState(recordId, Buffer.from(JSON.stringify(record)));
 
         // Audit
         await this.createAuditRecord(ctx, 'UpdateMedicalRecord', recordId, 'medicalRecord', {
             version: record.version,
-            updateNotes: updateNotes
+            newIpfsHash: ipfsHash
         });
 
         // Emit event
@@ -203,8 +213,13 @@ class PatientRecordsContract extends BaseHealthContract {
 
     /**
      * Get all medical records for a patient
+     * @param {Context} ctx - Transaction context
+     * @param {string} patientId - Patient identifier
+     * @param {string} recordType - Optional: Filter by record type
+     * @param {string} startDate - Optional: Start date filter
+     * @param {string} endDate - Optional: End date filter
      */
-    async GetRecordsByPatient(ctx, patientId, recordType, startDate, endDate) {
+    async GetRecordsByPatient(ctx, patientId, recordType = '', startDate = '', endDate = '') {
         console.info('============= START : Get Records By Patient ===========');
 
         const queryString = {
@@ -217,11 +232,11 @@ class PatientRecordsContract extends BaseHealthContract {
         };
 
         // Optional filters
-        if (recordType) {
+        if (recordType && recordType.trim() !== '') {
             queryString.selector.recordType = recordType;
         }
 
-        if (startDate && endDate) {
+        if (startDate && startDate.trim() !== '' && endDate && endDate.trim() !== '') {
             queryString.selector.createdAt = {
                 $gte: startDate,
                 $lte: endDate
@@ -236,8 +251,12 @@ class PatientRecordsContract extends BaseHealthContract {
 
     /**
      * Get records by doctor
+     * @param {Context} ctx - Transaction context
+     * @param {string} doctorId - Doctor identifier
+     * @param {string} startDate - Optional: Start date filter
+     * @param {string} endDate - Optional: End date filter
      */
-    async GetRecordsByDoctor(ctx, doctorId, startDate, endDate) {
+    async GetRecordsByDoctor(ctx, doctorId, startDate = '', endDate = '') {
         console.info('============= START : Get Records By Doctor ===========');
 
         const queryString = {
@@ -249,7 +268,7 @@ class PatientRecordsContract extends BaseHealthContract {
             sort: [{ createdAt: 'desc' }]
         };
 
-        if (startDate && endDate) {
+        if (startDate && startDate.trim() !== '' && endDate && endDate.trim() !== '') {
             queryString.selector.createdAt = {
                 $gte: startDate,
                 $lte: endDate

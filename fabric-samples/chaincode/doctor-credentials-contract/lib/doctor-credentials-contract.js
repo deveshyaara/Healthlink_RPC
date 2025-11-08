@@ -185,8 +185,11 @@ class DoctorCredentialsContract extends BaseHealthContract {
 
     /**
      * Get doctors by specialization
+     * @param {Context} ctx - Transaction context
+     * @param {string} specialization - Medical specialization
+     * @param {string} verifiedOnly - Optional: Filter only verified doctors ('true'/'false')
      */
-    async GetDoctorsBySpecialization(ctx, specialization, verifiedOnly) {
+    async GetDoctorsBySpecialization(ctx, specialization, verifiedOnly = 'false') {
         console.info('============= START : Get Doctors By Specialization ===========');
 
         const queryString = {
@@ -194,15 +197,18 @@ class DoctorCredentialsContract extends BaseHealthContract {
                 docType: 'doctor',
                 specialization: specialization,
                 status: 'active'
-            },
-            sort: [{ rating: 'desc' }]
+            }
         };
 
         if (verifiedOnly === 'true') {
             queryString.selector.verificationStatus = 'verified';
         }
 
-        const results = await this.getQueryResults(ctx, queryString);
+        const resultsString = await this.getQueryResults(ctx, queryString);
+        const results = JSON.parse(resultsString);
+
+        // Sort results by rating (desc) in application layer since CouchDB sort needs specific index
+        results.sort((a, b) => (b.rating || 0) - (a.rating || 0));
 
         console.info('============= END : Get Doctors By Specialization ===========');
         return results;
@@ -220,11 +226,14 @@ class DoctorCredentialsContract extends BaseHealthContract {
                 hospital: hospital,
                 status: 'active',
                 verificationStatus: 'verified'
-            },
-            sort: [{ rating: 'desc' }]
+            }
         };
 
-        const results = await this.getQueryResults(ctx, queryString);
+        const resultsString = await this.getQueryResults(ctx, queryString);
+        const results = JSON.parse(resultsString);
+
+        // Sort results by rating (desc) in application layer
+        results.sort((a, b) => (b.rating || 0) - (a.rating || 0));
 
         console.info('============= END : Get Doctors By Hospital ===========');
         return results;

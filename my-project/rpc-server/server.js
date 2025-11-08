@@ -21,11 +21,11 @@ const channelName = 'mychannel';
 
 // Contract names
 const CONTRACTS = {
-    HEALTHLINK: 'healthlink-contract',
+    HEALTHLINK: 'healthlink',
     PATIENT_RECORDS: 'patient-records',
     DOCTOR_CREDENTIALS: 'doctor-credentials',
-    APPOINTMENT: 'appointment-contract',
-    PRESCRIPTION: 'prescription-contract'
+    APPOINTMENT: 'appointment',
+    PRESCRIPTION: 'prescription'
 };
 
 const fabricClient = new FabricClient(ccpPath, walletPath, userId, channelName);

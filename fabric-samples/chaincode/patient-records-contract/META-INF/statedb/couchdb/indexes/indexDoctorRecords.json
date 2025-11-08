@@ -1,0 +1,13 @@
+{
+    "index": {
+        "fields": [
+            "docType",
+            "doctorId",
+            "createdAt",
+            "status"
+        ]
+    },
+    "ddoc": "indexDoctorRecordsDoc",
+    "name": "indexDoctorRecords",
+    "type": "json"
+}

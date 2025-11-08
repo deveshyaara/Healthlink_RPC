@@ -32,12 +32,12 @@ class PrescriptionContract extends BaseHealthContract {
      * @param {string} prescriptionId - Unique prescription ID
      * @param {string} patientId - Patient identifier
      * @param {string} doctorId - Prescribing doctor identifier
-     * @param {string} appointmentId - Related appointment ID (optional)
      * @param {string} medicationsJson - JSON array of medications
      * @param {string} diagnosisJson - JSON with diagnosis details
+     * @param {string} appointmentId - Related appointment ID (optional)
      * @returns {Object} Success response with prescription details
      */
-    async CreatePrescription(ctx, prescriptionId, patientId, doctorId, appointmentId, medicationsJson, diagnosisJson = '{}') {
+    async CreatePrescription(ctx, prescriptionId, patientId, doctorId, medicationsJson, diagnosisJson, appointmentId) {
         console.info('============= START : Create Prescription ===========');
         
         // Validate required fields
@@ -77,7 +77,7 @@ class PrescriptionContract extends BaseHealthContract {
         // Parse diagnosis
         let diagnosis = {};
         try {
-            diagnosis = JSON.parse(diagnosisJson);
+            diagnosis = JSON.parse(diagnosisJson || '{}');
         } catch (error) {
             throw new ValidationError('Invalid diagnosis JSON format');
         }
@@ -109,11 +109,11 @@ class PrescriptionContract extends BaseHealthContract {
                 notes: diagnosis.notes || ''
             },
             status: 'active',
-            issuedDate: this.getCurrentTimestamp(),
-            expiryDate: this._calculateExpiryDate(medications),
-            createdAt: this.getCurrentTimestamp(),
-            createdBy: this.getClientIdentity(ctx),
-            updatedAt: this.getCurrentTimestamp(),
+            issuedDate: this.getCurrentTimestamp(ctx),
+            expiryDate: this._calculateExpiryDate(ctx, medications),
+            createdAt: this.getCurrentTimestamp(ctx),
+            createdBy: this.getCallerId(ctx),
+            updatedAt: this.getCurrentTimestamp(ctx),
             dispensingRecords: [],
             refillHistory: [],
             isElectronic: true,
@@ -126,7 +126,7 @@ class PrescriptionContract extends BaseHealthContract {
         };
 
         // Save prescription
-        await this.putAsset(ctx, prescriptionId, prescription);
+        await ctx.stub.putState(prescriptionId, Buffer.from(JSON.stringify(prescription)));
 
         // Create audit record
         await this.createAuditRecord(ctx, {
@@ -135,7 +135,7 @@ class PrescriptionContract extends BaseHealthContract {
             patientId,
             doctorId,
             medicationCount: medications.length,
-            actor: this.getClientIdentity(ctx)
+            actor: this.getCallerId(ctx)
         });
 
         return {
@@ -206,7 +206,7 @@ class PrescriptionContract extends BaseHealthContract {
         const dispensingRecord = {
             pharmacyId,
             pharmacistId,
-            dispensedAt: this.getCurrentTimestamp(),
+            dispensedAt: this.getCurrentTimestamp(ctx),
             medicationsDispensed: details.medications || prescription.medications.map(m => m.medicationName),
             notes: details.notes || '',
             partialDispense: details.partial || false,
@@ -219,19 +219,19 @@ class PrescriptionContract extends BaseHealthContract {
         if (!details.partial) {
             prescription.status = 'dispensed';
             prescription.pharmacyId = pharmacyId;
-            prescription.dispensedAt = this.getCurrentTimestamp();
+            prescription.dispensedAt = this.getCurrentTimestamp(ctx);
             prescription.dispensedBy = pharmacistId;
         }
 
-        prescription.updatedAt = this.getCurrentTimestamp();
+        prescription.updatedAt = this.getCurrentTimestamp(ctx);
         prescription.history.push({
             action: details.partial ? 'partially_dispensed' : 'dispensed',
-            timestamp: this.getCurrentTimestamp(),
+            timestamp: this.getCurrentTimestamp(ctx),
             by: pharmacistId,
             pharmacy: pharmacyId
         });
 
-        await this.putAsset(ctx, prescriptionId, prescription);
+        await ctx.stub.putState(prescriptionId, Buffer.from(JSON.stringify(prescription)));
 
         await this.createAuditRecord(ctx, {
             action: 'PRESCRIPTION_DISPENSED',
@@ -239,7 +239,7 @@ class PrescriptionContract extends BaseHealthContract {
             pharmacyId,
             pharmacistId,
             partial: details.partial || false,
-            actor: this.getClientIdentity(ctx)
+            actor: this.getCallerId(ctx)
         });
 
         return {
@@ -304,29 +304,29 @@ class PrescriptionContract extends BaseHealthContract {
 
         // Create refill record
         const refillRecord = {
-            refillDate: this.getCurrentTimestamp(),
+            refillDate: this.getCurrentTimestamp(ctx),
             pharmacyId,
             medications: refilledMeds,
             refillNumber: prescription.refillHistory.length + 1
         };
 
         prescription.refillHistory.push(refillRecord);
-        prescription.updatedAt = this.getCurrentTimestamp();
+        prescription.updatedAt = this.getCurrentTimestamp(ctx);
         prescription.history.push({
             action: 'refilled',
-            timestamp: this.getCurrentTimestamp(),
+            timestamp: this.getCurrentTimestamp(ctx),
             pharmacy: pharmacyId,
             medications: refilledMeds
         });
 
-        await this.putAsset(ctx, prescriptionId, prescription);
+        await ctx.stub.putState(prescriptionId, Buffer.from(JSON.stringify(prescription)));
 
         await this.createAuditRecord(ctx, {
             action: 'PRESCRIPTION_REFILLED',
             prescriptionId,
             pharmacyId,
             medications: refilledMeds,
-            actor: this.getClientIdentity(ctx)
+            actor: this.getCallerId(ctx)
         });
 
         return {
@@ -362,25 +362,25 @@ class PrescriptionContract extends BaseHealthContract {
 
         const previousStatus = prescription.status;
         prescription.status = 'cancelled';
-        prescription.cancelledAt = this.getCurrentTimestamp();
+        prescription.cancelledAt = this.getCurrentTimestamp(ctx);
         prescription.cancellationReason = reason;
-        prescription.updatedAt = this.getCurrentTimestamp();
+        prescription.updatedAt = this.getCurrentTimestamp(ctx);
 
         prescription.history.push({
             action: 'cancelled',
-            timestamp: this.getCurrentTimestamp(),
-            by: this.getClientIdentity(ctx),
+            timestamp: this.getCurrentTimestamp(ctx),
+            by: this.getCallerId(ctx),
             previousStatus,
             reason
         });
 
-        await this.putAsset(ctx, prescriptionId, prescription);
+        await ctx.stub.putState(prescriptionId, Buffer.from(JSON.stringify(prescription)));
 
         await this.createAuditRecord(ctx, {
             action: 'PRESCRIPTION_CANCELLED',
             prescriptionId,
             reason,
-            actor: this.getClientIdentity(ctx)
+            actor: this.getCallerId(ctx)
         });
 
         return {
@@ -444,7 +444,7 @@ class PrescriptionContract extends BaseHealthContract {
                 docType: 'prescription',
                 patientId,
                 status: 'active',
-                expiryDate: { $gt: this.getCurrentTimestamp() }
+                expiryDate: { $gt: this.getCurrentTimestamp(ctx) }
             },
             sort: [{ issuedDate: 'desc' }]
         };
@@ -570,13 +570,13 @@ class PrescriptionContract extends BaseHealthContract {
 
         prescription.additionalNotes.push({
             note: notes,
-            addedAt: this.getCurrentTimestamp(),
-            addedBy: this.getClientIdentity(ctx)
+            addedAt: this.getCurrentTimestamp(ctx),
+            addedBy: this.getCallerId(ctx)
         });
 
-        prescription.updatedAt = this.getCurrentTimestamp();
+        prescription.updatedAt = this.getCurrentTimestamp(ctx);
 
-        await this.putAsset(ctx, prescriptionId, prescription);
+        await ctx.stub.putState(prescriptionId, Buffer.from(JSON.stringify(prescription)));
 
         return {
             success: true,
@@ -623,7 +623,7 @@ class PrescriptionContract extends BaseHealthContract {
      * Calculate prescription expiry date
      * @private
      */
-    _calculateExpiryDate(medications) {
+    _calculateExpiryDate(ctx, medications) {
         // Find the longest duration
         let maxDuration = 0;
         for (const med of medications) {
@@ -641,8 +641,9 @@ class PrescriptionContract extends BaseHealthContract {
             }
         }
 
-        // Add 30 days buffer for refills
-        const expiryDate = new Date();
+        // Add 30 days buffer for refills using deterministic timestamp
+        const txTimestamp = ctx.stub.getTxTimestamp();
+        const expiryDate = new Date(txTimestamp.seconds * 1000);
         expiryDate.setDate(expiryDate.getDate() + maxDuration + 30);
 
         return expiryDate.toISOString();

@@ -39,6 +39,8 @@ class AppointmentContract extends BaseHealthContract {
      */
     async ScheduleAppointment(ctx, appointmentId, patientId, doctorId, appointmentDate, startTime, endTime, reasonJson) {
         console.info('============= START : Schedule Appointment ===========');
+        console.info('Context:', ctx ? 'EXISTS' : 'UNDEFINED');
+        console.info('Context stub:', ctx && ctx.stub ? 'EXISTS' : 'UNDEFINED');
         
         // Validate required fields
         this.validateRequiredFields(
@@ -100,9 +102,9 @@ class AppointmentContract extends BaseHealthContract {
                 urgency: reason.urgency || 'normal'
             },
             status: 'scheduled',
-            createdAt: this.getCurrentTimestamp(),
-            createdBy: this.getClientIdentity(ctx),
-            updatedAt: this.getCurrentTimestamp(),
+            createdAt: this.getCurrentTimestamp(ctx),
+            createdBy: this.getCallerId(ctx),
+            updatedAt: this.getCurrentTimestamp(ctx),
             confirmedAt: null,
             confirmedBy: null,
             completedAt: null,
@@ -120,7 +122,7 @@ class AppointmentContract extends BaseHealthContract {
         };
 
         // Save appointment
-        await this.putAsset(ctx, appointmentId, appointment);
+        await ctx.stub.putState(appointmentId, Buffer.from(JSON.stringify(appointment)));
 
         // Create audit record
         await this.createAuditRecord(ctx, {
@@ -130,7 +132,7 @@ class AppointmentContract extends BaseHealthContract {
             doctorId,
             date: appointmentDate,
             time: `${startTime}-${endTime}`,
-            actor: this.getClientIdentity(ctx)
+            actor: this.getCallerId(ctx)
         });
 
         return {
@@ -183,24 +185,24 @@ class AppointmentContract extends BaseHealthContract {
 
         // Update appointment
         appointment.status = 'confirmed';
-        appointment.confirmedAt = this.getCurrentTimestamp();
+        appointment.confirmedAt = this.getCurrentTimestamp(ctx);
         appointment.confirmedBy = confirmerId;
-        appointment.updatedAt = this.getCurrentTimestamp();
+        appointment.updatedAt = this.getCurrentTimestamp(ctx);
         
         appointment.history.push({
             action: 'confirmed',
-            timestamp: this.getCurrentTimestamp(),
+            timestamp: this.getCurrentTimestamp(ctx),
             by: confirmerId,
             previousStatus: 'scheduled'
         });
 
-        await this.putAsset(ctx, appointmentId, appointment);
+        await ctx.stub.putState(appointmentId, Buffer.from(JSON.stringify(appointment)));
 
         await this.createAuditRecord(ctx, {
             action: 'APPOINTMENT_CONFIRMED',
             appointmentId,
             confirmedBy: confirmerId,
-            actor: this.getClientIdentity(ctx)
+            actor: this.getCallerId(ctx)
         });
 
         return {
@@ -217,7 +219,7 @@ class AppointmentContract extends BaseHealthContract {
      * @param {string} notesJson - JSON string with completion notes
      * @returns {Object} Success response
      */
-    async CompleteAppointment(ctx, appointmentId, notesJson = '{}') {
+    async CompleteAppointment(ctx, appointmentId, notesJson) {
         Validators.validateId(appointmentId, 'Appointment ID');
 
         const appointment = await this.getAsset(ctx, appointmentId);
@@ -235,7 +237,7 @@ class AppointmentContract extends BaseHealthContract {
         // Parse completion notes
         let notes = {};
         try {
-            notes = JSON.parse(notesJson);
+            notes = JSON.parse(notesJson || '{}');
         } catch (error) {
             throw new ValidationError('Invalid notes JSON format');
         }
@@ -243,30 +245,32 @@ class AppointmentContract extends BaseHealthContract {
         // Update appointment
         const previousStatus = appointment.status;
         appointment.status = 'completed';
-        appointment.completedAt = this.getCurrentTimestamp();
-        appointment.updatedAt = this.getCurrentTimestamp();
+        appointment.completedAt = this.getCurrentTimestamp(ctx);
+        appointment.updatedAt = this.getCurrentTimestamp(ctx);
         appointment.completionNotes = {
             diagnosis: notes.diagnosis || '',
             treatment: notes.treatment || '',
             notes: notes.notes || '',
+            prescriptionIds: notes.prescriptionIds || [],
+            labTestIds: notes.labTestIds || [],
             followUpRequired: notes.followUpRequired || false,
             followUpDate: notes.followUpDate || null
         };
 
         appointment.history.push({
             action: 'completed',
-            timestamp: this.getCurrentTimestamp(),
-            by: this.getClientIdentity(ctx),
+            timestamp: this.getCurrentTimestamp(ctx),
+            by: this.getCallerId(ctx),
             previousStatus,
             notes: appointment.completionNotes
         });
 
-        await this.putAsset(ctx, appointmentId, appointment);
+        await ctx.stub.putState(appointmentId, Buffer.from(JSON.stringify(appointment)));
 
         await this.createAuditRecord(ctx, {
             action: 'APPOINTMENT_COMPLETED',
             appointmentId,
-            completedBy: this.getClientIdentity(ctx)
+            completedBy: this.getCallerId(ctx)
         });
 
         return {
@@ -306,27 +310,27 @@ class AppointmentContract extends BaseHealthContract {
         // Update appointment
         const previousStatus = appointment.status;
         appointment.status = 'cancelled';
-        appointment.cancelledAt = this.getCurrentTimestamp();
+        appointment.cancelledAt = this.getCurrentTimestamp(ctx);
         appointment.cancellationReason = reason;
         appointment.cancelledBy = cancelledBy;
-        appointment.updatedAt = this.getCurrentTimestamp();
+        appointment.updatedAt = this.getCurrentTimestamp(ctx);
 
         appointment.history.push({
             action: 'cancelled',
-            timestamp: this.getCurrentTimestamp(),
+            timestamp: this.getCurrentTimestamp(ctx),
             by: cancelledBy,
             previousStatus,
             reason
         });
 
-        await this.putAsset(ctx, appointmentId, appointment);
+        await ctx.stub.putState(appointmentId, Buffer.from(JSON.stringify(appointment)));
 
         await this.createAuditRecord(ctx, {
             action: 'APPOINTMENT_CANCELLED',
             appointmentId,
             reason,
             cancelledBy,
-            actor: this.getClientIdentity(ctx)
+            actor: this.getCallerId(ctx)
         });
 
         return {
@@ -340,16 +344,14 @@ class AppointmentContract extends BaseHealthContract {
      * Reschedule an appointment
      * @param {Context} ctx - Transaction context
      * @param {string} appointmentId - Original appointment ID
-     * @param {string} newAppointmentId - New appointment ID
      * @param {string} newDate - New date
      * @param {string} newStartTime - New start time
      * @param {string} newEndTime - New end time
      * @param {string} reason - Rescheduling reason
      * @returns {Object} Success response with new appointment
      */
-    async RescheduleAppointment(ctx, appointmentId, newAppointmentId, newDate, newStartTime, newEndTime, reason) {
+    async RescheduleAppointment(ctx, appointmentId, newDate, newStartTime, newEndTime, reason) {
         Validators.validateId(appointmentId, 'Original Appointment ID');
-        Validators.validateId(newAppointmentId, 'New Appointment ID');
         Validators.validateDate(newDate, 'New date');
         Validators.validateTime(newStartTime, 'New start time');
         Validators.validateTime(newEndTime, 'New end time');
@@ -365,6 +367,10 @@ class AppointmentContract extends BaseHealthContract {
                 'INVALID_STATUS_TRANSITION'
             );
         }
+
+        // Auto-generate new appointment ID using deterministic timestamp
+        const txTimestamp = ctx.stub.getTxTimestamp();
+        const newAppointmentId = `${appointmentId}_R${txTimestamp.seconds}${txTimestamp.nanos}`;
 
         // Check for conflicts at new time
         const conflicts = await this._checkDoctorConflicts(
@@ -382,17 +388,17 @@ class AppointmentContract extends BaseHealthContract {
         const previousStatus = originalAppointment.status;
         originalAppointment.status = 'rescheduled';
         originalAppointment.rescheduledTo = newAppointmentId;
-        originalAppointment.updatedAt = this.getCurrentTimestamp();
+        originalAppointment.updatedAt = this.getCurrentTimestamp(ctx);
         originalAppointment.history.push({
             action: 'rescheduled',
-            timestamp: this.getCurrentTimestamp(),
-            by: this.getClientIdentity(ctx),
+            timestamp: this.getCurrentTimestamp(ctx),
+            by: this.getCallerId(ctx),
             previousStatus,
             reason,
             newAppointmentId
         });
 
-        await this.putAsset(ctx, appointmentId, originalAppointment);
+        await ctx.stub.putState(appointmentId, Buffer.from(JSON.stringify(originalAppointment)));
 
         // Create new appointment
         const newAppointment = {
@@ -405,8 +411,8 @@ class AppointmentContract extends BaseHealthContract {
             status: 'scheduled',
             rescheduledFrom: appointmentId,
             originalAppointmentId: originalAppointment.originalAppointmentId || appointmentId,
-            createdAt: this.getCurrentTimestamp(),
-            updatedAt: this.getCurrentTimestamp(),
+            createdAt: this.getCurrentTimestamp(ctx),
+            updatedAt: this.getCurrentTimestamp(ctx),
             confirmedAt: null,
             confirmedBy: null,
             completedAt: null,
@@ -414,14 +420,14 @@ class AppointmentContract extends BaseHealthContract {
             cancellationReason: null,
             history: [{
                 action: 'created_from_reschedule',
-                timestamp: this.getCurrentTimestamp(),
-                by: this.getClientIdentity(ctx),
+                timestamp: this.getCurrentTimestamp(ctx),
+                by: this.getCallerId(ctx),
                 originalAppointmentId: appointmentId,
                 reason
             }]
         };
 
-        await this.putAsset(ctx, newAppointmentId, newAppointment);
+        await ctx.stub.putState(newAppointmentId, Buffer.from(JSON.stringify(newAppointment)));
 
         await this.createAuditRecord(ctx, {
             action: 'APPOINTMENT_RESCHEDULED',
@@ -429,7 +435,7 @@ class AppointmentContract extends BaseHealthContract {
             newAppointmentId,
             newDate,
             newTime: `${newStartTime}-${newEndTime}`,
-            actor: this.getClientIdentity(ctx)
+            actor: this.getCallerId(ctx)
         });
 
         return {
@@ -463,20 +469,20 @@ class AppointmentContract extends BaseHealthContract {
 
         const previousStatus = appointment.status;
         appointment.status = 'no-show';
-        appointment.updatedAt = this.getCurrentTimestamp();
+        appointment.updatedAt = this.getCurrentTimestamp(ctx);
         appointment.history.push({
             action: 'marked_no_show',
-            timestamp: this.getCurrentTimestamp(),
-            by: this.getClientIdentity(ctx),
+            timestamp: this.getCurrentTimestamp(ctx),
+            by: this.getCallerId(ctx),
             previousStatus
         });
 
-        await this.putAsset(ctx, appointmentId, appointment);
+        await ctx.stub.putState(appointmentId, Buffer.from(JSON.stringify(appointment)));
 
         await this.createAuditRecord(ctx, {
             action: 'APPOINTMENT_NO_SHOW',
             appointmentId,
-            actor: this.getClientIdentity(ctx)
+            actor: this.getCallerId(ctx)
         });
 
         return {
@@ -639,14 +645,14 @@ class AppointmentContract extends BaseHealthContract {
 
         const reminder = {
             type: reminderType,
-            sentAt: this.getCurrentTimestamp(),
+            sentAt: this.getCurrentTimestamp(ctx),
             status: 'sent'
         };
 
         appointment.remindersSent.push(reminder);
-        appointment.updatedAt = this.getCurrentTimestamp();
+        appointment.updatedAt = this.getCurrentTimestamp(ctx);
 
-        await this.putAsset(ctx, appointmentId, appointment);
+        await ctx.stub.putState(appointmentId, Buffer.from(JSON.stringify(appointment)));
 
         return {
             success: true,
@@ -662,6 +668,10 @@ class AppointmentContract extends BaseHealthContract {
      * @private
      */
     async _checkDoctorConflicts(ctx, doctorId, date, startTime, endTime) {
+        console.info('_checkDoctorConflicts: Starting check for doctor:', doctorId);
+        console.info('Context in _checkDoctorConflicts:', ctx ? 'EXISTS' : 'UNDEFINED');
+        console.info('Context stub in _checkDoctorConflicts:', ctx && ctx.stub ? 'EXISTS' : 'UNDEFINED');
+        
         const query = {
             selector: {
                 docType: 'appointment',
@@ -671,13 +681,15 @@ class AppointmentContract extends BaseHealthContract {
             }
         };
 
+        console.info('About to call executeQuery');
         const appointments = await this.executeQuery(ctx, query);
+        console.info('executeQuery completed, results:', appointments.length);
         const conflicts = [];
 
         for (const appt of appointments) {
             // Check for time overlap
-            if (this._timesOverlap(startTime, endTime, appt.startTime, appt.endTime)) {
-                conflicts.push(appt.appointmentId);
+            if (this._timesOverlap(startTime, endTime, appt.Record.startTime, appt.Record.endTime)) {
+                conflicts.push(appt.Record.appointmentId);
             }
         }
 
