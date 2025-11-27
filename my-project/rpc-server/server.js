@@ -1,17 +1,118 @@
 import express from 'express';
 import cors from 'cors';
+import bcrypt from 'bcryptjs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { FabricClient } from './fabric-client.js';
 
 // --- Server Setup ---
 const app = express();
-app.use(cors()); // Allow cross-origin requests
+
+// Determine allowed origins based on environment
+let allowedOrigins = ['http://localhost:3000', 'http://localhost:9002'];
+
+// GitHub Codespace environment detection
+if (process.env.CODESPACE_NAME) {
+    // In Codespace: add the codespace domain
+    const codespaceName = process.env.CODESPACE_NAME;
+    const codespaceRegion = process.env.GITHUB_CODESPACES_PORT_FORWARDING_DOMAIN || 'github.dev';
+    allowedOrigins.push(`https://${codespaceName}-9002.${codespaceRegion}`);
+    allowedOrigins.push(`https://${codespaceName}-4000.${codespaceRegion}`);
+}
+
+// Add any FRONTEND_ORIGIN from environment
+if (process.env.FRONTEND_ORIGIN) {
+    allowedOrigins.push(process.env.FRONTEND_ORIGIN);
+}
+
+console.log(`CORS allowed origins: ${allowedOrigins.join(', ')}`);
+
+// Allow cross-origin requests from the frontend (adjust origins as needed)
+app.use(cors({
+    origin: (origin, callback) => {
+        // Allow requests with no origin (like mobile apps or curl requests)
+        if (!origin) return callback(null, true);
+        
+        if (allowedOrigins.includes(origin)) {
+            callback(null, true);
+        } else {
+            // Log unallowed origins for debugging
+            console.warn(`CORS blocked request from origin: ${origin}`);
+            callback(new Error('CORS not allowed'));
+        }
+    },
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
+    credentials: true,
+}));
 app.use(express.json()); // Parse JSON bodies
 
 const PORT = process.env.PORT || 4000;
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+
+// --- In-Memory User Store (Session Storage) ---
+// In production, use a proper database
+const userStore = new Map(); // Map to store users by email
+const tokenStore = new Map(); // Map to store valid tokens
+
+/**
+ * Helper function to generate a token
+ */
+function generateToken(userId, email, role) {
+    const payload = {
+        userId: userId,
+        email: email,
+        role: role,
+        iat: Date.now(),
+        exp: Date.now() + (24 * 60 * 60 * 1000) // 24 hour expiration
+    };
+    const token = Buffer.from(JSON.stringify(payload)).toString('base64');
+    tokenStore.set(token, payload);
+    return token;
+}
+
+/**
+ * Helper function to verify token
+ */
+function verifyToken(token) {
+    try {
+        const payload = tokenStore.get(token);
+        if (!payload) {
+            return null;
+        }
+        
+        // Check expiration
+        if (payload.exp < Date.now()) {
+            tokenStore.delete(token);
+            return null;
+        }
+        
+        return payload;
+    } catch (error) {
+        return null;
+    }
+}
+
+/**
+ * Middleware to verify Bearer token
+ */
+function verifyBearerToken(req, res, next) {
+    const authHeader = req.headers.authorization;
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+        return res.status(401).json({ error: 'Missing or invalid Authorization header' });
+    }
+
+    const token = authHeader.substring('Bearer '.length);
+    const payload = verifyToken(token);
+    
+    if (!payload) {
+        return res.status(401).json({ error: 'Invalid or expired token' });
+    }
+
+    req.user = payload;
+    next();
+}
 
 // --- Fabric Client Setup ---
 const ccpPath = path.resolve(__dirname, 'connection-org1.json');
@@ -30,18 +131,25 @@ const CONTRACTS = {
 
 const fabricClient = new FabricClient(ccpPath, walletPath, userId, channelName);
 
-// A self-invoking function to initialize the client on startup
+// Fabric client initialization flag
+let fabricInitialized = false;
+let fabricError = null;
+
+// Non-blocking Fabric initialization - allows server to start even if Fabric isn't ready
 (async () => {
     try {
         await fabricClient.init();
-        console.log('Fabric client initialized successfully.');
+        fabricInitialized = true;
+        console.log('✓ Fabric client initialized successfully.');
     } catch (error) {
-        console.error('Failed to initialize Fabric client:', error);
-        process.exit(1);
+        fabricInitialized = false;
+        fabricError = error.message;
+        console.warn('⚠ Fabric network unavailable. Auth system will run in standalone mode.');
+        console.warn('  Error:', error.message);
+        console.warn('  To use Hyperledger features, start the Fabric network with: cd fabric-samples/test-network && ./network.sh up');
     }
 })();
 
-// --- Helper Function for API Responses ---
 /**
  * Helper to handle query operations (evaluateTransaction)
  * @param {Object} res - Express response object
@@ -50,6 +158,13 @@ const fabricClient = new FabricClient(ccpPath, walletPath, userId, channelName);
  * @param {Array} args - Arguments to pass to the function
  */
 const handleQuery = async (res, contractName, fn, ...args) => {
+    if (!fabricInitialized) {
+        return res.status(503).json({ 
+            error: 'Fabric network unavailable',
+            message: 'Hyperledger Fabric is not connected. Auth system is available.',
+            details: fabricError
+        });
+    }
     try {
         const result = await fabricClient.evaluate(contractName, fn, ...args);
         res.status(200).json(JSON.parse(result));
@@ -71,6 +186,13 @@ const handleQuery = async (res, contractName, fn, ...args) => {
  * @param {Array} args - Arguments to pass to the function
  */
 const handleSubmit = async (res, contractName, fn, ...args) => {
+    if (!fabricInitialized) {
+        return res.status(503).json({ 
+            error: 'Fabric network unavailable',
+            message: 'Hyperledger Fabric is not connected. Auth system is available.',
+            details: fabricError
+        });
+    }
     try {
         const chaincodeResponseString = await fabricClient.submit(contractName, fn, ...args);
         const result = JSON.parse(chaincodeResponseString);
@@ -228,15 +350,17 @@ app.get('/api/audit/:txId', async (req, res) => {
 /**
  * Create a new medical record
  * POST /api/medical-records
- * Body: { recordId, patientId, doctorId, recordType, ipfsHash, metadata }
+ * Body: { recordId, doctorId, recordType, ipfsHash, metadata }
+ * Note: patientId extracted from authenticated user
  */
-app.post('/api/medical-records', async (req, res) => {
+app.post('/api/medical-records', verifyBearerToken, async (req, res) => {
     try {
-        const { recordId, patientId, doctorId, recordType, ipfsHash, metadata } = req.body;
+        const { recordId, doctorId, recordType, ipfsHash, metadata } = req.body;
+        const patientId = req.user.email || req.user.userId;
         
-        if (!recordId || !patientId || !doctorId || !recordType || !ipfsHash) {
+        if (!recordId || !doctorId || !recordType || !ipfsHash) {
             return res.status(400).json({ 
-                error: 'recordId, patientId, doctorId, recordType, and ipfsHash are required.' 
+                error: 'recordId, doctorId, recordType, and ipfsHash are required.' 
             });
         }
 
@@ -259,6 +383,33 @@ app.post('/api/medical-records', async (req, res) => {
     } catch (error) {
         console.error('Error creating medical record:', error);
         res.status(500).json({ error: 'Failed to create medical record', details: error.message });
+    }
+});
+
+/**
+ * Get paginated medical records
+ * GET /api/medical-records/paginated
+ * Query: pageSize, bookmark
+ * Requires: Authorization header with Bearer token
+ */
+app.get('/api/medical-records/paginated', verifyBearerToken, async (req, res) => {
+    try {
+        const { pageSize = '10', bookmark = '' } = req.query;
+        const patientId = req.user.email || req.user.userId;
+        
+        const resultString = await fabricClient.evaluate(
+            CONTRACTS.PATIENT_RECORDS,
+            'GetRecordsPaginated',
+            patientId,
+            pageSize,
+            bookmark
+        );
+
+        res.status(200).json(JSON.parse(resultString));
+
+    } catch (error) {
+        console.error('Error getting paginated records:', error);
+        res.status(500).json({ error: 'Failed to get paginated records', details: error.message });
     }
 });
 
@@ -474,30 +625,6 @@ app.get('/api/medical-records/:recordId/history', async (req, res) => {
     } catch (error) {
         console.error(`Error getting history for ${req.params.recordId}:`, error);
         res.status(500).json({ error: 'Failed to get record history', details: error.message });
-    }
-});
-
-/**
- * Get paginated medical records
- * GET /api/medical-records/paginated
- * Query: pageSize, bookmark
- */
-app.get('/api/medical-records/paginated', async (req, res) => {
-    try {
-        const { pageSize = '10', bookmark = '' } = req.query;
-        
-        const resultString = await fabricClient.evaluate(
-            CONTRACTS.PATIENT_RECORDS,
-            'GetRecordsPaginated',
-            pageSize,
-            bookmark
-        );
-
-        res.status(200).json(JSON.parse(resultString));
-
-    } catch (error) {
-        console.error('Error getting paginated records:', error);
-        res.status(500).json({ error: 'Failed to get paginated records', details: error.message });
     }
 });
 
@@ -1564,20 +1691,524 @@ app.get('/api/prescriptions/:prescriptionId/history', async (req, res) => {
     }
 });
 
+// ================== Authentication Endpoints ==================
+
+/**
+ * User Registration
+ * POST /api/auth/register
+ * Body: { "email", "password", "name", "role" }
+ */
+app.post('/api/auth/register', async (req, res) => {
+    try {
+        const { email, password, name, role } = req.body;
+        
+        if (!email || !password || !name || !role) {
+            return res.status(400).json({ 
+                error: 'email, password, name, and role are required' 
+            });
+        }
+
+        // Validate email format
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(email)) {
+            return res.status(400).json({ 
+                error: 'Invalid email format' 
+            });
+        }
+
+        // Validate password length
+        if (password.length < 6) {
+            return res.status(400).json({ 
+                error: 'Password must be at least 6 characters' 
+            });
+        }
+
+        // Check if user already exists
+        if (userStore.has(email)) {
+            return res.status(409).json({ 
+                error: 'User with this email already exists' 
+            });
+        }
+
+        // Validate role
+        if (!['patient', 'doctor', 'admin'].includes(role)) {
+            return res.status(400).json({ 
+                error: 'role must be one of: patient, doctor, admin' 
+            });
+        }
+
+        // Create new user
+        const userId = `user_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+        const user = {
+            userId: userId,
+            email: email,
+            name: name,
+            role: role,
+            passwordHash: await bcrypt.hash(password, 10),
+            createdAt: new Date().toISOString()
+        };
+
+        userStore.set(email, user);
+
+        // Generate token
+        const token = generateToken(userId, email, role);
+
+        console.log(`User registered successfully: ${email} (${role})`);
+
+        res.status(201).json({
+            message: 'User registered successfully',
+            token: token,
+            user: {
+                userId: user.userId,
+                email: user.email,
+                name: user.name,
+                role: user.role
+            }
+        });
+
+    } catch (error) {
+        console.error('Error registering user:', error);
+        res.status(500).json({ 
+            error: 'Failed to register user', 
+            details: error.message 
+        });
+    }
+});
+
+/**
+ * User Login
+ * POST /api/auth/login
+ * Body: { "email", "password" }
+ */
+app.post('/api/auth/login', async (req, res) => {
+    try {
+        const { email, password } = req.body;
+        
+        if (!email || !password) {
+            return res.status(400).json({ 
+                error: 'email and password are required' 
+            });
+        }
+
+        // Check if user exists
+        const user = userStore.get(email);
+        if (!user) {
+            return res.status(401).json({ 
+                error: 'Invalid email or password' 
+            });
+        }
+
+        // Verify password using bcrypt
+        const passwordValid = await bcrypt.compare(password, user.passwordHash);
+        
+        if (!passwordValid) {
+            return res.status(401).json({ 
+                error: 'Invalid email or password' 
+            });
+        }
+
+        // Generate token
+        const token = generateToken(user.userId, email, user.role);
+
+        console.log(`User logged in successfully: ${email}`);
+
+        res.status(200).json({
+            message: 'Login successful',
+            token: token,
+            user: {
+                userId: user.userId,
+                email: user.email,
+                name: user.name,
+                role: user.role
+            }
+        });
+
+    } catch (error) {
+        console.error('Error logging in user:', error);
+        res.status(500).json({ 
+            error: 'Failed to login', 
+            details: error.message 
+        });
+    }
+});
+
+/**
+ * User Logout
+ * POST /api/auth/logout
+ * Headers: Authorization: Bearer <token>
+ */
+app.post('/api/auth/logout', verifyBearerToken, async (req, res) => {
+    try {
+        // In a real system, we'd invalidate the token
+        // For now, the client just removes it from localStorage
+        console.log(`User logged out: ${req.user.email}`);
+        
+        res.status(200).json({
+            message: 'Logged out successfully'
+        });
+
+    } catch (error) {
+        console.error('Error logging out:', error);
+        res.status(500).json({ 
+            error: 'Failed to logout', 
+            details: error.message 
+        });
+    }
+});
+
+/**
+ * Get Current User Info
+ * GET /api/auth/me
+ * Headers: Authorization: Bearer <token>
+ */
+app.get('/api/auth/me', verifyBearerToken, async (req, res) => {
+    try {
+        const user = userStore.get(req.user.email);
+        
+        if (!user) {
+            return res.status(404).json({ 
+                error: 'User not found' 
+            });
+        }
+
+        res.status(200).json({
+            message: 'User info retrieved',
+            user: {
+                userId: user.userId,
+                email: user.email,
+                name: user.name,
+                role: user.role
+            }
+        });
+
+    } catch (error) {
+        console.error('Error getting user info:', error);
+        res.status(500).json({ 
+            error: 'Failed to get user info', 
+            details: error.message 
+        });
+    }
+});
+
+/**
+ * Refresh Token
+ * POST /api/auth/refresh
+ * Headers: Authorization: Bearer <token>
+ */
+app.post('/api/auth/refresh', verifyBearerToken, async (req, res) => {
+    try {
+        const { email, role, userId } = req.user;
+        
+        // Generate new token
+        const newToken = generateToken(userId, email, role);
+
+        res.status(200).json({
+            message: 'Token refreshed successfully',
+            token: newToken
+        });
+
+    } catch (error) {
+        console.error('Error refreshing token:', error);
+        res.status(500).json({ 
+            error: 'Failed to refresh token', 
+            details: error.message 
+        });
+    }
+});
+
+/**
+ * Check Authentication Status
+ * GET /api/auth/status
+ */
+app.get('/api/auth/status', async (req, res) => {
+    try {
+        const authHeader = req.headers.authorization;
+        
+        if (!authHeader || !authHeader.startsWith('Bearer ')) {
+            return res.status(200).json({
+                authenticated: false,
+                user: null
+            });
+        }
+
+        const token = authHeader.substring('Bearer '.length);
+        const payload = verifyToken(token);
+        
+        if (!payload) {
+            return res.status(200).json({
+                authenticated: false,
+                user: null
+            });
+        }
+
+        const user = userStore.get(payload.email);
+        
+        res.status(200).json({
+            authenticated: true,
+            user: {
+                userId: user.userId,
+                email: user.email,
+                name: user.name,
+                role: user.role
+            }
+        });
+
+    } catch (error) {
+        console.error('Error checking auth status:', error);
+        res.status(200).json({
+            authenticated: false,
+            user: null
+        });
+    }
+});
+
+// ================== End Authentication Endpoints ==================
+
+// ================== Get All Endpoints ==================
+
+/**
+ * Get all consents
+ * GET /api/consents
+ */
+app.get('/api/consents', async (req, res) => {
+    try {
+        // Query all consents from the ledger
+        const resultString = await fabricClient.evaluate(
+            CONTRACTS.HEALTHLINK,
+            'GetAllConsents'
+        );
+        res.status(200).json(JSON.parse(resultString));
+    } catch (error) {
+        console.error('Error getting all consents:', error);
+        res.status(500).json({ 
+            error: 'Failed to get consents', 
+            details: error.message 
+        });
+    }
+});
+
+/**
+ * Get all appointments
+ * GET /api/appointments
+ */
+app.get('/api/appointments', async (req, res) => {
+    try {
+        // Query all appointments from the ledger
+        const resultString = await fabricClient.evaluate(
+            CONTRACTS.APPOINTMENT,
+            'GetAllAppointments'
+        );
+        res.status(200).json(JSON.parse(resultString));
+    } catch (error) {
+        console.error('Error getting all appointments:', error);
+        res.status(500).json({ 
+            error: 'Failed to get appointments', 
+            details: error.message 
+        });
+    }
+});
+
+/**
+ * Get all prescriptions
+ * GET /api/prescriptions
+ */
+app.get('/api/prescriptions', async (req, res) => {
+    try {
+        // Query all prescriptions from the ledger
+        const resultString = await fabricClient.evaluate(
+            CONTRACTS.PRESCRIPTION,
+            'GetAllPrescriptions'
+        );
+        res.status(200).json(JSON.parse(resultString));
+    } catch (error) {
+        console.error('Error getting all prescriptions:', error);
+        res.status(500).json({ 
+            error: 'Failed to get prescriptions', 
+            details: error.message 
+        });
+    }
+});
+
+// ================== Lab Tests Endpoints ==================
+
+/**
+ * Create a lab test
+ * POST /api/lab-tests
+ * Body: { "labTestId", "patientId", "testType", "testName", "result", "normalRange", "unit" }
+ */
+app.post('/api/lab-tests', async (req, res) => {
+    try {
+        const { labTestId, patientId, testType, testName, result, normalRange, unit } = req.body;
+        
+        if (!labTestId || !patientId || !testType || !testName) {
+            return res.status(400).json({ 
+                error: 'labTestId, patientId, testType, and testName are required' 
+            });
+        }
+
+        // Store lab test in ledger (using HEALTHLINK contract for now)
+        const resultString = await fabricClient.submit(
+            CONTRACTS.HEALTHLINK,
+            'CreateLabTest',
+            labTestId,
+            patientId,
+            testType,
+            testName,
+            result || '',
+            normalRange || '',
+            unit || '',
+            new Date().toISOString()
+        );
+
+        const labTest = JSON.parse(resultString);
+        res.status(201).json({
+            message: 'Lab test created successfully',
+            ...labTest
+        });
+
+    } catch (error) {
+        console.error('Error creating lab test:', error);
+        res.status(500).json({ 
+            error: 'Failed to create lab test', 
+            details: error.message 
+        });
+    }
+});
+
+/**
+ * Get a specific lab test
+ * GET /api/lab-tests/:labTestId
+ */
+app.get('/api/lab-tests/:labTestId', async (req, res) => {
+    try {
+        const { labTestId } = req.params;
+        
+        const resultString = await fabricClient.evaluate(
+            CONTRACTS.HEALTHLINK,
+            'GetLabTest',
+            labTestId
+        );
+
+        res.status(200).json(JSON.parse(resultString));
+
+    } catch (error) {
+        console.error('Error getting lab test:', error);
+        res.status(500).json({ 
+            error: 'Failed to get lab test', 
+            details: error.message 
+        });
+    }
+});
+
+/**
+ * Get all lab tests for a patient
+ * GET /api/lab-tests/patient/:patientId
+ */
+app.get('/api/lab-tests/patient/:patientId', async (req, res) => {
+    try {
+        const { patientId } = req.params;
+        
+        const resultString = await fabricClient.evaluate(
+            CONTRACTS.HEALTHLINK,
+            'GetPatientLabTests',
+            patientId
+        );
+
+        res.status(200).json(JSON.parse(resultString));
+
+    } catch (error) {
+        console.error('Error getting patient lab tests:', error);
+        res.status(500).json({ 
+            error: 'Failed to get patient lab tests', 
+            details: error.message 
+        });
+    }
+});
+
+/**
+ * Update a lab test
+ * PUT /api/lab-tests/:labTestId
+ * Body: { "result", "normalRange", "unit", "status" }
+ */
+app.put('/api/lab-tests/:labTestId', async (req, res) => {
+    try {
+        const { labTestId } = req.params;
+        const { result, normalRange, unit, status } = req.body;
+        
+        const resultString = await fabricClient.submit(
+            CONTRACTS.HEALTHLINK,
+            'UpdateLabTest',
+            labTestId,
+            result || '',
+            normalRange || '',
+            unit || '',
+            status || 'completed'
+        );
+
+        const labTest = JSON.parse(resultString);
+        res.status(200).json({
+            message: 'Lab test updated successfully',
+            ...labTest
+        });
+
+    } catch (error) {
+        console.error('Error updating lab test:', error);
+        res.status(500).json({ 
+            error: 'Failed to update lab test', 
+            details: error.message 
+        });
+    }
+});
+
+/**
+ * Delete a lab test
+ * DELETE /api/lab-tests/:labTestId
+ */
+app.delete('/api/lab-tests/:labTestId', async (req, res) => {
+    try {
+        const { labTestId } = req.params;
+        
+        const resultString = await fabricClient.submit(
+            CONTRACTS.HEALTHLINK,
+            'DeleteLabTest',
+            labTestId
+        );
+
+        res.status(200).json({
+            message: 'Lab test deleted successfully',
+            ...JSON.parse(resultString)
+        });
+
+    } catch (error) {
+        console.error('Error deleting lab test:', error);
+        res.status(500).json({ 
+            error: 'Failed to delete lab test', 
+            details: error.message 
+        });
+    }
+});
+
 // --- Start Server ---
 async function startServer() {
     try {
-        console.log('Initializing Fabric client...');
-        await fabricClient.init(); // Connect to the gateway ONCE
-        console.log('Fabric client initialized.');
-
+        // Start server immediately (don't wait for Fabric)
         app.listen(PORT, () => {
-            console.log(`HealthLink Pro API server listening on http://localhost:${PORT}`);
+            console.log(`\n✅ HealthLink Pro API server listening on http://localhost:${PORT}`);
+            console.log(`📊 Services Status:`);
+            console.log(`   • Auth System: ✅ READY`);
+            console.log(`   • Hyperledger Fabric: ${fabricInitialized ? '✅ CONNECTED' : '⚠ OFFLINE (optional)'}`);
+            if (!fabricInitialized) {
+                console.log(`\n💡 To enable Hyperledger features, start the Fabric network:`);
+                console.log(`   cd fabric-samples/test-network`);
+                console.log(`   ./network.sh up createChannel -ca -s couchdb\n`);
+            } else {
+                console.log('');
+            }
         });
 
         // Graceful shutdown
         process.on('SIGINT', async () => {
-          console.log('Shutting down server...');
+          console.log('\nShutting down server...');
           if (fabricClient) {
             fabricClient.disconnect();
           }
@@ -1585,7 +2216,7 @@ async function startServer() {
         });
 
     } catch (error) {
-        console.error('Failed to start server or init Fabric client:', error);
+        console.error('Failed to start server:', error);
         process.exit(1);
     }
 }

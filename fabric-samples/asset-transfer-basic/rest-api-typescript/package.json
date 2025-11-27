@@ -4,7 +4,7 @@
   "description": "Asset Transfer Basic REST API implemented in TypeScript",
   "main": "dist/index.js",
   "engines": {
-    "node": ">=12"
+    "node": ">=18.0.0"
   },
   "dependencies": {
     "bullmq": "^1.47.2",
@@ -25,12 +25,12 @@
     "source-map-support": "^0.5.19"
   },
   "devDependencies": {
-    "@tsconfig/node12": "^12.1.0",
+    "@tsconfig/node18": "^18.2.4",
     "@types/cors": "^2.8.12",
     "@types/express": "^5.0.3",
     "@types/ioredis": "^4.26.4",
     "@types/jest": "^27.4.1",
-    "@types/node": "^12.20.55",
+    "@types/node": "^18.19.0",
     "@types/passport": "^1.0.7",
     "@types/pino": "^6.3.8",
     "@types/pino-http": "^5.4.1",

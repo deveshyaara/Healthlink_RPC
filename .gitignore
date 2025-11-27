@@ -188,3 +188,76 @@ docs/_build/
 
 # Scripts output
 *.out.txt
+
+########################################
+# Auto-Generated Documentation (cleanup)
+########################################
+# These files are generated during development
+# and should not be committed
+API_UPDATES_NOVEMBER_2025.md
+API_REFERENCE.md
+BEFORE_AFTER_CHANGES.md
+DEPLOYMENT_ISSUE_FOUND.md
+DOCUMENTATION_INDEX_COMPLETE.md
+DOCUMENTATION_INDEX.md
+FAILED_ENDPOINTS.md
+FIX_DASHBOARD_ERROR.md
+FIXED_APIS_SUMMARY.txt
+FRONTEND_ENDPOINT_VERIFICATION.md
+FRONTEND_SETUP.md
+INTEGRATION_TESTING.md
+INSTALLATION_GUIDE.md
+QUICK_FIX_REFERENCE.txt
+QUICK_REFERENCE.txt
+QUICK_START.md
+README_API_UPDATES.md
+REMEDIATION_COMPLETE.md
+SESSION_SUMMARY.md
+SYSTEM_COMPLETE.md
+SYSTEM_READY.md
+SYSTEM_SUMMARY.md
+TEST_RESULTS.txt
+TESTING_GUIDE.md
+TROUBLESHOOTING.md
+VERIFICATION_CHECKLIST.md
+VERIFICATION_REPORT.md
+VISUAL_GUIDE.md
+STATUS_BOARD.md
+
+########################################
+# Non-Essential Test & Fix Scripts
+########################################
+# Convenience scripts for development/testing
+codespace-startup.sh
+fix-records.sh
+full-restart.sh
+restart-final-fix.sh
+restart-frontend.sh
+restart-with-auth-fixes.sh
+restart-with-ipfs-fix.sh
+restart-with-record-type-fix.sh
+run.sh
+setup-and-run.sh
+test-api.sh
+test-auth.sh
+test-complete.sh
+test-cors.sh
+test-diagnostic.sh
+test-old.sh
+test-signup-fix.sh
+verify-system.sh
+START_NOW.sh
+
+########################################
+# EXCEPTIONS - Keep These Essential Files
+########################################
+# Critical documentation
+!README.md
+!START_HERE.md
+!SCRIPTS_README.md
+
+# Essential startup/control scripts
+!start.sh
+!stop.sh
+!status.sh
+!test.sh
