@@ -1,0 +1,8 @@
+# Application hosting configuration for HealthLink Pro
+# This file can be used for IBM Cloud Code Engine or other hosting platforms
+
+runConfig:
+  # Increase this value if you'd like to automatically spin up
+  # more instances in response to increased traffic.
+  maxInstances: 1
+

@@ -1,0 +1,16 @@
+{
+  "placeholderImages": [
+    {
+      "id": "hero",
+      "description": "Abstract image representing connected health data",
+      "imageUrl": "https://picsum.photos/seed/health-1/1200/800",
+      "imageHint": "medical technology"
+    },
+    {
+      "id": "avatar1",
+      "description": "Placeholder for user avatar",
+      "imageUrl": "https://picsum.photos/seed/avatar1/40/40",
+      "imageHint": "profile picture"
+    }
+  ]
+}
