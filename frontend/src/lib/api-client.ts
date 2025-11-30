@@ -72,7 +72,15 @@ async function apiRequest<T>(
       throw new Error(`${response.status}: ${errorMessage}`);
     }
 
-    return await response.json();
+    const responseBody = await response.json();
+    
+    // Handle standardized response format from Phase 1
+    // If response has {status, statusCode, data} structure, extract the data
+    if (responseBody && typeof responseBody === 'object' && 'data' in responseBody && 'status' in responseBody) {
+      return responseBody.data as T;
+    }
+    
+    return responseBody as T;
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     console.error('API request error:', message);
@@ -171,6 +179,18 @@ export const doctorsApi = {
   getDoctorsByHospital: async (hospital: string) => {
     return apiRequest(`/api/doctors/hospital/${encodeURIComponent(hospital)}`);
   },
+
+  rateDoctorAsync: async (doctorId: string, data: { patientId: string; rating: number; review?: string }) => {
+    return apiRequest(`/api/doctors/${doctorId}/rate`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+      requiresAuth: true,
+    });
+  },
+
+  getDoctorReviews: async (doctorId: string) => {
+    return apiRequest(`/api/doctors/${doctorId}/reviews`);
+  },
 };
 
 /**
@@ -199,8 +219,10 @@ export const medicalRecordsApi = {
     });
   },
 
-  getRecord: async (recordId: string, patientId: string, accessReason: string) => {
-    return apiRequest(`/api/medical-records/${recordId}?patientId=${patientId}&accessReason=${accessReason}`);
+  getRecord: async (recordId: string, accessReason: string = 'medical_review') => {
+    return apiRequest(`/api/medical-records/${recordId}?accessReason=${encodeURIComponent(accessReason)}`, {
+      requiresAuth: true,
+    });
   },
 
   updateRecord: async (recordId: string, data: { patientId: string; ipfsHash: string; metadata?: Record<string, unknown> }) => {
@@ -211,17 +233,18 @@ export const medicalRecordsApi = {
   },
 
   getRecordsByPatient: async (patientId: string) => {
-    return apiRequest(`/api/medical-records/patient/${patientId}`);
+    return apiRequest(`/api/medical-records/patient/${patientId}`, { requiresAuth: true });
   },
 
   getRecordsByDoctor: async (doctorId: string) => {
-    return apiRequest(`/api/medical-records/doctor/${doctorId}`);
+    return apiRequest(`/api/medical-records/doctor/${doctorId}`, { requiresAuth: true });
   },
 
   searchRecords: async (tags: string[]) => {
     return apiRequest('/api/medical-records/search', {
       method: 'POST',
       body: JSON.stringify({ tags }),
+      requiresAuth: true,
     });
   },
 
@@ -229,15 +252,16 @@ export const medicalRecordsApi = {
     return apiRequest(`/api/medical-records/${recordId}/archive`, {
       method: 'DELETE',
       body: JSON.stringify({ patientId }),
+      requiresAuth: true,
     });
   },
 
   getRecordAccessLog: async (recordId: string) => {
-    return apiRequest(`/api/medical-records/${recordId}/access-log`);
+    return apiRequest(`/api/medical-records/${recordId}/access-log`, { requiresAuth: true });
   },
 
   getRecordHistory: async (recordId: string) => {
-    return apiRequest(`/api/medical-records/${recordId}/history`);
+    return apiRequest(`/api/medical-records/${recordId}/history`, { requiresAuth: true });
   },
 };
 
@@ -471,6 +495,10 @@ export const prescriptionsApi = {
 
   getActivePrescriptions: async (patientId: string) => {
     return apiRequest(`/api/patients/${patientId}/prescriptions/active`);
+  },
+
+  getPharmacyPrescriptions: async (pharmacyId: string) => {
+    return apiRequest(`/api/pharmacies/${pharmacyId}/prescriptions`);
   },
 
   searchByMedication: async (medicationName: string) => {

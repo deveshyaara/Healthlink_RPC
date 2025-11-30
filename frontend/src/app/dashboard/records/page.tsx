@@ -55,11 +55,14 @@ export default function RecordsPage() {
     });
     const [uploading, setUploading] = useState(false);
 
+    // Check if user can upload records (only doctors and admins)
+    const canUploadRecords = user?.role === 'doctor' || user?.role === 'admin';
+
     useEffect(() => {
         const fetchRecords = async () => {
             try {
                 const data = await medicalRecordsApi.getAllRecords();
-                // Handle both array and object responses
+                // Handle both array response and object with records property
                 if (Array.isArray(data)) {
                     setRecords(data);
                 } else if (data && typeof data === 'object' && 'records' in data) {
@@ -68,8 +71,7 @@ export default function RecordsPage() {
                     setRecords([]);
                 }
             } catch (error) {
-                console.warn('Failed to fetch records (normal on first load):', error);
-                // Don't show error toast on initial load - records API may not have data yet
+                console.warn('Failed to fetch records:', error);
                 setRecords([]);
             } finally {
                 setLoading(false);
@@ -81,14 +83,11 @@ export default function RecordsPage() {
     const handleViewDetails = async (record: MedicalRecord) => {
         setLoadingDetails(true);
         try {
-            // Use authenticated user's ID from auth context
-            const patientId = user?.id || record.patientId || 'current-patient';
-            const details = await medicalRecordsApi.getRecord(record.recordId, patientId, 'Viewing record details');
+            const details = await medicalRecordsApi.getRecord(record.recordId, 'Viewing record details');
             setSelectedRecord({ ...record, ...(details && typeof details === 'object' ? details : {}) });
             setShowDetailsDialog(true);
         } catch (error) {
             console.warn('Record details fetch failed (showing basic info):', error);
-            // Show basic info without error toast - details API may not be fully implemented
             setSelectedRecord(record);
             setShowDetailsDialog(true);
         } finally {
@@ -98,9 +97,7 @@ export default function RecordsPage() {
 
     const handleDownload = async (record: MedicalRecord) => {
         try {
-            // For download, we'll fetch the record content and trigger a download
-            const patientId = localStorage.getItem('patientId') || 'current-patient';
-            const recordData = await medicalRecordsApi.getRecord(record.recordId, patientId, 'Downloading record');
+            const recordData = await medicalRecordsApi.getRecord(record.recordId, 'Downloading record');
 
             // Create a blob and download link
             const blob = new Blob([JSON.stringify(recordData, null, 2)], { type: 'application/json' });
@@ -144,6 +141,16 @@ export default function RecordsPage() {
     };
 
     const handleUpload = async () => {
+        // Verify user has permission to upload before attempting
+        if (!canUploadRecords) {
+            toast({
+                title: "Unauthorized",
+                description: `Only doctors and administrators can upload medical records. Your current role: ${user?.role || 'unknown'}`,
+                variant: "destructive",
+            });
+            return;
+        }
+
         if (!uploadForm.file || !uploadForm.recordType || !uploadForm.description) {
             alert('Please fill in all required fields and select a file.');
             return;
@@ -209,11 +216,22 @@ export default function RecordsPage() {
             });
         } catch (error) {
             console.error('Failed to upload record:', error);
-            toast({
-                title: "Upload Failed",
-                description: "Unable to upload the record. Please check your connection and try again.",
-                variant: "destructive",
-            });
+            const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+            
+            // Provide more specific feedback for permission errors
+            if (errorMessage.includes('403')) {
+                toast({
+                    title: "Upload Failed",
+                    description: "You do not have permission to upload medical records. Only doctors and administrators can perform this action.",
+                    variant: "destructive",
+                });
+            } else {
+                toast({
+                    title: "Upload Failed",
+                    description: "Unable to upload the record. Please check your connection and try again.",
+                    variant: "destructive",
+                });
+            }
         } finally {
             setUploading(false);
         }
@@ -266,10 +284,17 @@ export default function RecordsPage() {
                                     onChange={(e) => setSearchTerm(e.target.value)}
                                 />
                             </div>
-                            <Button onClick={() => setShowUploadDialog(true)}>
-                                <UploadCloud className="mr-2 h-4 w-4" />
-                                Upload
-                            </Button>
+                            {canUploadRecords ? (
+                                <Button onClick={() => setShowUploadDialog(true)}>
+                                    <UploadCloud className="mr-2 h-4 w-4" />
+                                    Upload
+                                </Button>
+                            ) : (
+                                <Button disabled title={`Only doctors and administrators can upload records (You are: ${user?.role || 'unknown'})`}>
+                                    <UploadCloud className="mr-2 h-4 w-4" />
+                                    Upload
+                                </Button>
+                            )}
                         </div>
                     </div>
                 </CardHeader>
