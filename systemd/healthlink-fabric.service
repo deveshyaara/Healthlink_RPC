@@ -1,0 +1,42 @@
+[Unit]
+Description=HealthLink Pro Hyperledger Fabric Network
+Documentation=https://github.com/yourusername/Healthlink_RPC
+After=network.target docker.service
+Requires=docker.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+User=root
+WorkingDirectory=/opt/healthlink/fabric-samples/test-network
+
+# Environment
+EnvironmentFile=/opt/healthlink/.env
+Environment="DOCKER_SOCK=/var/run/docker.sock"
+
+# Start Fabric network
+ExecStart=/bin/bash -c '\
+    cd /opt/healthlink && \
+    docker-compose -f docker-compose-low-spec.yaml up -d'
+
+# Stop Fabric network
+ExecStop=/bin/bash -c '\
+    cd /opt/healthlink && \
+    docker-compose -f docker-compose-low-spec.yaml down'
+
+# Restart command
+ExecReload=/bin/bash -c '\
+    cd /opt/healthlink && \
+    docker-compose -f docker-compose-low-spec.yaml restart'
+
+# Timeout
+TimeoutStartSec=300
+TimeoutStopSec=120
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=healthlink-fabric
+
+[Install]
+WantedBy=multi-user.target

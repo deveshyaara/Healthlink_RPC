@@ -1,0 +1,74 @@
+{
+  "users": [
+    {
+      "userId": "testuserexamplecom",
+      "email": "testuser@example.com",
+      "passwordHash": "$2b$10$f.86zLyylWfr7HWXB9yC0.ZHhmkdJIa9HYSfP4OeABwqVUSpe9Q22",
+      "role": "patient",
+      "name": "Test User",
+      "createdAt": "2025-12-01T12:27:43.662Z",
+      "lastLogin": "2025-12-01T12:37:24.495Z",
+      "isActive": true
+    },
+    {
+      "userId": "frontendexamplecom",
+      "email": "frontend@example.com",
+      "passwordHash": "$2b$10$GKJiaI9zZrDrvE/.EvZI7.G7eb09rp51.k7TZlkcAZE6/2foZBMlW",
+      "role": "patient",
+      "name": "New Frontend User",
+      "createdAt": "2025-12-01T12:38:17.555Z",
+      "lastLogin": null,
+      "isActive": true
+    },
+    {
+      "userId": "browsertestcom",
+      "email": "browser@test.com",
+      "passwordHash": "$2b$10$mIVwBpzVkgINM/6n4pBZLe1uTl7xPQI/HNQmOKd3koKXBujbNOEqC",
+      "role": "client",
+      "name": "Browser Test",
+      "createdAt": "2025-12-01T12:42:50.223Z",
+      "lastLogin": null,
+      "isActive": true
+    },
+    {
+      "userId": "tiwaridewesh234gmailcom",
+      "email": "tiwaridewesh234@gmail.com",
+      "passwordHash": "$2b$10$YdPQLuuLHjoeGUaYxo7FbuH87BW.1JBAp2JJghnyge9wnXYdGeHwW",
+      "role": "patient",
+      "name": "Devesh Tiwari",
+      "createdAt": "2025-12-01T13:03:10.791Z",
+      "lastLogin": "2025-12-01T17:44:43.022Z",
+      "isActive": true
+    },
+    {
+      "userId": "patienttestcom",
+      "email": "patient@test.com",
+      "passwordHash": "$2b$10$aGYmjApHvLzYTJ6Z8zRPhupI5AK/3o/zoAlnszGwrBtvTf3YkVaSm",
+      "role": "patient",
+      "name": "Test Patient",
+      "createdAt": "2025-12-01T13:12:54.131Z",
+      "lastLogin": null,
+      "isActive": true
+    },
+    {
+      "userId": "tiwaridevesh887gmailcom",
+      "email": "tiwaridevesh887@gmail.com",
+      "passwordHash": "$2b$10$UJRWeot.zvchuKsoDvztseYgFW5IhALRTSmTUx419q.q6bfmJaOya",
+      "role": "doctor",
+      "name": "Devesh Tiwari",
+      "createdAt": "2025-12-01T15:12:44.430Z",
+      "lastLogin": null,
+      "isActive": true
+    },
+    {
+      "userId": "testusertestcom",
+      "email": "testuser@test.com",
+      "passwordHash": "$2b$10$sUKKYpRU2/9/sgze6SOaQOxvVL27QgTu0gi15I4wx2csfUuiJUiCa",
+      "role": "patient",
+      "name": "Test User",
+      "createdAt": "2025-12-05T12:04:14.176Z",
+      "lastLogin": null,
+      "isActive": true
+    }
+  ]
+}

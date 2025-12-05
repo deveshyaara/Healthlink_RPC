@@ -1,0 +1,396 @@
+'use client';
+
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { Input } from '@/components/ui/input';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { ActionModal } from '@/components/ui/action-modal';
+import { UploadRecordForm } from '@/components/forms/upload-record-form';
+import { Badge } from '@/components/ui/badge';
+import { MoreHorizontal, Search, UploadCloud, Download, Eye, Share2 } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { medicalRecordsApi } from '@/lib/api-client';
+import { useAuth } from '@/contexts/auth-context';
+import { format } from 'date-fns';
+import { toast } from 'sonner';
+
+interface MedicalRecord {
+  recordId: string;
+  patientId: string;
+  doctorId: string;
+  recordType: string;
+  ipfsHash: string;
+  description: string;
+  isConfidential: boolean;
+  tags: string[];
+  createdAt?: string;
+}
+
+interface RecordDetails extends MedicalRecord {
+  // Additional fields that might be returned by getRecord
+  content?: string;
+  fileSize?: number;
+  mimeType?: string;
+}
+
+export default function RecordsPage() {
+  const { user } = useAuth();
+  const [records, setRecords] = useState<MedicalRecord[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [selectedRecord, setSelectedRecord] = useState<RecordDetails | null>(null);
+  const [showDetailsDialog, setShowDetailsDialog] = useState(false);
+  const [loadingDetails, setLoadingDetails] = useState(false);
+  const [showUploadDialog, setShowUploadDialog] = useState(false);
+  const [isSubmittingForm, setIsSubmittingForm] = useState(false);
+
+  // Check if user can upload records (patients can upload their own records)
+  const canUploadRecords = user?.role === 'patient' || user?.role === 'doctor' || user?.role === 'admin';
+
+  useEffect(() => {
+    const fetchRecords = async () => {
+      try {
+        const data = await medicalRecordsApi.getAllRecords();
+        // Handle both array response and object with records property
+        if (Array.isArray(data)) {
+          setRecords(data);
+        } else if (data && typeof data === 'object' && 'records' in data) {
+          setRecords(Array.isArray(data.records) ? data.records : []);
+        } else {
+          setRecords([]);
+        }
+      } catch (error) {
+        console.warn('Failed to fetch records:', error);
+        setRecords([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchRecords();
+  }, []);
+
+  const handleViewDetails = async (record: MedicalRecord) => {
+    setLoadingDetails(true);
+    try {
+      const details = await medicalRecordsApi.getRecord(record.recordId, 'Viewing record details');
+      setSelectedRecord({ ...record, ...(details && typeof details === 'object' ? details : {}) });
+      setShowDetailsDialog(true);
+    } catch (error) {
+      console.warn('Record details fetch failed (showing basic info):', error);
+      setSelectedRecord(record);
+      setShowDetailsDialog(true);
+    } finally {
+      setLoadingDetails(false);
+    }
+  };
+
+  const handleDownload = async (record: MedicalRecord) => {
+    try {
+      // Check if record has ipfsHash (which is now our storage hash)
+      if (!record.ipfsHash) {
+        toast.error('Download Failed', {
+          description: 'This record has no associated file.',
+        });
+        return;
+      }
+
+      // Get auth token
+      const token = localStorage.getItem('auth_token');
+      if (!token) {
+        toast.error('Authentication Required', {
+          description: 'Please login to download files.',
+        });
+        return;
+      }
+
+      // Fetch file from storage API
+      const response = await fetch(`http://localhost:3000/api/storage/${record.ipfsHash}`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error(`Download failed: ${response.statusText}`);
+      }
+
+      // Get filename from Content-Disposition header or use default
+      const contentDisposition = response.headers.get('Content-Disposition');
+      let filename = `${record.recordId}_${record.recordType}`;
+
+      if (contentDisposition) {
+        const filenameMatch = contentDisposition.match(/filename="?(.+)"?/);
+        if (filenameMatch) {
+          filename = filenameMatch[1];
+        }
+      }
+
+      // Create blob and download
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+
+      toast.success('Download Started', {
+        description: `Downloading ${filename}...`,
+      });
+    } catch (error) {
+      console.error('Failed to download record:', error);
+      toast.error('Download Failed', {
+        description: error instanceof Error ? error.message : 'Unable to download the file. Please try again.',
+      });
+    }
+  };
+
+  const handleShare = (record: MedicalRecord) => {
+    // For now, just copy record ID to clipboard
+    navigator.clipboard.writeText(record.recordId).then(() => {
+      toast.success('Record ID Copied', {
+        description: 'Record ID has been copied to your clipboard.',
+      });
+    }).catch(() => {
+      toast.error('Copy Failed', {
+        description: 'Unable to copy record ID to clipboard.',
+      });
+    });
+  };
+
+  const handleUploadSuccess = async () => {
+    // Close modal
+    setShowUploadDialog(false);
+
+    // Refresh the records list
+    try {
+      const updatedRecords = await medicalRecordsApi.getAllRecords();
+      if (Array.isArray(updatedRecords)) {
+        setRecords(updatedRecords);
+      } else if (updatedRecords && typeof updatedRecords === 'object' && 'records' in updatedRecords) {
+        setRecords(Array.isArray(updatedRecords.records) ? updatedRecords.records : []);
+      }
+    } catch (error) {
+      console.warn('Could not refresh records list:', error);
+    }
+  };
+
+  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      setUploadForm(prev => ({ ...prev, file }));
+    }
+  };
+
+  const filteredRecords = records.filter(record =>
+    record.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        record.tags.some(tag => tag.toLowerCase().includes(searchTerm.toLowerCase())),
+  );
+
+  if (loading) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle className="font-headline text-2xl">Health Records</CardTitle>
+          <p className="text-muted-foreground">Loading your medical documents...</p>
+        </CardHeader>
+      </Card>
+    );
+  }
+
+  return (
+    <>
+      <Card>
+        <CardHeader>
+          <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+            <div>
+              <CardTitle className="font-headline text-2xl">Health Records</CardTitle>
+              <p className="text-muted-foreground">Manage and view your medical documents.</p>
+            </div>
+            <div className="flex items-center gap-2 w-full md:w-auto">
+              <div className="relative w-full md:w-64">
+                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Search records..."
+                  className="pl-8"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                />
+              </div>
+              {canUploadRecords && user?.id ? (
+                <Button onClick={() => setShowUploadDialog(true)}>
+                  <UploadCloud className="mr-2 h-4 w-4" />
+                                    Upload
+                </Button>
+              ) : (
+                <Button disabled title={`You must be logged in to upload records (Current role: ${user?.role || 'unknown'})`}>
+                  <UploadCloud className="mr-2 h-4 w-4" />
+                                    Upload
+                </Button>
+              )}
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Record ID</TableHead>
+                <TableHead>Description</TableHead>
+                <TableHead>Type</TableHead>
+                <TableHead>Tags</TableHead>
+                <TableHead>Date</TableHead>
+                <TableHead><span className="sr-only">Actions</span></TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {filteredRecords.map((record) => (
+                <TableRow key={record.recordId}>
+                  <TableCell className="font-medium">{record.recordId}</TableCell>
+                  <TableCell>{record.description}</TableCell>
+                  <TableCell><Badge variant="secondary">{record.recordType}</Badge></TableCell>
+                  <TableCell className="flex gap-1 flex-wrap">
+                    {record.tags.map(tag => <Badge key={tag} variant="outline">{tag}</Badge>)}
+                  </TableCell>
+                  <TableCell>{record.createdAt ? format(new Date(record.createdAt), 'MMM dd, yyyy') : 'N/A'}</TableCell>
+                  <TableCell>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" className="h-8 w-8 p-0">
+                          <span className="sr-only">Open menu</span>
+                          <MoreHorizontal className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                        <DropdownMenuItem onClick={() => handleViewDetails(record)}>
+                          <Eye className="mr-2 h-4 w-4" />
+                                                    View Details
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => handleDownload(record)}>
+                          <Download className="mr-2 h-4 w-4" />
+                                                    Download
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => handleShare(record)}>
+                          <Share2 className="mr-2 h-4 w-4" />
+                                                    Share
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem className="text-destructive">Delete</DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
+
+      {/* Record Details Dialog */}
+      <Dialog open={showDetailsDialog} onOpenChange={setShowDetailsDialog}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Medical Record Details</DialogTitle>
+          </DialogHeader>
+          {loadingDetails ? (
+            <div className="flex items-center justify-center p-8">
+              <div className="text-center">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-2"></div>
+                <p>Loading record details...</p>
+              </div>
+            </div>
+          ) : selectedRecord ? (
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="text-sm font-medium text-muted-foreground">Record ID</label>
+                  <p className="text-sm font-mono">{selectedRecord.recordId}</p>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-muted-foreground">Record Type</label>
+                  <p><Badge variant="secondary">{selectedRecord.recordType}</Badge></p>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-muted-foreground">Patient ID</label>
+                  <p className="text-sm font-mono">{selectedRecord.patientId}</p>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-muted-foreground">Doctor ID</label>
+                  <p className="text-sm font-mono">{selectedRecord.doctorId}</p>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-muted-foreground">Created Date</label>
+                  <p>{selectedRecord.createdAt ? format(new Date(selectedRecord.createdAt), 'PPP') : 'N/A'}</p>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-muted-foreground">Confidential</label>
+                  <p>{selectedRecord.isConfidential ? 'Yes' : 'No'}</p>
+                </div>
+              </div>
+
+              <div>
+                <label className="text-sm font-medium text-muted-foreground">Description</label>
+                <p className="text-sm">{selectedRecord.description}</p>
+              </div>
+
+              <div>
+                <label className="text-sm font-medium text-muted-foreground">Tags</label>
+                <div className="flex gap-1 flex-wrap mt-1">
+                  {selectedRecord.tags.map(tag => <Badge key={tag} variant="outline">{tag}</Badge>)}
+                </div>
+              </div>
+
+              <div>
+                <label className="text-sm font-medium text-muted-foreground">IPFS Hash</label>
+                <p className="text-sm font-mono break-all">{selectedRecord.ipfsHash}</p>
+              </div>
+
+              {selectedRecord.content && (
+                <div>
+                  <label className="text-sm font-medium text-muted-foreground">Content</label>
+                  <pre className="text-xs bg-muted p-2 rounded mt-1 overflow-auto max-h-32">
+                    {typeof selectedRecord.content === 'string' ? selectedRecord.content : JSON.stringify(selectedRecord.content, null, 2)}
+                  </pre>
+                </div>
+              )}
+
+              <div className="flex gap-2 pt-4">
+                <Button onClick={() => handleDownload(selectedRecord)} variant="outline">
+                  <Download className="mr-2 h-4 w-4" />
+                                    Download
+                </Button>
+                <Button onClick={() => handleShare(selectedRecord)} variant="outline">
+                  <Share2 className="mr-2 h-4 w-4" />
+                                    Share
+                </Button>
+              </div>
+            </div>
+          ) : null}
+        </DialogContent>
+      </Dialog>
+
+      {/* Upload Record Modal - New Form System */}
+      <ActionModal
+        title="Upload Health Record"
+        description="Upload a new medical document to your health records"
+        isOpen={showUploadDialog}
+        onClose={() => setShowUploadDialog(false)}
+        isSubmitting={isSubmittingForm}
+        maxWidth="lg"
+      >
+        <UploadRecordForm
+          patientId={user?.id || ''}
+          onSuccess={handleUploadSuccess}
+          onCancel={() => setShowUploadDialog(false)}
+          onSubmitting={setIsSubmittingForm}
+        />
+      </ActionModal>
+    </>
+  );
+}

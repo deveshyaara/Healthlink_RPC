@@ -1,0 +1,110 @@
+// HealthLink Pro v2.0 - Prisma Schema
+// Purpose: Type-safe database layer for user authentication and audit logging
+// Database: Supabase PostgreSQL (OFF-CHAIN user data only)
+// Medical Records: Stored on Hyperledger Fabric blockchain (separate system)
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../node_modules/.prisma/client"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ============================================================================
+// User Model - Authentication and Profile Metadata
+// ============================================================================
+model User {
+  // Primary Key
+  id String @id @default(uuid()) @db.Uuid
+
+  // Authentication Fields
+  email        String  @unique @db.VarChar(255)
+  passwordHash String  @map("password_hash") @db.Text
+  
+  // Role-Based Access Control
+  role Role @default(PATIENT)
+  
+  // Hyperledger Fabric Integration
+  fabricEnrollmentId String @unique @map("fabric_enrollment_id") @db.VarChar(255)
+  
+  // User Profile Metadata
+  fullName    String  @map("full_name") @db.VarChar(255)
+  phoneNumber String? @map("phone_number") @db.VarChar(20)
+  avatarUrl   String? @map("avatar_url") @db.Text
+  
+  // Doctor-Specific Fields (NULL for non-doctors)
+  doctorLicenseNumber         String? @map("doctor_license_number") @db.VarChar(100)
+  doctorSpecialization        String? @map("doctor_specialization") @db.VarChar(100)
+  doctorHospitalAffiliation   String? @map("doctor_hospital_affiliation") @db.VarChar(255)
+  doctorVerificationStatus    DoctorVerificationStatus? @map("doctor_verification_status")
+  
+  // Patient-Specific Fields (NULL for non-patients)
+  patientDateOfBirth      DateTime? @map("patient_date_of_birth") @db.Date
+  patientBloodGroup       String?   @map("patient_blood_group") @db.VarChar(10)
+  patientEmergencyContact String?   @map("patient_emergency_contact") @db.VarChar(20)
+  
+  // Account Status
+  isActive      Boolean @default(true) @map("is_active")
+  emailVerified Boolean @default(false) @map("email_verified")
+  
+  // Timestamps
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+  lastLoginAt DateTime? @map("last_login_at") @db.Timestamptz(6)
+  
+  // Relations
+  auditLogs UserAuditLog[]
+  
+  @@index([email], name: "idx_users_email")
+  @@index([role], name: "idx_users_role")
+  @@index([fabricEnrollmentId], name: "idx_users_fabric_enrollment_id")
+  @@index([createdAt(sort: Desc)], name: "idx_users_created_at")
+  @@map("users")
+}
+
+// ============================================================================
+// UserAuditLog Model - Authentication Event Tracking
+// ============================================================================
+model UserAuditLog {
+  // Primary Key
+  id BigInt @id @default(autoincrement())
+  
+  // Foreign Key to User
+  userId String @map("user_id") @db.Uuid
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  // Audit Event Details
+  action    String  @db.VarChar(50)
+  ipAddress String? @map("ip_address") @db.Inet
+  userAgent String? @map("user_agent") @db.Text
+  
+  // Timestamp
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  
+  @@index([userId], name: "idx_audit_user_id")
+  @@index([createdAt(sort: Desc)], name: "idx_audit_created_at")
+  @@map("user_audit_log")
+}
+
+// ============================================================================
+// Enums - Type-Safe Role and Status Values
+// ============================================================================
+
+enum Role {
+  PATIENT
+  DOCTOR
+  ADMIN
+  GOVERNMENT
+  
+  @@map("role")
+}
+
+enum DoctorVerificationStatus {
+  PENDING
+  VERIFIED
+  SUSPENDED
+  
+  @@map("doctor_verification_status")
+}
