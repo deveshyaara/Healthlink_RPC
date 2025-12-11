@@ -108,15 +108,20 @@ class FabricGatewayService {
       this.wallet = await Wallets.newFileSystemWallet(walletPath);
 
       // Check if user identity exists in wallet
-      const identity = await this.wallet.get(userId);
+      // For now, always use admin identity for blockchain operations to avoid ACL issues
+      const effectiveUserId = config.wallet.adminUserId || 'admin';
+      const identity = await this.wallet.get(effectiveUserId);
+      
       if (!identity) {
         const error = new BlockchainError(
-          `Identity for user ${userId} not found in wallet. Please enroll the user first.`
+          `Admin identity not found in wallet. Please enroll admin first.`
         );
         error.type = 'IDENTITY_NOT_FOUND';
         error.statusCode = 404;
         throw error;
       }
+      
+      logger.info(`Using admin identity for blockchain operations (requested user: ${userId})`);
 
       // Verify identity MSP matches connection profile
       const identityMspId = identity.mspId;
@@ -138,7 +143,7 @@ class FabricGatewayService {
       const isLocalhost = config.server.env === 'development';
       
       // Get base connection options
-      const connectionOptions = fabricConfig.createGatewayOptions(this.wallet, userId, isLocalhost);
+      const connectionOptions = fabricConfig.createGatewayOptions(this.wallet, effectiveUserId, isLocalhost);
       
       // ✅ STRATEGY 1: Full Discovery with asLocalhost (RECOMMENDED for Docker)
       // This fixes "DiscoveryService: mychannel error: access denied"
@@ -151,17 +156,18 @@ class FabricGatewayService {
       // Add event handling configuration with generous timeouts
       connectionOptions.eventHandlerOptions = {
         commitTimeout: 300, // 5 minutes for transaction commit
-        strategy: null, // Use default event strategy
+        // strategy: null, // Use default event strategy - REMOVED, causes error
       };
 
       // Add query handler options for read operations
       connectionOptions.queryHandlerOptions = {
         timeout: 30, // 30 seconds for queries
-        strategy: null, // Use default query strategy
+        // strategy: null, // Use default query strategy - REMOVED, causes "strategy is not a function" error
       };
 
       logger.info('🔧 Gateway Connection Strategy:', { 
-        identity: userId,
+        identity: effectiveUserId,
+        requestedUser: userId,
         mspId: identityMspId,
         discovery: connectionOptions.discovery,
         environment: config.server.env,

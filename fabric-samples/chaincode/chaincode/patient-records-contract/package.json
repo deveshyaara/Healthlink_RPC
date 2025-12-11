@@ -1,0 +1,26 @@
+{
+    "name": "patient-records-contract",
+    "version": "1.0.0",
+    "description": "HealthLink Pro - Patient Medical Records Smart Contract",
+    "main": "index.js",
+    "engines": {
+        "node": ">=16",
+        "npm": ">=8"
+    },
+    "scripts": {
+        "start": "fabric-chaincode-node start",
+        "test": "nyc mocha test --recursive"
+    },
+    "dependencies": {
+        "fabric-contract-api": "^2.5.0",
+        "fabric-shim": "^2.5.0"
+    },
+    "devDependencies": {
+        "chai": "^4.3.6",
+        "mocha": "^10.0.0",
+        "nyc": "^15.1.0",
+        "sinon": "^14.0.0"
+    },
+    "author": "HealthLink Pro Team",
+    "license": "Apache-2.0"
+}

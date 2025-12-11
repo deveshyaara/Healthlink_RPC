@@ -2,20 +2,16 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
+  output: 'standalone', // Enable standalone output for production deployment
   
-  // Production deployment safety net
-  // These settings allow the build to complete even with minor issues
+  // Production deployment configuration
   typescript: {
-    // ⚠️ Warning: This allows production builds to successfully complete
-    // even if your project has TypeScript errors.
-    // Only use temporarily during deployment - fix issues ASAP
+    // Temporarily allow build errors until all dependencies are resolved
     ignoreBuildErrors: true,
   },
   
   eslint: {
-    // ⚠️ Warning: This allows production builds to successfully complete
-    // even if your project has ESLint errors.
-    // Only use temporarily during deployment - fix issues ASAP
+    // Temporarily allow ESLint warnings during development
     ignoreDuringBuilds: true,
   },
   
@@ -26,7 +22,7 @@ const nextConfig: NextConfig = {
   
   // Image optimization
   images: {
-    domains: ['localhost'],
+    domains: ['localhost', 'images.unsplash.com'],
     remotePatterns: [
       {
         protocol: 'https',

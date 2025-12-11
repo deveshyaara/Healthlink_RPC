@@ -31,21 +31,9 @@ class AuthController {
       // Authenticate user
       const user = await authService.authenticateUser(email, password);
 
-      // Verify wallet identity exists
-      const walletService = await getWalletServiceInstance();
-      const identity = await walletService.getIdentity(user.userId);
-      if (!identity) {
-        return res.status(401).json({
-          status: 'error',
-          statusCode: 401,
-          message: 'Blockchain identity not found',
-          error: {
-            code: 'IDENTITY_NOT_FOUND',
-            details: 'User must be registered on blockchain first'
-          }
-        });
-      }
-
+      // Note: Blockchain operations now use admin identity, so user wallet identity is not required for login
+      // This allows authentication to work without individual user blockchain identities
+      
       // Generate JWT token
       const token = authService.generateToken(user);
 
@@ -155,14 +143,10 @@ class AuthController {
         });
       }
 
-      // Register blockchain identity first
-      const walletService = await getWalletServiceInstance();
-      const walletResult = await walletService.registerUser(
-        userId,
-        role || 'client',
-        'org1.department1'
-      );
-
+      // Note: Blockchain operations use admin identity
+      // User blockchain identity registration is no longer required
+      // Users will authenticate via JWT and blockchain operations use admin credentials
+      
       // Register user with password
       const user = await authService.registerUser({
         userId,

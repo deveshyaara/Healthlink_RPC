@@ -349,12 +349,15 @@ deploy_chaincode() {
     fi
 }
 
-# Deploy all chaincodes
+# Deploy chaincodes to mychannel (matching our working configuration)
+# Note: healthlink, prescription-contract, and appointment-contract are essential
 deploy_chaincode "healthlink" "../chaincode/healthlink-contract" "1.0"
-deploy_chaincode "patient-records" "../chaincode/patient-records-contract" "1.1"
-deploy_chaincode "doctor-credentials" "../chaincode/doctor-credentials-contract" "1.8"
-deploy_chaincode "appointment" "../chaincode/appointment-contract" "1.9"
-deploy_chaincode "prescription" "../chaincode/prescription-contract" "1.6"
+deploy_chaincode "prescription-contract" "../chaincode/prescription-contract" "1.0"
+deploy_chaincode "appointment-contract" "../chaincode/appointment-contract" "1.0"
+
+# Optional: Additional contracts (can be deployed later if needed)
+# deploy_chaincode "patient-records-contract" "../chaincode/patient-records-contract" "1.0"
+# deploy_chaincode "doctor-credentials-contract" "../chaincode/doctor-credentials-contract" "1.0"
 
 echo ""
 
@@ -409,95 +412,60 @@ WALLET_PATH="$PWD/wallet"
 # Check if wallet already exists with admin identity (idempotent check)
 if check_wallet_exists "$WALLET_PATH"; then
     echo -e "${GREEN}✅ Using existing wallet (idempotent operation)${NC}"
+    # Verify admin has proper OU=admin certificate
+    if cat "$WALLET_PATH/admin.id" | grep -q '"certificate"'; then
+        echo -e "${GREEN}✅ Admin identity verified${NC}"
+    fi
 else
-    echo -e "${BLUE}🔑 Creating fresh wallet with admin enrollment...${NC}"
+    echo -e "${BLUE}🔑 Creating wallet with admin identity from test-network...${NC}"
     
     # Remove old wallet if it exists but is incomplete
     rm -rf wallet
+    mkdir -p wallet
     
-    # Enroll admin with retry logic (handles CA initialization race condition)
-    echo -e "${BLUE}📝 Enrolling admin identity (with retry logic)...${NC}"
+    # Copy admin identity from test-network (this has proper OU=admin)
+    ADMIN_MSP_PATH="../fabric-samples/test-network/organizations/peerOrganizations/org1.example.com/users/Admin@org1.example.com/msp"
     
-    retry_command $MAX_RETRIES node -e "
-const FabricCAServices = require('fabric-ca-client');
+    if [ -d "$ADMIN_MSP_PATH" ]; then
+        echo -e "${BLUE}📝 Importing admin identity with OU=admin...${NC}"
+        
+        node -e "
 const { Wallets } = require('fabric-network');
 const fs = require('fs');
 const path = require('path');
 
-async function enrollAdmin() {
+async function importAdmin() {
     try {
-        // Load connection profile
-        const ccpPath = path.resolve(__dirname, '..', 'fabric-samples', 'test-network',
-            'organizations', 'peerOrganizations', 'org1.example.com', 'connection-org1.json');
+        const mspPath = path.resolve('$ADMIN_MSP_PATH');
+        const cert = fs.readFileSync(path.join(mspPath, 'signcerts/cert.pem'), 'utf8');
+        const keyFiles = fs.readdirSync(path.join(mspPath, 'keystore'));
+        const key = fs.readFileSync(path.join(mspPath, 'keystore', keyFiles[0]), 'utf8');
         
-        if (!fs.existsSync(ccpPath)) {
-            console.error('❌ Connection profile not found at:', ccpPath);
-            process.exit(1);
-        }
-        
-        const ccp = JSON.parse(fs.readFileSync(ccpPath, 'utf8'));
-
-        // Get CA info
-        const caInfo = ccp.certificateAuthorities['ca.org1.example.com'];
-        if (!caInfo) {
-            console.error('❌ CA info not found in connection profile');
-            process.exit(1);
-        }
-        
-        const caTLSCACerts = caInfo.tlsCACerts.pem;
-        const ca = new FabricCAServices(
-            caInfo.url, 
-            { trustedRoots: caTLSCACerts, verify: false }, 
-            caInfo.caName
-        );
-
-        // Create wallet
-        const walletPath = path.join(__dirname, 'wallet');
-        const wallet = await Wallets.newFileSystemWallet(walletPath);
-        
-        // Check if admin already exists
-        const identity = await wallet.get('admin');
-        if (identity) {
-            console.log('✅ Admin identity already exists in wallet');
-            process.exit(0);
-        }
-
-        // Enroll admin
-        console.log('🔐 Enrolling admin with CA...');
-        const enrollment = await ca.enroll({ 
-            enrollmentID: 'admin', 
-            enrollmentSecret: 'adminpw' 
-        });
-        
-        const x509Identity = {
-            credentials: {
-                certificate: enrollment.certificate,
-                privateKey: enrollment.key.toBytes(),
-            },
+        const identity = {
+            credentials: { certificate: cert, privateKey: key },
             mspId: 'Org1MSP',
-            type: 'X.509',
+            type: 'X.509'
         };
         
-        await wallet.put('admin', x509Identity);
-        console.log('✅ Admin enrolled successfully');
+        const wallet = await Wallets.newFileSystemWallet('./wallet');
+        await wallet.put('admin', identity);
+        console.log('✅ Admin identity imported successfully');
         process.exit(0);
-        
     } catch (error) {
-        console.error('❌ Enrollment failed:', error.message);
-        // Return non-zero exit code to trigger retry
+        console.error('❌ Failed to import admin:', error.message);
         process.exit(1);
     }
 }
-
-enrollAdmin();
+importAdmin();
 "
-    
-    if [ $? -ne 0 ]; then
-        echo -e "${RED}❌ Failed to enroll admin after $MAX_RETRIES attempts${NC}"
-        echo -e "${YELLOW}💡 Troubleshooting:${NC}"
-        echo "   1. Check CA container: docker logs ca_org1"
-        echo "   2. Verify CA is listening: nc -z localhost 7054"
-        echo "   3. Check connection profile exists"
+        if [ $? -eq 0 ]; then
+            echo -e "${GREEN}✅ Admin identity imported with proper permissions${NC}"
+        else
+            echo -e "${RED}❌ Failed to import admin identity${NC}"
+            exit 1
+        fi
+    else
+        echo -e "${RED}❌ Admin MSP path not found: $ADMIN_MSP_PATH${NC}"
         exit 1
     fi
 fi

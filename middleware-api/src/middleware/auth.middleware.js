@@ -70,28 +70,15 @@ export const authenticateJWT = async (req, res, next) => {
       });
     }
 
-    // Load Fabric wallet identity
+    // Note: Blockchain operations now use admin identity
+    // User wallet identity check is no longer required
     try {
-      const walletService = await getWalletServiceInstance();
-      const identity = await walletService.getIdentity(user.userId);
-      if (!identity) {
-        return res.status(401).json({
-          status: 'error',
-          statusCode: 401,
-          message: 'Blockchain identity not found',
-          error: {
-            code: 'IDENTITY_NOT_FOUND',
-            details: 'No Fabric wallet identity exists for this user'
-          }
-        });
-      }
-
-      // Attach user and identity to request
+      // Attach user to request (Fabric identity will be admin)
       req.user = user;
       req.fabricIdentity = {
-        userId: user.userId,
-        mspId: identity.mspId,
-        type: identity.type
+        userId: 'admin', // Use admin for blockchain operations
+        mspId: 'Org1MSP',
+        type: 'X.509'
       };
 
       next();

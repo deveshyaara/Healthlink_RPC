@@ -1,0 +1,20 @@
+{
+    "name": "prescription-contract",
+    "version": "1.0.0",
+    "description": "HealthLink Pro - E-Prescription Management Smart Contract",
+    "main": "index.js",
+    "scripts": {
+        "start": "fabric-chaincode-node start",
+        "test": "echo \"No tests specified\" && exit 0"
+    },
+    "engines": {
+        "node": ">=16",
+        "npm": ">=8"
+    },
+    "dependencies": {
+        "fabric-contract-api": "^2.5.0",
+        "fabric-shim": "^2.5.0"
+    },
+    "author": "HealthLink Pro Team",
+    "license": "Apache-2.0"
+}

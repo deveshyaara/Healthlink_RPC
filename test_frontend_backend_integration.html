@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Frontend-Backend Integration Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+        }
+        .test-section {
+            border: 1px solid #ddd;
+            padding: 20px;
+            margin-bottom: 20px;
+            border-radius: 5px;
+        }
+        button {
+            background: #0070f3;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background: #0051cc;
+        }
+        .output {
+            background: #f5f5f5;
+            padding: 15px;
+            border-radius: 5px;
+            margin-top: 10px;
+            font-family: monospace;
+            white-space: pre-wrap;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        .success { color: green; }
+        .error { color: red; }
+        .info { color: blue; }
+        input {
+            width: 100%;
+            padding: 8px;
+            margin: 5px 0;
+            border: 1px solid #ddd;
+            border-radius: 3px;
+        }
+    </style>
+</head>
+<body>
+    <h1>🔗 Frontend-Backend Integration Test</h1>
+    <p>This page tests the connection between the frontend and backend API.</p>
+    
+    <div class="test-section">
+        <h2>1. Health Check</h2>
+        <button onclick="testHealth()">Test Backend Health</button>
+        <div id="health-output" class="output"></div>
+    </div>
+    
+    <div class="test-section">
+        <h2>2. Registration Test</h2>
+        <input type="text" id="reg-name" placeholder="Name" value="Test User">
+        <input type="email" id="reg-email" placeholder="Email" value="">
+        <input type="password" id="reg-password" placeholder="Password" value="Test@12345">
+        <select id="reg-role" style="width: 100%; padding: 8px; margin: 5px 0;">
+            <option value="patient">Patient</option>
+            <option value="doctor">Doctor</option>
+            <option value="admin">Admin</option>
+        </select>
+        <button onclick="testRegistration()">Test Registration</button>
+        <div id="reg-output" class="output"></div>
+    </div>
+    
+    <div class="test-section">
+        <h2>3. Login Test</h2>
+        <input type="email" id="login-email" placeholder="Email" value="doctor1@healthlink.com">
+        <input type="password" id="login-password" placeholder="Password" value="Doctor@123">
+        <button onclick="testLogin()">Test Login</button>
+        <div id="login-output" class="output"></div>
+    </div>
+    
+    <div class="test-section">
+        <h2>4. Token Validation Test</h2>
+        <button onclick="testTokenValidation()">Test Token Validation</button>
+        <div id="token-output" class="output"></div>
+    </div>
+
+    <script>
+        const API_URL = 'http://localhost:3000';
+        let currentToken = null;
+        
+        function log(elementId, message, type = 'info') {
+            const output = document.getElementById(elementId);
+            const timestamp = new Date().toLocaleTimeString();
+            const className = type;
+            output.innerHTML += `<span class="${className}">[${timestamp}] ${message}</span>\n`;
+            output.scrollTop = output.scrollHeight;
+        }
+        
+        function clearOutput(elementId) {
+            document.getElementById(elementId).innerHTML = '';
+        }
+        
+        async function testHealth() {
+            clearOutput('health-output');
+            log('health-output', '🔍 Testing backend health...');
+            
+            try {
+                const response = await fetch(`${API_URL}/health`);
+                const data = await response.json();
+                
+                log('health-output', `✅ Status: ${response.status}`, 'success');
+                log('health-output', `📦 Response: ${JSON.stringify(data, null, 2)}`);
+                
+                if (data.status === 'UP') {
+                    log('health-output', '✅ Backend is healthy!', 'success');
+                } else {
+                    log('health-output', '❌ Backend is not healthy', 'error');
+                }
+            } catch (error) {
+                log('health-output', `❌ Error: ${error.message}`, 'error');
+            }
+        }
+        
+        async function testRegistration() {
+            clearOutput('reg-output');
+            
+            const name = document.getElementById('reg-name').value;
+            let email = document.getElementById('reg-email').value;
+            const password = document.getElementById('reg-password').value;
+            const role = document.getElementById('reg-role').value;
+            
+            // Generate unique email if empty
+            if (!email) {
+                email = `test${Date.now()}@example.com`;
+                document.getElementById('reg-email').value = email;
+            }
+            
+            log('reg-output', '🔍 Testing registration...');
+            log('reg-output', `📧 Email: ${email}`);
+            
+            try {
+                log('reg-output', `📡 Sending POST request to ${API_URL}/api/auth/register`);
+                
+                const response = await fetch(`${API_URL}/api/auth/register`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ name, email, password, role })
+                });
+                
+                log('reg-output', `📊 Response status: ${response.status}`);
+                
+                const data = await response.json();
+                log('reg-output', `📦 Raw response: ${JSON.stringify(data, null, 2)}`);
+                
+                // Simulate api-client.ts extraction
+                const extracted = data.data || data;
+                log('reg-output', '\n🔄 After api-client.ts extraction:');
+                log('reg-output', `   - Has token: ${!!extracted.token}`, extracted.token ? 'success' : 'error');
+                log('reg-output', `   - Has user: ${!!extracted.user}`, extracted.user ? 'success' : 'error');
+                
+                if (extracted.token && extracted.user) {
+                    currentToken = extracted.token;
+                    log('reg-output', '\n✅ Registration successful!', 'success');
+                    log('reg-output', `👤 User: ${extracted.user.name} (${extracted.user.role})`);
+                    log('reg-output', `🎫 Token stored for validation test`);
+                } else {
+                    log('reg-output', '\n❌ Registration failed: missing token or user', 'error');
+                }
+            } catch (error) {
+                log('reg-output', `❌ Error: ${error.message}`, 'error');
+            }
+        }
+        
+        async function testLogin() {
+            clearOutput('login-output');
+            
+            const email = document.getElementById('login-email').value;
+            const password = document.getElementById('login-password').value;
+            
+            log('login-output', '🔍 Testing login...');
+            log('login-output', `📧 Email: ${email}`);
+            
+            try {
+                log('login-output', `📡 Sending POST request to ${API_URL}/api/auth/login`);
+                
+                const response = await fetch(`${API_URL}/api/auth/login`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ email, password })
+                });
+                
+                log('login-output', `📊 Response status: ${response.status}`);
+                
+                const data = await response.json();
+                log('login-output', `📦 Raw response: ${JSON.stringify(data, null, 2)}`);
+                
+                // Simulate api-client.ts extraction
+                const extracted = data.data || data;
+                log('login-output', '\n🔄 After api-client.ts extraction:');
+                log('login-output', `   - Has token: ${!!extracted.token}`, extracted.token ? 'success' : 'error');
+                log('login-output', `   - Has user: ${!!extracted.user}`, extracted.user ? 'success' : 'error');
+                
+                if (extracted.token && extracted.user) {
+                    currentToken = extracted.token;
+                    log('login-output', '\n✅ Login successful!', 'success');
+                    log('login-output', `👤 User: ${extracted.user.name} (${extracted.user.role})`);
+                    log('login-output', `🎫 Token stored for validation test`);
+                } else {
+                    log('login-output', '\n❌ Login failed: missing token or user', 'error');
+                }
+            } catch (error) {
+                log('login-output', `❌ Error: ${error.message}`, 'error');
+            }
+        }
+        
+        async function testTokenValidation() {
+            clearOutput('token-output');
+            
+            if (!currentToken) {
+                log('token-output', '⚠️  No token available. Please register or login first.', 'error');
+                return;
+            }
+            
+            log('token-output', '🔍 Testing token validation...');
+            log('token-output', `🎫 Token: ${currentToken.substring(0, 50)}...`);
+            
+            try {
+                log('token-output', `📡 Sending GET request to ${API_URL}/api/auth/me`);
+                
+                const response = await fetch(`${API_URL}/api/auth/me`, {
+                    method: 'GET',
+                    headers: {
+                        'Authorization': `Bearer ${currentToken}`,
+                        'Content-Type': 'application/json',
+                    }
+                });
+                
+                log('token-output', `📊 Response status: ${response.status}`);
+                
+                const data = await response.json();
+                log('token-output', `📦 Raw response: ${JSON.stringify(data, null, 2)}`);
+                
+                if (response.ok) {
+                    const extracted = data.data || data;
+                    log('token-output', '\n✅ Token is valid!', 'success');
+                    if (extracted.user) {
+                        log('token-output', `👤 User: ${extracted.user.name} (${extracted.user.role})`);
+                    }
+                } else {
+                    log('token-output', '\n❌ Token validation failed', 'error');
+                }
+            } catch (error) {
+                log('token-output', `❌ Error: ${error.message}`, 'error');
+            }
+        }
+        
+        // Auto-generate email on page load
+        window.onload = function() {
+            document.getElementById('reg-email').value = `test${Date.now()}@example.com`;
+        };
+    </script>
+</body>
+</html>

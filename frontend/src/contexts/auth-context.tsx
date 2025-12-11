@@ -75,9 +75,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           );
 
           if (response.ok) {
-            const data = await response.json();
-            setUser(data.user);
-            setToken(storedToken);
+            const jsonData = await response.json();
+            // Backend returns { status, data: { user } }
+            const userData = jsonData.data?.user || jsonData.user;
+            if (userData) {
+              setUser(userData);
+              setToken(storedToken);
+            } else {
+              clearStoredToken();
+            }
           } else {
             // Token is invalid, clear it
             clearStoredToken();
@@ -95,12 +101,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const login = async (email: string, password: string) => {
     try {
+      console.log('[Auth Context] Starting login for:', email);
       const response = await authApi.login({ email, password });
+      console.log('[Auth Context] Login response:', response);
+      console.log('[Auth Context] response.token:', response.token);
+      console.log('[Auth Context] response.user:', response.user);
 
       if (response.token && response.user) {
         storeToken(response.token);
         setToken(response.token);
         setUser(response.user);
+        
+        console.log('[Auth Context] Token stored, user set');
 
         toast({
           title: 'Login successful',
@@ -133,12 +145,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const register = async (data: { name: string; email: string; password: string; role: string }) => {
     try {
+      console.log('[Auth Context] Starting registration for:', data.email);
       const response = await authApi.register(data);
+      console.log('[Auth Context] Register response:', response);
+      console.log('[Auth Context] response.token:', response.token);
+      console.log('[Auth Context] response.user:', response.user);
 
       if (response.token && response.user) {
         storeToken(response.token);
         setToken(response.token);
         setUser(response.user);
+        
+        console.log('[Auth Context] Token stored, user set');
 
         toast({
           title: 'Registration successful',

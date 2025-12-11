@@ -69,6 +69,316 @@
       "createdAt": "2025-12-05T12:04:14.176Z",
       "lastLogin": null,
       "isActive": true
+    },
+    {
+      "userId": "testdoctor123",
+      "email": "testdoctor@healthlink.com",
+      "passwordHash": "$2b$10$e2nJ/aVPX0stpq9XjInnheO6aaFPiTGtMREdMI/KDUpbmWyH.N2SO",
+      "role": "doctor",
+      "name": "Test Doctor",
+      "createdAt": "2025-12-06T17:36:42.815Z",
+      "lastLogin": null,
+      "isActive": true
+    },
+    {
+      "userId": "doctor1healthlinkcom",
+      "email": "doctor1@healthlink.com",
+      "passwordHash": "$2b$10$7HOuQHIObfgBiJqz1UZOrecs87XxaORGIEfMbHmlk.XiwrcTLiZRy",
+      "role": "doctor",
+      "name": "Dr. John Smith",
+      "createdAt": "2025-12-06T17:42:51.959Z",
+      "lastLogin": "2025-12-10T17:50:13.076Z",
+      "isActive": true
+    },
+    {
+      "userId": "patient1healthlinkcom",
+      "email": "patient1@healthlink.com",
+      "passwordHash": "$2b$10$l67aTjW.xVNjZOwJtqS6n.G0pIo7OE5i5uIiUbmsZsMfVPIlUqEmm",
+      "role": "patient",
+      "name": "John Doe",
+      "createdAt": "2025-12-06T17:43:13.789Z",
+      "lastLogin": "2025-12-06T17:55:41.648Z",
+      "isActive": true
+    },
+    {
+      "userId": "patient2healthlinkcom",
+      "email": "patient2@healthlink.com",
+      "passwordHash": "$2b$10$uqF/sKkGDqZVeKFXCJiouOhTyF8yKLnS5gijMjl8c18iwNS3gqxei",
+      "role": "patient",
+      "name": "Jane Smith",
+      "createdAt": "2025-12-06T18:30:16.688Z",
+      "lastLogin": null,
+      "isActive": true
+    },
+    {
+      "userId": "testuser1765045933536healthlinkcom",
+      "email": "testuser1765045933536@healthlink.com",
+      "passwordHash": "$2b$10$PWpFcRooaJuNSinA3OmUFO.1ELqT8.Ei9ZmefLiFX4JaGKjqDihle",
+      "role": "patient",
+      "name": "Test User",
+      "createdAt": "2025-12-06T18:32:13.623Z",
+      "lastLogin": null,
+      "isActive": true
+    },
+    {
+      "userId": "testuser1765045949230healthlinkcom",
+      "email": "testuser1765045949230@healthlink.com",
+      "passwordHash": "$2b$10$L1AaLxOeWHJNn3w.D9f6D.eODh5fIslbIn7XjajIXDxU4jtN.Aicu",
+      "role": "patient",
+      "name": "Test User",
+      "createdAt": "2025-12-06T18:32:29.313Z",
+      "lastLogin": null,
+      "isActive": true
+    },
+    {
+      "userId": "testuser1765084617850healthlinkcom",
+      "email": "testuser1765084617850@healthlink.com",
+      "passwordHash": "$2b$10$715A7FA0Z2MJPjDEp5hSceapyXwjA1eZsJ5A9v5nlX2qFdZDhibCa",
+      "role": "patient",
+      "name": "Test User",
+      "createdAt": "2025-12-07T05:16:57.963Z",
+      "lastLogin": null,
+      "isActive": true
+    },
+    {
+      "userId": "testuser1765384554257healthlinkcom",
+      "email": "testuser1765384554257@healthlink.com",
+      "passwordHash": "$2b$10$ETz6IcaHDlQqCamhj8uj4uvtX.FY627bQBc0lHKVOam6wyZ2QEKd.",
+      "role": "patient",
+      "name": "Test User",
+      "createdAt": "2025-12-10T16:35:54.366Z",
+      "lastLogin": null,
+      "isActive": true
+    },
+    {
+      "userId": "testuser1765384920918healthlinkcom",
+      "email": "testuser1765384920918@healthlink.com",
+      "passwordHash": "$2b$10$QcPTPP3yT5wuF2QfFvo9iODu0SzjnqpJpogB3o7OBD8mdCfZ9BwOy",
+      "role": "patient",
+      "name": "Test User",
+      "createdAt": "2025-12-10T16:42:01.010Z",
+      "lastLogin": null,
+      "isActive": true
+    },
+    {
+      "userId": "testuser1765385727598healthlinkcom",
+      "email": "testuser1765385727598@healthlink.com",
+      "passwordHash": "$2b$10$mPE9.tXl4TWY5pisXXk8nOMtUwF9FszcoHTXDdugzWOt/waLxBNVG",
+      "role": "patient",
+      "name": "Test User",
+      "createdAt": "2025-12-10T16:55:27.681Z",
+      "lastLogin": null,
+      "isActive": true
+    },
+    {
+      "userId": "testuser1765385795252healthlinkcom",
+      "email": "testuser1765385795252@healthlink.com",
+      "passwordHash": "$2b$10$gtFmKFwKcR4SnuVLZRyJBecEsYY3DDqMPrx71XUG2wljm.qowNIhS",
+      "role": "patient",
+      "name": "Test User",
+      "createdAt": "2025-12-10T16:56:35.335Z",
+      "lastLogin": null,
+      "isActive": true
+    },
+    {
+      "userId": "testuser1765386563778healthlinkcom",
+      "email": "testuser1765386563778@healthlink.com",
+      "passwordHash": "$2b$10$Bxk3rVEt5DgvKDboQMa3YeZvjVFeWY40g8iYJxvaoofMsWNRWAfFK",
+      "role": "patient",
+      "name": "Test User",
+      "createdAt": "2025-12-10T17:09:23.881Z",
+      "lastLogin": null,
+      "isActive": true
+    },
+    {
+      "userId": "testuser1765388817437healthlinkcom",
+      "email": "testuser1765388817437@healthlink.com",
+      "passwordHash": "$2b$10$aduEknM18eBhs0ut9dH5Yuk2GlHNxj0Qjfo3G0ZFpxLJ5depOi7pO",
+      "role": "patient",
+      "name": "Test User",
+      "createdAt": "2025-12-10T17:46:57.545Z",
+      "lastLogin": null,
+      "isActive": true
+    },
+    {
+      "userId": "testuser1765388914324healthlinkcom",
+      "email": "testuser1765388914324@healthlink.com",
+      "passwordHash": "$2b$10$s9HCMX8WlQ4k62tvFXxAX.t2pH99JJwffQ3sf1U.1oo83LfVxijHK",
+      "role": "patient",
+      "name": "Test User",
+      "createdAt": "2025-12-10T17:48:34.431Z",
+      "lastLogin": null,
+      "isActive": true
+    },
+    {
+      "userId": "testuser1765389012882healthlinkcom",
+      "email": "testuser1765389012882@healthlink.com",
+      "passwordHash": "$2b$10$labuFRxRchrqgoydNpxkceXH4ZVfOW0xW3zTnOOEUcQ/fHxNk5Ci6",
+      "role": "patient",
+      "name": "Test User",
+      "createdAt": "2025-12-10T17:50:12.988Z",
+      "lastLogin": null,
+      "isActive": true
+    },
+    {
+      "userId": "testexamplecom",
+      "email": "test@example.com",
+      "passwordHash": "$2b$10$RlFMKVLdKV8Ytd7Bp3vATex/73DABvEa2ZMXXeSjGBoprUTYOobbi",
+      "role": "patient",
+      "name": "Test User",
+      "createdAt": "2025-12-10T18:07:25.487Z",
+      "lastLogin": null,
+      "isActive": true
+    },
+    {
+      "userId": "test2examplecom",
+      "email": "test2@example.com",
+      "passwordHash": "$2b$10$agDQpl4MfQYu.pnOfyg9.OCij8N.mD/hGoa7FsY/ROr8NZpfkKtT2",
+      "role": "patient",
+      "name": "Test User2",
+      "createdAt": "2025-12-10T18:08:02.794Z",
+      "lastLogin": null,
+      "isActive": true
+    },
+    {
+      "userId": "test3examplecom",
+      "email": "test3@example.com",
+      "passwordHash": "$2b$10$5p9TCa3BCcJFphj2lRWd0Obgt4AciblnlYoZ3Cu6tADKjr3jo89Oi",
+      "role": "patient",
+      "name": "Test User3",
+      "createdAt": "2025-12-10T18:08:37.444Z",
+      "lastLogin": null,
+      "isActive": true
+    },
+    {
+      "userId": "test1765390263723examplecom",
+      "email": "test1765390263723@example.com",
+      "passwordHash": "$2b$10$bJaRdqZiI0cxLqh9slh2uuHfmEH8oUevCuqabCri4ixp9xiYH7s5e",
+      "role": "patient",
+      "name": "Frontend Test User",
+      "createdAt": "2025-12-10T18:11:03.851Z",
+      "lastLogin": null,
+      "isActive": true
+    },
+    {
+      "userId": "test1765390321357examplecom",
+      "email": "test1765390321357@example.com",
+      "passwordHash": "$2b$10$A/2BS7cYgz/OjRh.DzrO7usHoiifO/huKxytNo7b1ORCgQkJABreq",
+      "role": "patient",
+      "name": "Frontend Test User",
+      "createdAt": "2025-12-10T18:12:01.451Z",
+      "lastLogin": null,
+      "isActive": true
+    },
+    {
+      "userId": "test1765390517examplecom",
+      "email": "test1765390517@example.com",
+      "passwordHash": "$2b$10$zaHOEvumCXN5YWt5Y0EMVefA0oh8wib5Wuo10JtBa436/VEI45MdW",
+      "role": "patient",
+      "name": "Test User",
+      "createdAt": "2025-12-10T18:15:17.344Z",
+      "lastLogin": "2025-12-10T18:15:17.465Z",
+      "isActive": true
+    },
+    {
+      "userId": "test1765390527examplecom",
+      "email": "test1765390527@example.com",
+      "passwordHash": "$2b$10$el0umL0NPlJdc9NPvCYdku9rMf6S66mofP6YB7QWG0XZI7ROtaZSq",
+      "role": "patient",
+      "name": "Test User",
+      "createdAt": "2025-12-10T18:15:27.714Z",
+      "lastLogin": "2025-12-10T18:15:27.834Z",
+      "isActive": true
+    },
+    {
+      "userId": "browsertest1765390991640examplecom",
+      "email": "browsertest1765390991640@example.com",
+      "passwordHash": "$2b$10$0cE8mI4PQX/2K4nYV82rteloe4Je4jEsvHBnXr3KA3UkkoRpWIhtu",
+      "role": "patient",
+      "name": "Browser Test",
+      "createdAt": "2025-12-10T18:23:11.757Z",
+      "lastLogin": "2025-12-10T18:23:11.858Z",
+      "isActive": true
+    },
+    {
+      "userId": "browsertest1765391097969examplecom",
+      "email": "browsertest1765391097969@example.com",
+      "passwordHash": "$2b$10$GePf0qWqYSsJSRW9GJMveO2HxzPktIPctRXhzfQQiZYPBvs4eRye.",
+      "role": "patient",
+      "name": "Browser Test",
+      "createdAt": "2025-12-10T18:24:58.065Z",
+      "lastLogin": "2025-12-10T18:24:58.155Z",
+      "isActive": true
+    },
+    {
+      "userId": "frontendtest1765391195272examplecom",
+      "email": "frontend_test1765391195272@example.com",
+      "passwordHash": "$2b$10$2G47jobsn2ZaBpZWD7VJW.bSjMyQ1xvXFiP.WKKMcv2PcWnwFFtne",
+      "role": "patient",
+      "name": "Frontend Test",
+      "createdAt": "2025-12-10T18:26:35.371Z",
+      "lastLogin": "2025-12-10T18:26:35.462Z",
+      "isActive": true
+    },
+    {
+      "userId": "frontendtest1765391201920examplecom",
+      "email": "frontend_test1765391201920@example.com",
+      "passwordHash": "$2b$10$gCCZO1tM/EwofOOH75F4VuQaxWUBM88rCd3w/UHb8ttqw1mcCDCxO",
+      "role": "patient",
+      "name": "Frontend Test",
+      "createdAt": "2025-12-10T18:26:42.014Z",
+      "lastLogin": "2025-12-10T18:26:42.109Z",
+      "isActive": true
+    },
+    {
+      "userId": "integrationtest1765460528examplecom",
+      "email": "integrationtest1765460528@example.com",
+      "passwordHash": "$2b$10$LDI/g0QFNTwXLXH1Hxq5KufV9FrGqKr4n6HZp8Sfs6UzwKXiI1qNe",
+      "role": "patient",
+      "name": "Integration Test",
+      "createdAt": "2025-12-11T13:42:08.853Z",
+      "lastLogin": null,
+      "isActive": true
+    },
+    {
+      "userId": "integrationtest1765460642examplecom",
+      "email": "integrationtest1765460642@example.com",
+      "passwordHash": "$2b$10$C2osGAcLrkqEYNmm0XhL1OyJoIhmS.wv5IuU6aPIbJAj4IQl8o.yS",
+      "role": "patient",
+      "name": "Integration Test",
+      "createdAt": "2025-12-11T13:44:02.955Z",
+      "lastLogin": null,
+      "isActive": true
+    },
+    {
+      "userId": "quicktest1765460732examplecom",
+      "email": "quicktest1765460732@example.com",
+      "passwordHash": "$2b$10$V3WtWWUZfk6vkHrFG.LQFuIuw0h.8qI61MVslDwNMxLVCU/EZi0uC",
+      "role": "patient",
+      "name": "Quick Test",
+      "createdAt": "2025-12-11T13:45:33.087Z",
+      "lastLogin": null,
+      "isActive": true
+    },
+    {
+      "userId": "integrationtest1765460856examplecom",
+      "email": "integrationtest1765460856@example.com",
+      "passwordHash": "$2b$10$RY5bHXyOXpZP4Ap.ur9LtuVsmFTMh53dTtRptecdTuDqtMOwZWqWy",
+      "role": "patient",
+      "name": "Integration Test User",
+      "createdAt": "2025-12-11T13:47:43.966Z",
+      "lastLogin": "2025-12-11T13:47:44.128Z",
+      "isActive": true
+    },
+    {
+      "userId": "corstest1765461001examplecom",
+      "email": "corstest1765461001@example.com",
+      "passwordHash": "$2b$10$qbubc1MFi9kmlXTjJYe0ju8eurhPwjAxzMDVh6ABwcLso3XKDGXX.",
+      "role": "patient",
+      "name": "CORS Test",
+      "createdAt": "2025-12-11T13:50:01.712Z",
+      "lastLogin": null,
+      "isActive": true
     }
   ]
 }
