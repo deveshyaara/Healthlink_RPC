@@ -351,13 +351,14 @@ deploy_chaincode() {
 
 # Deploy chaincodes to mychannel (matching our working configuration)
 # Note: healthlink, prescription-contract, and appointment-contract are essential
-deploy_chaincode "healthlink" "../chaincode/healthlink-contract" "1.0"
-deploy_chaincode "prescription-contract" "../chaincode/prescription-contract" "1.0"
-deploy_chaincode "appointment-contract" "../chaincode/appointment-contract" "1.0"
+# Chaincode is now located at root /chaincode/ directory (merged from fabric-samples)
+deploy_chaincode "healthlink" "../../chaincode/healthlink-contract" "1.0"
+deploy_chaincode "prescription-contract" "../../chaincode/prescription-contract" "1.0"
+deploy_chaincode "appointment-contract" "../../chaincode/appointment-contract" "1.0"
 
 # Optional: Additional contracts (can be deployed later if needed)
-# deploy_chaincode "patient-records-contract" "../chaincode/patient-records-contract" "1.0"
-# deploy_chaincode "doctor-credentials-contract" "../chaincode/doctor-credentials-contract" "1.0"
+# deploy_chaincode "patient-records-contract" "../../chaincode/patient-records-contract" "1.0"
+# deploy_chaincode "doctor-credentials-contract" "../../chaincode/doctor-credentials-contract" "1.0"
 
 echo ""
 
