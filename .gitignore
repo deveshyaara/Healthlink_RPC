@@ -128,6 +128,12 @@ frontend/build/
 frontend/logs/
 frontend/*.pid
 
+# Frontend environment and cache
+frontend/.env.local
+frontend/.env.development
+frontend/.env.production
+frontend/node_modules/.cache/
+
 ##############################################################################
 # Build Artifacts & Compiled Files
 ##############################################################################
@@ -175,6 +181,10 @@ middleware-api/logs/
 middleware-api/server.log
 rpc-server.log
 server.log
+/tmp/*.log
+frontend-*.log
+backend-*.log
+middleware-*.log
 
 # Runtime logs
 nohup.out
@@ -430,6 +440,31 @@ VERIFICATION_REPORT.md
 VISUAL_GUIDE.md
 STATUS_BOARD.md
 
+# Session fix documentation (can be archived after verification)
+NETWORK_FIX_SUMMARY.md
+LOGIN_FIX_SUMMARY.md
+CODESPACES_SETUP.md
+NEXTJS_PARAMS_ERROR_FIXED.md
+NETWORK_FIX_CARD.md
+DEBUG_NETWORK_ERROR.md
+CORS_FIX_COMPLETE.md
+FINAL_FIX_COMPLETE.md
+
+# General temporary documentation patterns
+*_COMPLETE.md
+*_FIXED.md
+*_SUMMARY.md
+*_GUIDE.md
+*_TESTING.md
+*_RULES.md
+*_REFACTOR*.md
+*_QUICK_*.md
+DEBUG_*.md
+DEMO_*.md
+MANUAL_*.md
+CONTRACT_*.md
+RBAC_*.md
+
 # Development/testing convenience scripts (non-essential)
 codespace-startup.sh
 fix-records.sh
@@ -448,8 +483,11 @@ test-cors.sh
 test-diagnostic.sh
 test-old.sh
 test-signup-fix.sh
-verify-system.sh
 START_NOW.sh
+
+# Diagnostic and verification scripts (generated during debugging)
+check-services.sh
+verify-backend.sh
 
 # Scripts backup directory
 scripts/backup/
@@ -459,6 +497,12 @@ scripts/old/
 test-data/
 mock-data/
 seed-data/
+
+# Development utility scripts
+frontend_spy.js
+initialize_identities.js
+*_spy.js
+test_*.js
 
 # Documentation builds
 docs/_build/
