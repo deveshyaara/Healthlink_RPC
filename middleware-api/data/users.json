@@ -37,7 +37,7 @@
       "role": "patient",
       "name": "Devesh Tiwari",
       "createdAt": "2025-12-01T13:03:10.791Z",
-      "lastLogin": "2025-12-01T17:44:43.022Z",
+      "lastLogin": "2025-12-12T17:40:46.183Z",
       "isActive": true
     },
     {
@@ -47,7 +47,7 @@
       "role": "patient",
       "name": "Test Patient",
       "createdAt": "2025-12-01T13:12:54.131Z",
-      "lastLogin": null,
+      "lastLogin": "2025-12-12T18:01:26.463Z",
       "isActive": true
     },
     {
@@ -377,6 +377,36 @@
       "role": "patient",
       "name": "CORS Test",
       "createdAt": "2025-12-11T13:50:01.712Z",
+      "lastLogin": null,
+      "isActive": true
+    },
+    {
+      "userId": "testtestcom",
+      "email": "test@test.com",
+      "passwordHash": "$2b$10$2bsGUjC.OeV919ds9q9veehVsjtu8jQMMjWnXpv2lvjiEuETq2dra",
+      "role": "patient",
+      "name": "Test",
+      "createdAt": "2025-12-12T07:32:40.498Z",
+      "lastLogin": null,
+      "isActive": true
+    },
+    {
+      "userId": "avaishdoctorcom",
+      "email": "avaish@doctor.com",
+      "passwordHash": "$2b$10$yGYtd1/iy9SOvmd6Gi0YleN7yJ2Pkkr73mcJzDL8POQAID77fS12u",
+      "role": "doctor",
+      "name": "Avaish",
+      "createdAt": "2025-12-12T13:55:23.095Z",
+      "lastLogin": null,
+      "isActive": true
+    },
+    {
+      "userId": "janepatientcom",
+      "email": "jane@patient.com",
+      "passwordHash": "$2b$10$.S0XNh.Zmv1PZAtZ6xtdSOP/4nwgawrN/tVqaUfiVFQCepR9lCYui",
+      "role": "patient",
+      "name": "Jane Doe",
+      "createdAt": "2025-12-12T15:07:25.944Z",
       "lastLogin": null,
       "isActive": true
     }

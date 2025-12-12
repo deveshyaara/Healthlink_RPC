@@ -488,6 +488,9 @@ START_NOW.sh
 # Diagnostic and verification scripts (generated during debugging)
 check-services.sh
 verify-backend.sh
+verify_*.sh
+test_*.sh
+stream_logs.sh
 
 # Scripts backup directory
 scripts/backup/

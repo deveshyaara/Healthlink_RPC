@@ -27,7 +27,7 @@ export const routesConfig = [
     method: 'POST',
     chaincode: 'doctor-credentials-contract',
     function: 'RegisterDoctor',
-    channel: 'healthlink-channel',
+    channel: 'mychannel',
     auth: false,
     paramMapping: {
       doctorId: 'body.doctorId',
@@ -58,7 +58,7 @@ export const routesConfig = [
     method: 'GET',
     chaincode: 'doctor-credentials-contract',
     function: 'GetDoctor',
-    channel: 'healthlink-channel',
+    channel: 'mychannel',
     auth: false,
     paramMapping: {
       doctorId: 'params.doctorId'
@@ -69,7 +69,7 @@ export const routesConfig = [
     method: 'POST',
     chaincode: 'doctor-credentials-contract',
     function: 'VerifyDoctor',
-    channel: 'healthlink-channel',
+    channel: 'mychannel',
     auth: true,
     roles: ['admin'],
     paramMapping: {
@@ -87,7 +87,7 @@ export const routesConfig = [
     method: 'POST',
     chaincode: 'doctor-credentials-contract',
     function: 'SuspendDoctor',
-    channel: 'healthlink-channel',
+    channel: 'mychannel',
     auth: true,
     roles: ['admin'],
     paramMapping: {
@@ -105,33 +105,44 @@ export const routesConfig = [
   {
     path: '/medical-records',
     method: 'POST',
-    chaincode: 'patient-records-contract',
+    chaincode: 'patient-records',
     function: 'CreateRecord',
-    channel: 'healthlink-channel',
+    channel: 'mychannel',
     auth: true,
-    roles: ['doctor', 'admin'],
+    roles: ['doctor', 'admin', 'patient'], // ✅ Allow patients to upload their own records
     paramMapping: {
       recordId: 'body.recordId',
-      patientId: 'body.patientId', // ✅ Allow doctors to specify patient ID
-      doctorId: 'user.userId', // ✅ Auto-inject doctor ID from JWT
+      patientId: 'body.patientId',
+      doctorId: 'user.userId',
       recordType: 'body.recordType',
       ipfsHash: 'body.ipfsHash',
-      metadata: 'body.metadata' // JSON stringified
+      metadata: 'body.metadata' // Will be JSON stringified
     },
     validation: Joi.object({
       recordId: Joi.string().required(),
-      patientId: Joi.string().required(), // ✅ Require patient ID in request
-      recordType: Joi.string().required(),
+      patientId: Joi.string().required(),
       ipfsHash: Joi.string().required(),
+      recordType: Joi.string().optional(),
       metadata: Joi.object().optional()
     })
   },
   {
+    path: '/medical-records',
+    method: 'GET',
+    chaincode: 'patient-records',
+    function: 'GetRecordsByPatient',
+    channel: 'mychannel',
+    auth: true,
+    paramMapping: {
+      patientId: 'user.userId'
+    }
+  },
+  {
     path: '/medical-records/:recordId',
     method: 'GET',
-    chaincode: 'patient-records-contract',
+    chaincode: 'patient-records',
     function: 'GetRecord',
-    channel: 'healthlink-channel',
+    channel: 'mychannel',
     auth: true,
     paramMapping: {
       recordId: 'params.recordId'
@@ -140,9 +151,9 @@ export const routesConfig = [
   {
     path: '/medical-records/patient/:patientId',
     method: 'GET',
-    chaincode: 'patient-records-contract',
+    chaincode: 'patient-records',
     function: 'GetRecordsByPatient',
-    channel: 'healthlink-channel',
+    channel: 'mychannel',
     auth: true,
     paramMapping: {
       patientId: 'params.patientId'
@@ -151,9 +162,9 @@ export const routesConfig = [
   {
     path: '/medical-records/paginated',
     method: 'GET',
-    chaincode: 'patient-records-contract',
+    chaincode: 'patient-records',
     function: 'GetAllRecordsPaginated',
-    channel: 'healthlink-channel',
+    channel: 'mychannel',
     auth: true,
     paramMapping: {
       pageSize: 'query.pageSize',
@@ -169,7 +180,7 @@ export const routesConfig = [
     method: 'POST',
     chaincode: 'appointment-contract',
     function: 'ScheduleAppointment',
-    channel: 'healthlink-channel',
+    channel: 'mychannel',
     auth: true,
     paramMapping: {
       appointmentId: 'body.appointmentId',
@@ -195,7 +206,7 @@ export const routesConfig = [
     method: 'GET',
     chaincode: 'appointment-contract',
     function: 'GetAppointment',
-    channel: 'healthlink-channel',
+    channel: 'mychannel',
     auth: true,
     paramMapping: {
       appointmentId: 'params.appointmentId'
@@ -206,7 +217,7 @@ export const routesConfig = [
     method: 'GET',
     chaincode: 'appointment-contract',
     function: 'GetAllAppointments',
-    channel: 'healthlink-channel',
+    channel: 'mychannel',
     auth: true,
     paramMapping: {}
   },
@@ -215,7 +226,7 @@ export const routesConfig = [
     method: 'POST',
     chaincode: 'appointment-contract',
     function: 'ConfirmAppointment',
-    channel: 'healthlink-channel',
+    channel: 'mychannel',
     auth: true,
     roles: ['doctor', 'receptionist', 'admin'],
     paramMapping: {
@@ -227,7 +238,7 @@ export const routesConfig = [
     method: 'POST',
     chaincode: 'appointment-contract',
     function: 'CompleteAppointment',
-    channel: 'healthlink-channel',
+    channel: 'mychannel',
     auth: true,
     roles: ['doctor', 'admin'],
     paramMapping: {
@@ -241,7 +252,7 @@ export const routesConfig = [
     method: 'POST',
     chaincode: 'appointment-contract',
     function: 'CancelAppointment',
-    channel: 'healthlink-channel',
+    channel: 'mychannel',
     auth: true,
     paramMapping: {
       appointmentId: 'params.appointmentId',
@@ -257,7 +268,7 @@ export const routesConfig = [
     method: 'GET',
     chaincode: 'appointment-contract',
     function: 'GetPatientAppointments',
-    channel: 'healthlink-channel',
+    channel: 'mychannel',
     auth: true,
     paramMapping: {
       patientId: 'params.patientId'
@@ -268,7 +279,7 @@ export const routesConfig = [
     method: 'GET',
     chaincode: 'appointment-contract',
     function: 'GetDoctorAppointments',
-    channel: 'healthlink-channel',
+    channel: 'mychannel',
     auth: true,
     paramMapping: {
       doctorId: 'params.doctorId'
@@ -283,7 +294,7 @@ export const routesConfig = [
     method: 'POST',
     chaincode: 'prescription-contract',
     function: 'CreatePrescription',
-    channel: 'healthlink-channel',
+    channel: 'mychannel',
     auth: true,
     roles: ['doctor', 'admin'],
     paramMapping: {
@@ -317,7 +328,7 @@ export const routesConfig = [
     method: 'GET',
     chaincode: 'prescription-contract',
     function: 'GetPrescription',
-    channel: 'healthlink-channel',
+    channel: 'mychannel',
     auth: true,
     paramMapping: {
       prescriptionId: 'params.prescriptionId'
@@ -328,7 +339,7 @@ export const routesConfig = [
     method: 'GET',
     chaincode: 'prescription-contract',
     function: 'GetAllPrescriptions',
-    channel: 'healthlink-channel',
+    channel: 'mychannel',
     auth: true,
     paramMapping: {}
   },
@@ -337,7 +348,7 @@ export const routesConfig = [
     method: 'POST',
     chaincode: 'prescription-contract',
     function: 'DispensePrescription',
-    channel: 'healthlink-channel',
+    channel: 'mychannel',
     auth: true,
     roles: ['pharmacist', 'admin'],
     paramMapping: {
@@ -357,7 +368,7 @@ export const routesConfig = [
     method: 'GET',
     chaincode: 'prescription-contract',
     function: 'GetPatientPrescriptions',
-    channel: 'healthlink-channel',
+    channel: 'mychannel',
     auth: true,
     paramMapping: {
       patientId: 'params.patientId'
@@ -368,7 +379,7 @@ export const routesConfig = [
     method: 'GET',
     chaincode: 'prescription-contract',
     function: 'GetDoctorPrescriptions',
-    channel: 'healthlink-channel',
+    channel: 'mychannel',
     auth: true,
     paramMapping: {
       doctorId: 'params.doctorId'
@@ -383,7 +394,7 @@ export const routesConfig = [
     method: 'POST',
     chaincode: 'lab-test-contract',
     function: 'OrderLabTest',
-    channel: 'healthlink-channel',
+    channel: 'mychannel',
     auth: true,
     roles: ['doctor', 'admin'],
     paramMapping: {
@@ -412,7 +423,7 @@ export const routesConfig = [
     method: 'GET',
     chaincode: 'lab-test-contract',
     function: 'GetLabTest',
-    channel: 'healthlink-channel',
+    channel: 'mychannel',
     auth: true,
     paramMapping: {
       labTestId: 'params.labTestId'
@@ -423,7 +434,7 @@ export const routesConfig = [
     method: 'GET',
     chaincode: 'lab-test-contract',
     function: 'GetAllLabTests',
-    channel: 'healthlink-channel',
+    channel: 'mychannel',
     auth: true,
     paramMapping: {}
   },
@@ -432,7 +443,7 @@ export const routesConfig = [
     method: 'PUT',
     chaincode: 'lab-test-contract',
     function: 'UpdateLabTestResult',
-    channel: 'healthlink-channel',
+    channel: 'mychannel',
     auth: true,
     roles: ['lab-technician', 'admin'],
     paramMapping: {
@@ -456,7 +467,7 @@ export const routesConfig = [
     method: 'POST',
     chaincode: 'insurance-claims-contract',
     function: 'SubmitClaim',
-    channel: 'healthlink-channel',
+    channel: 'mychannel',
     auth: true,
     paramMapping: {
       claimId: 'body.claimId',
@@ -472,7 +483,7 @@ export const routesConfig = [
     method: 'GET',
     chaincode: 'insurance-claims-contract',
     function: 'GetClaim',
-    channel: 'healthlink-channel',
+    channel: 'mychannel',
     auth: true,
     paramMapping: {
       claimId: 'params.claimId'
@@ -487,7 +498,7 @@ export const routesConfig = [
     method: 'GET',
     chaincode: 'healthlink-contract',
     function: 'GetConsentsByPatient',
-    channel: 'healthlink-channel',
+    channel: 'mychannel',
     auth: true,
     paramMapping: {
       patientId: 'user.userId' // Auto-inject from JWT (Me pattern)
@@ -498,7 +509,7 @@ export const routesConfig = [
     method: 'POST',
     chaincode: 'healthlink-contract',
     function: 'CreateConsent',
-    channel: 'healthlink-channel',
+    channel: 'mychannel',
     auth: true,
     paramMapping: {
       consentId: 'body.consentId',
@@ -521,7 +532,7 @@ export const routesConfig = [
     method: 'GET',
     chaincode: 'healthlink-contract',
     function: 'GetConsent',
-    channel: 'healthlink-channel',
+    channel: 'mychannel',
     auth: true,
     paramMapping: {
       consentId: 'params.consentId'
@@ -532,7 +543,7 @@ export const routesConfig = [
     method: 'PATCH',
     chaincode: 'healthlink-contract',
     function: 'RevokeConsent',
-    channel: 'healthlink-channel',
+    channel: 'mychannel',
     auth: true,
     paramMapping: {
       consentId: 'params.consentId'

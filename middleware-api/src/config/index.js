@@ -68,25 +68,30 @@ const config = {
       // Allow requests with no origin (like mobile apps, curl, Postman)
       if (!origin) return callback(null, true);
       
-      const allowedOrigins = process.env.CORS_ORIGIN?.split(',') || [
+      // Base allowed origins (strings)
+      const allowedOrigins = [
         'http://localhost:3000', 
         'http://localhost:9002',
-        /https:\/\/.*\.app\.github\.dev$/, // Allow all GitHub Codespaces
       ];
       
-      // Check if origin is allowed
-      const isAllowed = allowedOrigins.some(allowed => {
-        if (typeof allowed === 'string') {
-          return origin === allowed;
-        } else if (allowed instanceof RegExp) {
-          return allowed.test(origin);
-        }
-        return false;
-      });
+      // Add custom origins from environment variable
+      if (process.env.CORS_ORIGIN) {
+        allowedOrigins.push(...process.env.CORS_ORIGIN.split(',').map(o => o.trim()));
+      }
       
-      if (isAllowed) {
+      // Always allow GitHub Codespaces domains (regex)
+      const githubCodespacesPattern = /https:\/\/.*\.app\.github\.dev$/;
+      
+      // Check if origin matches allowed strings
+      const isAllowedString = allowedOrigins.includes(origin);
+      
+      // Check if origin matches Codespaces pattern
+      const isCodespaces = githubCodespacesPattern.test(origin);
+      
+      if (isAllowedString || isCodespaces) {
         callback(null, true);
       } else {
+        console.warn(`[CORS] Blocked origin: ${origin}`);
         callback(new Error(`Origin ${origin} not allowed by CORS`));
       }
     },

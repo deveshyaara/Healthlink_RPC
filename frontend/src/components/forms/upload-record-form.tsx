@@ -73,34 +73,15 @@ export function UploadRecordForm({
     try {
       const file = data.file[0];
 
-      // Step 1: Upload file to backend storage (get real SHA-256 hash)
+      // Step 1: Upload file to backend storage using API client
       setUploadProgress(20);
 
-      const formData = new FormData();
-      formData.append('file', file);
-
-      // Get auth token for upload
-      const token = localStorage.getItem('auth_token');
-      if (!token) {
-        throw new Error('Authentication required. Please login again.');
-      }
-
-      // Upload file to storage API
-      const uploadResponse = await fetch('http://localhost:3000/api/storage/upload', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
-        body: formData,
-      });
-
-      if (!uploadResponse.ok) {
-        const errorData = await uploadResponse.json();
-        throw new Error(errorData.message || 'File upload failed');
-      }
-
-      const uploadResult = await uploadResponse.json();
-      const realHash = uploadResult.data.hash; // Real SHA-256 hash from backend
+      // Import API client dynamically
+      const { storageApi, recordsApi } = await import('@/lib/api-client');
+      
+      // Upload file and get SHA-256 hash
+      const uploadResult = await storageApi.upload(file);
+      const realHash = uploadResult.hash; // Real SHA-256 hash from backend
 
       console.log('✅ File uploaded to storage:', realHash);
       setUploadProgress(60);
@@ -116,7 +97,7 @@ export function UploadRecordForm({
         patientId: patientId,
         doctorId: 'unknown', // Will be set by backend based on auth context or set to "self-uploaded"
         recordType: data.recordType,
-        ipfsHash: realHash, // ✅ Now using real SHA-256 hash from storage
+        ipfsHash: realHash, // ✅ Using real SHA-256 hash from storage
         metadata: {
           title: data.title,
           description: data.description,
@@ -131,9 +112,7 @@ export function UploadRecordForm({
 
       setUploadProgress(80);
 
-      // Import dynamically to avoid circular dependencies
-      const { medicalRecordsApi } = await import('@/lib/api-client');
-      const response = await medicalRecordsApi.createRecord(recordPayload);
+      const response = await recordsApi.create(recordPayload);
 
       setUploadProgress(100);
 

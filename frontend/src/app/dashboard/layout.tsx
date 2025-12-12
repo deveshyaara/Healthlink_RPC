@@ -21,6 +21,7 @@ import { Button } from '@/components/ui/button';
 import ErrorBoundary from '@/components/error-boundary';
 import { useAuth } from '@/contexts/auth-context';
 import { getRoutesForRole } from '@/config/navigation';
+import { RouteGuard } from '@/components/route-guard';
 
 export default function DashboardLayout({
   children,
@@ -90,7 +91,9 @@ export default function DashboardLayout({
         </header>
         <main className="min-h-[calc(100vh-4rem)] bg-neutral-50 dark:bg-neutral-950 p-4 sm:p-6 lg:p-8">
           <ErrorBoundary>
-            {children}
+            <RouteGuard>
+              {children}
+            </RouteGuard>
           </ErrorBoundary>
         </main>
       </SidebarInset>

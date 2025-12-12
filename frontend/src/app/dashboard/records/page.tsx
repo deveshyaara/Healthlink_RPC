@@ -22,9 +22,9 @@ interface MedicalRecord {
   doctorId: string;
   recordType: string;
   ipfsHash: string;
-  description: string;
-  isConfidential: boolean;
-  tags: string[];
+  description?: string;  // Optional - might not be present
+  isConfidential?: boolean;
+  tags?: string[];  // Optional - might not be present
   createdAt?: string;
 }
 
@@ -49,25 +49,31 @@ export default function RecordsPage() {
   // Check if user can upload records (patients can upload their own records)
   const canUploadRecords = user?.role === 'patient' || user?.role === 'doctor' || user?.role === 'admin';
 
-  useEffect(() => {
-    const fetchRecords = async () => {
-      try {
-        const data = await medicalRecordsApi.getAllRecords();
-        // Handle both array response and object with records property
-        if (Array.isArray(data)) {
-          setRecords(data);
-        } else if (data && typeof data === 'object' && 'records' in data) {
-          setRecords(Array.isArray(data.records) ? data.records : []);
-        } else {
-          setRecords([]);
-        }
-      } catch (error) {
-        console.warn('Failed to fetch records:', error);
+  // Fetch records function that can be called for refresh
+  const fetchRecords = async () => {
+    setLoading(true);
+    try {
+      const data = await medicalRecordsApi.getAllRecords();
+      // Handle both array response and object with records property
+      if (Array.isArray(data)) {
+        setRecords(data);
+      } else if (data && typeof data === 'object' && 'records' in data) {
+        setRecords(Array.isArray(data.records) ? data.records : []);
+      } else {
         setRecords([]);
-      } finally {
-        setLoading(false);
       }
-    };
+    } catch (error) {
+      console.error('Failed to fetch records:', error);
+      toast.error('Failed to Load Records', {
+        description: error instanceof Error ? error.message : 'Unable to connect to the server. Please check your connection.',
+      });
+      setRecords([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
     fetchRecords();
   }, []);
 
@@ -167,17 +173,13 @@ export default function RecordsPage() {
     // Close modal
     setShowUploadDialog(false);
 
+    // Show success message
+    toast.success('Record Uploaded Successfully', {
+      description: 'Your health record has been added to the blockchain.',
+    });
+
     // Refresh the records list
-    try {
-      const updatedRecords = await medicalRecordsApi.getAllRecords();
-      if (Array.isArray(updatedRecords)) {
-        setRecords(updatedRecords);
-      } else if (updatedRecords && typeof updatedRecords === 'object' && 'records' in updatedRecords) {
-        setRecords(Array.isArray(updatedRecords.records) ? updatedRecords.records : []);
-      }
-    } catch (error) {
-      console.warn('Could not refresh records list:', error);
-    }
+    await fetchRecords();
   };
 
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -187,10 +189,17 @@ export default function RecordsPage() {
     }
   };
 
-  const filteredRecords = records.filter(record =>
-    record.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        record.tags.some(tag => tag.toLowerCase().includes(searchTerm.toLowerCase())),
-  );
+  const filteredRecords = records.filter(record => {
+    if (!searchTerm) return true;
+    
+    const searchLower = searchTerm.toLowerCase();
+    const descriptionMatch = record.description?.toLowerCase().includes(searchLower) || false;
+    const tagsMatch = record.tags?.some(tag => tag.toLowerCase().includes(searchLower)) || false;
+    const recordTypeMatch = record.recordType?.toLowerCase().includes(searchLower) || false;
+    const recordIdMatch = record.recordId?.toLowerCase().includes(searchLower) || false;
+    
+    return descriptionMatch || tagsMatch || recordTypeMatch || recordIdMatch;
+  });
 
   if (loading) {
     return (
@@ -249,13 +258,43 @@ export default function RecordsPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredRecords.map((record) => (
+              {loading ? (
+                <TableRow>
+                  <TableCell colSpan={6} className="text-center py-8">
+                    <div className="flex flex-col items-center justify-center">
+                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mb-2"></div>
+                      <p className="text-muted-foreground">Loading your health records...</p>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ) : filteredRecords.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={6} className="text-center py-8">
+                    <div className="flex flex-col items-center justify-center">
+                      <UploadCloud className="h-12 w-12 text-muted-foreground mb-4" />
+                      <h3 className="text-lg font-semibold mb-2">No Records Found</h3>
+                      <p className="text-muted-foreground mb-4">
+                        {searchTerm 
+                          ? `No records match "${searchTerm}". Try a different search term.`
+                          : 'You haven\'t uploaded any health records yet. Start by uploading your first record.'}
+                      </p>
+                      {canUploadRecords && !searchTerm && (
+                        <Button onClick={() => setShowUploadDialog(true)}>
+                          <UploadCloud className="mr-2 h-4 w-4" />
+                          Upload Your First Record
+                        </Button>
+                      )}
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ) : (
+                filteredRecords.map((record) => (
                 <TableRow key={record.recordId}>
                   <TableCell className="font-medium">{record.recordId}</TableCell>
-                  <TableCell>{record.description}</TableCell>
+                  <TableCell>{record.description || 'No description'}</TableCell>
                   <TableCell><Badge variant="secondary">{record.recordType}</Badge></TableCell>
                   <TableCell className="flex gap-1 flex-wrap">
-                    {record.tags.map(tag => <Badge key={tag} variant="outline">{tag}</Badge>)}
+                    {record.tags?.map(tag => <Badge key={tag} variant="outline">{tag}</Badge>) || <span className="text-muted-foreground text-sm">No tags</span>}
                   </TableCell>
                   <TableCell>{record.createdAt ? format(new Date(record.createdAt), 'MMM dd, yyyy') : 'N/A'}</TableCell>
                   <TableCell>
@@ -286,7 +325,8 @@ export default function RecordsPage() {
                     </DropdownMenu>
                   </TableCell>
                 </TableRow>
-              ))}
+              ))
+              )}
             </TableBody>
           </Table>
         </CardContent>
@@ -336,13 +376,16 @@ export default function RecordsPage() {
 
               <div>
                 <label className="text-sm font-medium text-muted-foreground">Description</label>
-                <p className="text-sm">{selectedRecord.description}</p>
+                <p className="text-sm">{selectedRecord.description || 'No description provided'}</p>
               </div>
 
               <div>
                 <label className="text-sm font-medium text-muted-foreground">Tags</label>
                 <div className="flex gap-1 flex-wrap mt-1">
-                  {selectedRecord.tags.map(tag => <Badge key={tag} variant="outline">{tag}</Badge>)}
+                  {selectedRecord.tags && selectedRecord.tags.length > 0 
+                    ? selectedRecord.tags.map(tag => <Badge key={tag} variant="outline">{tag}</Badge>)
+                    : <span className="text-muted-foreground text-sm">No tags</span>
+                  }
                 </div>
               </div>
 

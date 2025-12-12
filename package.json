@@ -1,4 +1,15 @@
 {
+  "name": "healthlink-rpc",
+  "version": "1.0.0",
+  "description": "HealthLink RPC - Blockchain Medical Records",
+  "type": "module",
+  "scripts": {
+    "init-identities": "node initialize_identities.js"
+  },
+  "dependencies": {
+    "fabric-network": "^2.2.20",
+    "fabric-ca-client": "^2.2.20"
+  },
   "devDependencies": {
     "node-fetch": "^3.3.2",
     "socket.io-client": "^4.8.1"

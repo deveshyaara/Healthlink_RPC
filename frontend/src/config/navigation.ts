@@ -220,6 +220,39 @@ export function getRoutesForRole(role: string | undefined): NavRoute[] {
 }
 
 /**
+ * Check if a user has access to a specific route
+ */
+export function canAccessRoute(userRole: string | undefined, routeHref: string): boolean {
+  if (!userRole) return false;
+
+  const allRoutes = [...doctorRoutes, ...patientRoutes, ...adminRoutes, ...commonRoutes];
+  const route = allRoutes.find((r) => r.href === routeHref);
+
+  // If route not found, deny access (safest default)
+  if (!route) return false;
+
+  // Check if user's role is in the allowed roles for this route
+  return route.roles.includes(userRole.toLowerCase());
+}
+
+/**
+ * Check if a route path is restricted to specific role
+ */
+export function isRestrictedRoute(pathname: string): { isRestricted: boolean; allowedRoles: string[] } {
+  const allRoutes = [...doctorRoutes, ...patientRoutes, ...adminRoutes, ...commonRoutes];
+  const route = allRoutes.find((r) => pathname.startsWith(r.href));
+
+  if (!route) {
+    return { isRestricted: false, allowedRoles: [] };
+  }
+
+  return {
+    isRestricted: route.roles.length < 3, // If less than 3 roles, it's restricted
+    allowedRoles: route.roles,
+  };
+}
+
+/**
  * Get page title from route href
  */
 export function getPageTitle(href: string, role?: string): string {

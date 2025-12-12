@@ -1,4 +1,4 @@
-import { Gateway, Wallets } from 'fabric-network';
+import { Gateway, Wallets, DefaultQueryHandlerStrategies, DefaultEventHandlerStrategies } from 'fabric-network';
 import fs from 'fs';
 import path from 'path';
 import config from '../config/index.js';
@@ -145,24 +145,24 @@ class FabricGatewayService {
       // Get base connection options
       const connectionOptions = fabricConfig.createGatewayOptions(this.wallet, effectiveUserId, isLocalhost);
       
-      // ✅ STRATEGY 1: Full Discovery with asLocalhost (RECOMMENDED for Docker)
-      // This fixes "DiscoveryService: mychannel error: access denied"
-      // Without asLocalhost=true, Docker returns internal IPs (172.x.x.x) unreachable from host
+      // ✅ STRATEGY 1: Disable Discovery to avoid "access denied" errors
+      // Discovery requires admin to have proper channel access permissions
+      // Using static endpoints from connection profile instead
       connectionOptions.discovery = {
-        enabled: true,
+        enabled: false,
         asLocalhost: true, // ✅ CRITICAL: Maps container hostnames to localhost ports
       };
       
       // Add event handling configuration with generous timeouts
       connectionOptions.eventHandlerOptions = {
         commitTimeout: 300, // 5 minutes for transaction commit
-        // strategy: null, // Use default event strategy - REMOVED, causes error
+        strategy: DefaultEventHandlerStrategies.MSPID_SCOPE_ALLFORTX,
       };
 
-      // Add query handler options for read operations
+      // Add query handler options with explicit strategy for non-discovery mode
       connectionOptions.queryHandlerOptions = {
         timeout: 30, // 30 seconds for queries
-        // strategy: null, // Use default query strategy - REMOVED, causes "strategy is not a function" error
+        strategy: DefaultQueryHandlerStrategies.MSPID_SCOPE_SINGLE,
       };
 
       logger.info('🔧 Gateway Connection Strategy:', { 
@@ -267,6 +267,8 @@ class FabricGatewayService {
     try {
       logger.info(`Submitting transaction: ${functionName}`, { args });
       
+      // For submit, the SDK will automatically target peers based on the endorsement policy
+      // and the connection profile configuration
       const result = await this.contract.submitTransaction(functionName, ...args);
       const response = result.toString();
       
@@ -336,6 +338,8 @@ class FabricGatewayService {
     try {
       logger.info(`Evaluating transaction: ${functionName}`, { args });
       
+      // For evaluate (query), we don't need explicit peer targeting with recent Fabric SDK
+      // The SDK will automatically use available peers from the connection profile
       const result = await this.contract.evaluateTransaction(functionName, ...args);
       const response = result.toString();
       
@@ -387,6 +391,76 @@ class FabricGatewayService {
       }
     } catch (error) {
       logger.error(`Transaction ${functionName} with transient data failed:`, error);
+      throw parseFabricError(error);
+    }
+  }
+
+  /**
+   * Get a specific contract by chaincode name
+   * @param {string} chaincodeName - Name of the chaincode
+   * @returns {Object} Contract instance
+   */
+  getContract(chaincodeName) {
+    this._ensureConnected();
+    return this.network.getContract(chaincodeName);
+  }
+
+  /**
+   * Submit transaction to a specific chaincode
+   * @param {string} chaincodeName - Name of the chaincode
+   * @param {string} functionName - Chaincode function name
+   * @param {...string} args - Function arguments
+   * @returns {Promise<any>} Transaction result
+   */
+  async submitTransactionToChaincode(chaincodeName, functionName, ...args) {
+    this._ensureConnected();
+    
+    try {
+      const contract = this.getContract(chaincodeName);
+      logger.info(`Submitting transaction to ${chaincodeName}: ${functionName}`, { args });
+      
+      const result = await contract.submitTransaction(functionName, ...args);
+      const response = result.toString();
+      
+      logger.info(`Transaction ${functionName} to ${chaincodeName} submitted successfully`);
+      
+      try {
+        return JSON.parse(response);
+      } catch {
+        return response;
+      }
+    } catch (error) {
+      logger.error(`Transaction ${functionName} to ${chaincodeName} failed:`, error);
+      throw parseFabricError(error);
+    }
+  }
+
+  /**
+   * Evaluate transaction from a specific chaincode
+   * @param {string} chaincodeName - Name of the chaincode
+   * @param {string} functionName - Chaincode function name
+   * @param {...string} args - Function arguments
+   * @returns {Promise<any>} Query result
+   */
+  async evaluateTransactionFromChaincode(chaincodeName, functionName, ...args) {
+    this._ensureConnected();
+    
+    try {
+      const contract = this.getContract(chaincodeName);
+      logger.info(`Evaluating transaction from ${chaincodeName}: ${functionName}`, { args });
+      
+      const result = await contract.evaluateTransaction(functionName, ...args);
+      const response = result.toString();
+      
+      logger.info(`Transaction ${functionName} from ${chaincodeName} evaluated successfully`);
+      
+      try {
+        return JSON.parse(response);
+      } catch {
+        return response;
+      }
+    } catch (error) {
+      logger.error(`Evaluation ${functionName} from ${chaincodeName} failed:`, error);
       throw parseFabricError(error);
     }
   }

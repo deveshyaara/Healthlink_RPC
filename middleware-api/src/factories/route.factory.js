@@ -7,6 +7,7 @@
 import express from 'express';
 import { authenticateJWT, requireRole } from '../middleware/auth.middleware.js';
 import { getGatewayInstance } from '../services/fabricGateway.service.js';
+import logger from '../utils/logger.js';
 
 /**
  * Extract value from nested object using dot notation path
@@ -121,24 +122,23 @@ function createRouteHandler(config) {
       // Get gateway instance
       const fabricGateway = await getGatewayInstance(userId);
       
+      // Get the chaincode name from route config
+      const chaincodeName = config.chaincode || 'healthlink';
+      
       // Invoke chaincode function
       let result;
       
       if (config.method === 'GET' || config.function.startsWith('Get') || config.function.startsWith('Query')) {
         // Read-only query
-        result = await fabricGateway.evaluateTransaction(
-          userId,
-          channelName,
-          config.chaincode,
+        result = await fabricGateway.evaluateTransactionFromChaincode(
+          chaincodeName,
           config.function,
           ...args
         );
       } else {
         // State-changing transaction
-        result = await fabricGateway.submitTransaction(
-          userId,
-          channelName,
-          config.chaincode,
+        result = await fabricGateway.submitTransactionToChaincode(
+          chaincodeName,
           config.function,
           ...args
         );
@@ -161,7 +161,15 @@ function createRouteHandler(config) {
       });
       
     } catch (error) {
-      console.error(`Route handler error [${config.method} ${config.path}]:`, error);
+      // Enhanced error logging for debugging
+      logger.error(`Route handler error [${config.method} ${config.path}]:`, {
+        error: error.message,
+        stack: error.stack,
+        function: config.function,
+        chaincode: config.chaincode,
+        args: args,
+        userId: userId
+      });
       
       // Handle specific error types
       if (error.message.includes('Identity not found')) {
@@ -177,6 +185,24 @@ function createRouteHandler(config) {
       }
       
       if (error.message.includes('does not exist')) {
+        // For GET requests that query lists, return empty array instead of 404
+        // This handles new users with no data gracefully
+        if (config.method === 'GET' && (
+          config.function.includes('GetAll') ||
+          config.function.includes('GetByPatient') ||
+          config.function.includes('GetConsents') ||
+          config.function.includes('Query')
+        )) {
+          logger.info(`Empty ledger for ${config.function} - returning empty array`);
+          return res.status(200).json({
+            status: 'success',
+            statusCode: 200,
+            message: `No ${config.function.replace('Get', '').toLowerCase()} found`,
+            data: []
+          });
+        }
+
+        // For single resource GET, return 404
         return res.status(404).json({
           status: 'error',
           statusCode: 404,
