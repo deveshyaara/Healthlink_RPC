@@ -53,15 +53,24 @@ export default function RecordsPage() {
   const fetchRecords = async () => {
     setLoading(true);
     try {
-      const data = await medicalRecordsApi.getAllRecords();
-      // Handle both array response and object with records property
-      if (Array.isArray(data)) {
-        setRecords(data);
-      } else if (data && typeof data === 'object' && 'records' in data) {
-        setRecords(Array.isArray(data.records) ? data.records : []);
-      } else {
-        setRecords([]);
+      const response = await medicalRecordsApi.getAllRecords();
+      console.log('Records API response:', response);
+      
+      // Handle different response formats
+      let recordsData: MedicalRecord[] = [];
+      
+      if (Array.isArray(response)) {
+        recordsData = response;
+      } else if (response && typeof response === 'object') {
+        if ('data' in response && Array.isArray(response.data)) {
+          recordsData = response.data;
+        } else if ('records' in response && Array.isArray(response.records)) {
+          recordsData = response.records;
+        }
       }
+      
+      setRecords(recordsData);
+      console.log('Loaded records:', recordsData.length);
     } catch (error) {
       console.error('Failed to fetch records:', error);
       toast.error('Failed to Load Records', {
@@ -111,8 +120,12 @@ export default function RecordsPage() {
         return;
       }
 
+      // Construct API URL for storage endpoint
+      const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+      const downloadUrl = `${apiBaseUrl}/api/storage/${record.ipfsHash}`;
+
       // Fetch file from storage API
-      const response = await fetch(`http://localhost:3000/api/storage/${record.ipfsHash}`, {
+      const response = await fetch(downloadUrl, {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -120,7 +133,8 @@ export default function RecordsPage() {
       });
 
       if (!response.ok) {
-        throw new Error(`Download failed: ${response.statusText}`);
+        const errorText = await response.text();
+        throw new Error(`Download failed: ${response.statusText} - ${errorText}`);
       }
 
       // Get filename from Content-Disposition header or use default

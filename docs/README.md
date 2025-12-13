@@ -1,6 +1,6 @@
-# Healthlink Documentation
+# HealthLink Pro Documentation
 
-This directory contains all technical documentation for the Healthlink Blockchain Health Records Management System.
+This directory contains all technical documentation for the **HealthLink Pro Ethereum Healthcare Platform**.
 
 ---
 
@@ -17,14 +17,30 @@ docs/
 
 ---
 
+## 🎉 Recent Updates - Ethereum Migration
+
+**HealthLink has been completely migrated from Hyperledger Fabric to Ethereum!**
+
+### New Documentation:
+- **[Migration Summary](../MIGRATION_SUMMARY.md)** - Complete Fabric to Ethereum migration details
+- **[Ethereum Contracts](../ethereum-contracts/README.md)** - Smart contract documentation
+- **[Role Management](../frontend/ROLE_MANAGEMENT_SETUP.md)** - Blockchain-based role system
+- **[Render Deployment](../RENDER_DEPLOYMENT_GUIDE.md)** - Production deployment guide
+
+---
+
 ## 🏗️ Architecture
 
 Technical design documents and system architecture:
 
+- [System Architecture](../README.md#️-architecture) - Updated Ethereum architecture diagram
+- [Smart Contracts](../ethereum-contracts/README.md) - Solidity contract documentation
 - [API Gateway Implementation](architecture/API_GATEWAY_IMPLEMENTATION.md)
+- [Security Architecture](architecture/SECURITY_ARCHITECTURE.md)
+
+**Legacy Fabric Documentation** (archived):
 - [Architectural Review](architecture/ARCHITECTURAL_REVIEW.md)
 - [Docker Verification Refactor](architecture/DOCKER_VERIFICATION_REFACTOR.md)
-- [Security Architecture](architecture/SECURITY_ARCHITECTURE.md)
 
 ---
 
@@ -32,13 +48,16 @@ Technical design documents and system architecture:
 
 Deployment guides for various environments:
 
-### Production Deployment
+### Ethereum Testnet & Production Deployment
+- **[Render Deployment Guide](../RENDER_DEPLOYMENT_GUIDE.md)** - Deploy to Render (Recommended)
+- **[Render Quick Deploy](../RENDER_QUICK_DEPLOY.md)** - Quick reference for Render
+- [Deployment Checklist](../DEPLOYMENT_CHECKLIST.md) - Pre-deployment checklist
+
+### Legacy Fabric Deployment (Archived)
 - [Production Deployment Guide](deployment/PRODUCTION_DEPLOYMENT_GUIDE.md)
 - [VPS Deployment Summary](deployment/VPS_DEPLOYMENT_SUMMARY.md)
 - [VPS Quick Reference](deployment/VPS_QUICK_REFERENCE.md)
 - [Deployment Summary](deployment/DEPLOYMENT_SUMMARY.md)
-
-### Low-Spec/Resource-Constrained Deployment
 - [Low Spec Optimization Guide](deployment/LOW_SPEC_OPTIMIZATION_GUIDE.md)
 - [Low Spec Deployment](deployment/LOW_SPEC_DEPLOYMENT.md)
 - [Low Spec Quick Reference](deployment/LOW_SPEC_QUICK_REFERENCE.md)
@@ -49,12 +68,20 @@ Deployment guides for various environments:
 
 User guides, tutorials, and troubleshooting:
 
+### Ethereum Platform Guides
+- **[Role Management Guide](../frontend/ROLE_MANAGEMENT_SETUP.md)** - Blockchain role system setup
+- **[Quick Start Guide](../README.md#-installation--setup)** - Getting started with Ethereum
+- [Smart Contract Interaction](../ethereum-contracts/README.md) - How to interact with contracts
+
+### General Guides
 - [Debugging Guide](guides/DEBUGGING_GUIDE.md)
 - [Demo Script](guides/DEMO_SCRIPT.md)
 - [Go-Live Checklist](guides/GO_LIVE_CHECKLIST.md)
 - [Quick Reference](guides/QUICK_REFERENCE.md)
-- [Startup Script Explanation](guides/STARTUP_SCRIPT_EXPLANATION.md)
 - [Troubleshooting](guides/TROUBLESHOOTING.md)
+
+### Legacy Fabric Guides (Archived)
+- [Startup Script Explanation](guides/STARTUP_SCRIPT_EXPLANATION.md)
 
 ---
 

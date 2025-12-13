@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import './globals.css';
 import { ThemeProvider } from '@/components/theme-provider';
 import { AuthProvider } from '@/contexts/auth-context';
+import { RoleProvider } from '@/contexts/role-context';
 import { Toaster } from '@/components/ui/toaster';
 import { Toaster as SonnerToaster } from 'sonner';
 import Chatbot from '@/components/Chatbot';
@@ -22,14 +23,16 @@ export default function RootLayout({
       <body className="font-sans antialiased">
         <ThemeProvider storageKey="healthlink-pro-theme">
           <AuthProvider>
-            {/* Main Content with skip target */}
-            <main id="main-content" className="min-h-screen">
-              {children}
-            </main>
+            <RoleProvider>
+              {/* Main Content with skip target */}
+              <main id="main-content" className="min-h-screen">
+                {children}
+              </main>
 
-            <Chatbot />
-            <Toaster />
-            <SonnerToaster position="top-right" richColors />
+              <Chatbot />
+              <Toaster />
+              <SonnerToaster position="top-right" richColors />
+            </RoleProvider>
           </AuthProvider>
         </ThemeProvider>
       </body>

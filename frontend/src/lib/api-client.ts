@@ -408,6 +408,36 @@ export const storageApi = {
     formData.append('file', file);
     return uploadFile('/api/storage/upload', formData);
   },
+
+  /**
+   * Download file by hash
+   * Backend route: GET /api/storage/:hash
+   * Returns: Blob of the file
+   */
+  download: async (hash: string): Promise<Blob> => {
+    const token = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null;
+    const response = await fetch(`${API_BASE_URL}/api/storage/${hash}`, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+      },
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Download failed: ${response.statusText} - ${errorText}`);
+    }
+
+    return await response.blob();
+  },
+
+  /**
+   * Get file metadata
+   * Backend route: GET /api/storage/:hash/metadata
+   */
+  getMetadata: async (hash: string): Promise<any> => {
+    return fetchApi<any>(`/api/storage/${hash}/metadata`, { method: 'GET' });
+  },
 };
 
 // ========================================

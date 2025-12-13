@@ -20,26 +20,29 @@ class AuthService {
   }
 
   /**
-   * Initialize user storage backend (Supabase required)
+   * Initialize user storage backend (Supabase optional for Ethereum)
    * 
-   * WHY: V2.0 requires Supabase for production-grade user management
+   * WHY: V3.0 Ethereum doesn't require centralized user database
    * WHEN: Called in constructor on service instantiation
    * 
-   * @returns {Promise<void>} Resolves when Supabase is initialized
-   * @throws {Error} If Supabase initialization fails
+   * @returns {Promise<void>} Resolves when initialization complete
    */
   async initializeUsersDB() {
-    // Initialize Supabase (required)
-    this.useSupabase = await dbService.initialize();
-    
-    if (this.useSupabase) {
-      console.log('✅ Auth service using Supabase database');
-      return;
+    try {
+      // Initialize Supabase (optional)
+      this.useSupabase = await dbService.initialize();
+      
+      if (this.useSupabase) {
+        console.log('✅ Auth service using Supabase database');
+        return;
+      }
+    } catch (error) {
+      console.log('⚠️  Supabase not available - using Ethereum-only mode');
     }
 
-    // Supabase is required - no fallback
-    console.error('❌ SUPABASE_URL and SUPABASE_SERVICE_KEY must be configured in .env');
-    throw new Error('Database configuration required. Please set SUPABASE_URL and SUPABASE_SERVICE_KEY in .env file');
+    // Supabase is optional for Ethereum - authentication via wallet signatures
+    console.log('ℹ️  Running in Ethereum-only mode (wallet-based authentication)');
+    this.useSupabase = false;
   }
 
   /**

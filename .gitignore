@@ -35,11 +35,54 @@ next-env.d.ts
 .env.development.local
 .env.test.local
 .env.production.local
+.env.production
 .env*.local
 *.env
 
+# Keep example env files
+!.env.example
+!.env.template
+
 # ============================================================================
-# Hyperledger Fabric
+# Ethereum / Hardhat
+# ============================================================================
+# Hardhat
+cache/
+artifacts/
+typechain/
+typechain-types/
+ethereum-contracts/cache/
+ethereum-contracts/artifacts/
+ethereum-contracts/typechain/
+ethereum-contracts/typechain-types/
+
+# Hardhat Network
+hardhat.log
+
+# Deployment files (keep deployment-addresses.json for reference)
+deployments/
+!ethereum-contracts/deployment-addresses.json
+
+# Private keys and secrets
+.secret
+mnemonic.txt
+private-keys.txt
+*.private-key
+*.privatekey
+
+# Ethereum test accounts
+accounts.json
+test-accounts.json
+
+# Contract verification
+.openzeppelin/
+
+# Vercel
+.vercel
+.vercel.json
+
+# ============================================================================
+# Hyperledger Fabric (Legacy - Archived)
 # ============================================================================
 # Wallets and identity credentials
 **/wallet/
@@ -217,10 +260,37 @@ verify_*.sh
 .supabase/
 
 # ============================================================================
+# Deployment Platforms
+# ============================================================================
+# Vercel
+.vercel
+*.vercel
+
+# Render
+render.yaml
+
+# ============================================================================
+# Production Configurations (Security Critical)
+# ============================================================================
+# Backend production config
+middleware-api/.env.production
+backend/.env.production
+
+# Frontend production config  
+frontend/.env.production
+
+# Contract deployment configs
+ethereum-contracts/.env
+ethereum-contracts/.env.production
+
+# Keep example/template files
+!**/.env.example
+!**/.env.template
+
+# ============================================================================
 # Misc
 # ============================================================================
 .cache/
-.vercel
 *.bak
 *.orig
 *.rej

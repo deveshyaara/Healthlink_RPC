@@ -3,10 +3,10 @@
 -- Medical records remain on Hyperledger Fabric blockchain
 
 -- Drop existing table if exists (for fresh setup)
-DROP TABLE IF EXISTS users CASCADE;
+DROP TABLE IF EXISTS healthlink_users CASCADE;
 
 -- Create users table
-CREATE TABLE users (
+CREATE TABLE healthlink_users (
   -- Primary key
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   
@@ -47,10 +47,10 @@ CREATE TABLE users (
 );
 
 -- Create indexes for performance
-CREATE INDEX idx_users_email ON users(email);
-CREATE INDEX idx_users_role ON users(role);
-CREATE INDEX idx_users_fabric_enrollment_id ON users(fabric_enrollment_id);
-CREATE INDEX idx_users_created_at ON users(created_at DESC);
+CREATE INDEX idx_healthlink_users_email ON healthlink_users(email);
+CREATE INDEX idx_healthlink_users_role ON healthlink_users(role);
+CREATE INDEX idx_healthlink_users_fabric_enrollment_id ON healthlink_users(fabric_enrollment_id);
+CREATE INDEX idx_healthlink_users_created_at ON healthlink_users(created_at DESC);
 
 -- Create updated_at trigger
 CREATE OR REPLACE FUNCTION update_updated_at_column()
@@ -61,27 +61,27 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
-CREATE TRIGGER update_users_updated_at
-  BEFORE UPDATE ON users
+CREATE TRIGGER update_healthlink_users_updated_at
+  BEFORE UPDATE ON healthlink_users
   FOR EACH ROW
   EXECUTE FUNCTION update_updated_at_column();
 
 -- Create audit log table (optional but recommended)
-CREATE TABLE user_audit_log (
+CREATE TABLE healthlink_user_audit_log (
   id BIGSERIAL PRIMARY KEY,
-  user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+  user_id UUID REFERENCES healthlink_users(id) ON DELETE CASCADE,
   action VARCHAR(50) NOT NULL,
   ip_address INET,
   user_agent TEXT,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE INDEX idx_audit_user_id ON user_audit_log(user_id);
-CREATE INDEX idx_audit_created_at ON user_audit_log(created_at DESC);
+CREATE INDEX idx_healthlink_audit_user_id ON healthlink_user_audit_log(user_id);
+CREATE INDEX idx_healthlink_audit_created_at ON healthlink_user_audit_log(created_at DESC);
 
 -- Insert default admin user (password: Admin@123 - CHANGE IN PRODUCTION)
 -- Password hash for 'Admin@123' using bcrypt with 10 rounds
-INSERT INTO users (
+INSERT INTO healthlink_users (
   email,
   password_hash,
   role,
