@@ -78,7 +78,7 @@ export default function AuditTrailPage() {
   useEffect(() => {
     const fetchLogs = async () => {
       try {
-        const data = await auditApi.getAllLogs();
+        const data = await auditApi.getAll();
         setLogs(Array.isArray(data) ? data : []);
       } catch {
         setLogs([

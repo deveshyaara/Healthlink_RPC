@@ -39,7 +39,7 @@ export default function PrescriptionsPage() {
   const fetchPrescriptions = async () => {
     try {
       setError(null);
-      const data = await prescriptionsApi.getAllPrescriptions();
+      const data = await prescriptionsApi.getAll();
       setPrescriptions(Array.isArray(data) ? data : []);
     } catch (err) {
       console.error('Failed to fetch prescriptions:', err);

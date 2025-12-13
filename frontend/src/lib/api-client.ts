@@ -416,7 +416,8 @@ export const storageApi = {
    */
   download: async (hash: string): Promise<Blob> => {
     const token = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null;
-    const response = await fetch(`${API_BASE_URL}/api/storage/${hash}`, {
+    const apiUrl = getApiBaseUrl();
+    const response = await fetch(`${apiUrl}/api/storage/${hash}`, {
       method: 'GET',
       headers: {
         'Authorization': `Bearer ${token}`,

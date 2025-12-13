@@ -183,9 +183,9 @@ export function GovernmentNavbar() {
                   </UX4GButton>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-40">
-                  <DropdownMenuItem onClick={() => setLanguage('en')}>English</DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => setLanguage('hi')}>हिंदी</DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => setLanguage('te')}>తెలుగు</DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => _setLanguage('en')}>English</DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => _setLanguage('hi')}>हिंदी</DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => _setLanguage('te')}>తెలుగు</DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
             </div>

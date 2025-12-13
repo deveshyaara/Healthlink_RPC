@@ -53,7 +53,7 @@ export default function RecordsPage() {
   const fetchRecords = async () => {
     setLoading(true);
     try {
-      const response = await medicalRecordsApi.getAllRecords();
+      const response = await medicalRecordsApi.getAll();
       console.log('Records API response:', response);
 
       // Handle different response formats
@@ -62,10 +62,14 @@ export default function RecordsPage() {
       if (Array.isArray(response)) {
         recordsData = response;
       } else if (response && typeof response === 'object') {
-        if ('data' in response && Array.isArray(response.data)) {
-          recordsData = response.data;
-        } else if ('records' in response && Array.isArray(response.records)) {
-          recordsData = response.records;
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        if ('data' in response && Array.isArray((response as any).data)) {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          recordsData = (response as any).data;
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        } else if ('records' in response && Array.isArray((response as any).records)) {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          recordsData = (response as any).records;
         }
       }
 
@@ -196,12 +200,7 @@ export default function RecordsPage() {
     await fetchRecords();
   };
 
-  const _handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (file) {
-      setUploadForm(prev => ({ ...prev, file }));
-    }
-  };
+  // Removed unused _handleFileSelect function
 
   const filteredRecords = records.filter(record => {
     if (!searchTerm) {return true;}

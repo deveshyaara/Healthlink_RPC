@@ -45,14 +45,15 @@ export default function ConsentPage() {
   const fetchConsents = async () => {
     try {
       setError(null);
-      const data = await consentsApi.getAllConsents();
+      const data = await consentsApi.getAll();
 
       // Handle both array and object responses
       if (Array.isArray(data)) {
         setConsents(data);
       } else if (data && typeof data === 'object' && 'results' in data) {
         // Handle paginated response
-        setConsents(Array.isArray(data.results) ? data.results : []);
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        setConsents(Array.isArray((data as any).results) ? (data as any).results : []);
       } else {
         // Empty or unexpected format
         setConsents([]);
@@ -80,7 +81,7 @@ export default function ConsentPage() {
 
   const handleRevokeConsent = async (consentId: string) => {
     try {
-      await consentsApi.revokeConsent(consentId, { reason: 'Revoked by user' });
+      await consentsApi.revoke(consentId);
       toast({
         title: 'Success',
         description: 'Consent revoked successfully',

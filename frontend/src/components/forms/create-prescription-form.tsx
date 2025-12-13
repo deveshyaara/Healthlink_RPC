@@ -94,7 +94,7 @@ export function CreatePrescriptionForm({
       try {
         // Import dynamically to avoid circular dependencies
         const { medicalRecordsApi } = await import('@/lib/api-client');
-        const records = await medicalRecordsApi.getAllRecords();
+        const records = await medicalRecordsApi.getAll();
 
         // Extract unique patients from records
         const patientMap = new Map();
@@ -163,7 +163,7 @@ export function CreatePrescriptionForm({
 
       // Import dynamically to avoid circular dependencies
       const { prescriptionsApi } = await import('@/lib/api-client');
-      const response = await prescriptionsApi.createPrescription(prescriptionPayload);
+      const response = await prescriptionsApi.create(prescriptionPayload);
 
       console.log('Prescription created successfully:', response);
 

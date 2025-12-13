@@ -41,7 +41,7 @@ export default function DoctorPatientsPage() {
         setLoading(true);
 
         // Get all medical records created by this doctor
-        const records = await medicalRecordsApi.getAllRecords();
+        const records = await medicalRecordsApi.getAll();
 
         // Extract unique patients from records
         const patientMap = new Map<string, Patient>();

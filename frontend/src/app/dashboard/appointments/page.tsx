@@ -31,7 +31,7 @@ export default function AppointmentsPage() {
     const fetchAppointments = async () => {
       try {
         setError(null);
-        const data = await appointmentsApi.getAllAppointments();
+        const data = await appointmentsApi.getAll();
         setAppointments(Array.isArray(data) ? data : []);
       } catch (err) {
         console.error('Failed to fetch appointments:', err);

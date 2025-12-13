@@ -47,7 +47,7 @@ export default function DoctorRecordsPage() {
       setError(null);
       setLoading(true);
 
-      const data = await medicalRecordsApi.getAllRecords();
+      const data = await medicalRecordsApi.getAll();
       const recordsList = Array.isArray(data) ? data : [];
       setRecords(recordsList);
       setFilteredRecords(recordsList);

@@ -40,7 +40,7 @@ export default function LabTestsPage() {
     const fetchLabTests = async () => {
       try {
         setError(null);
-        const data = await labTestsApi.getAllLabTests();
+        const data = await labTestsApi.getAll();
         const testsList = Array.isArray(data) ? data : [];
         setLabTests(testsList);
         setFilteredLabTests(testsList);

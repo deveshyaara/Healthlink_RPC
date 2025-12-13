@@ -130,8 +130,8 @@ export default function Home() {
               >
                 {heroImage && (
                   <Image
-                    src={heroImage.imageUrl}
-                    alt={heroImage.description}
+                    src={heroImage.url}
+                    alt={heroImage.alt}
                     fill
                     style={{ objectFit: 'cover' }}
                     className="transition-transform duration-700"
