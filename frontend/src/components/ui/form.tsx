@@ -69,7 +69,8 @@ const useFormField = () => {
     formDescriptionId: `${id}-form-item-description`,
     formMessageId: `${id}-form-item-message`,
     ...fieldState,
-  };\n};
+  };
+};
 
 const FormItem = React.forwardRef<
   HTMLDivElement,
