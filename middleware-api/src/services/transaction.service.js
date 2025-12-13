@@ -17,7 +17,9 @@ class TransactionService {
    */
   async initialize() {
     if (!this.initialized) {
-      await ethereumService.initialize();
+      const rpcUrl = process.env.ETHEREUM_RPC_URL || 'http://127.0.0.1:8545';
+      const privateKey = process.env.PRIVATE_KEY || process.env.DEPLOYER_PRIVATE_KEY;
+      await ethereumService.initialize(rpcUrl, privateKey);
       this.initialized = true;
       logger.info('TransactionService: Ethereum service initialized');
     }

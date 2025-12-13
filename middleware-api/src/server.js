@@ -82,7 +82,9 @@ app.get('/api/health', async (req, res) => {
     // Check Ethereum connection
     let ethereumStatus = 'DOWN';
     try {
-      await ethereumService.initialize();
+      const rpcUrl = process.env.ETHEREUM_RPC_URL || 'http://127.0.0.1:8545';
+      const privateKey = process.env.PRIVATE_KEY || process.env.DEPLOYER_PRIVATE_KEY;
+      await ethereumService.initialize(rpcUrl, privateKey);
       ethereumStatus = 'UP';
     } catch (error) {
       logger.error('Ethereum health check failed:', error);
@@ -187,11 +189,15 @@ const startServer = async () => {
   try {
     // Initialize Ethereum service first
     try {
-      await ethereumService.initialize();
+      const rpcUrl = process.env.ETHEREUM_RPC_URL || 'http://127.0.0.1:8545';
+      const privateKey = process.env.PRIVATE_KEY || process.env.DEPLOYER_PRIVATE_KEY;
+      
+      logger.info(`🔗 Connecting to Ethereum network at: ${rpcUrl}`);
+      await ethereumService.initialize(rpcUrl, privateKey);
       logger.info('🔗 Ethereum service initialized successfully');
     } catch (error) {
       logger.warn('⚠️  Ethereum service initialization failed:', error.message);
-      logger.warn('   Make sure Hardhat node is running: npx hardhat node');
+      logger.warn('   Make sure Ethereum RPC URL is correct and network is accessible');
     }
 
     // Start HTTP server
