@@ -14,7 +14,7 @@ interface RouteGuardProps {
 
 /**
  * RouteGuard Component
- * 
+ *
  * Protects routes based on user roles
  * Redirects unauthorized users to appropriate dashboard
  * Shows 403 Forbidden page for direct access attempts
@@ -26,7 +26,7 @@ export function RouteGuard({ children }: RouteGuardProps) {
 
   useEffect(() => {
     // Wait for auth to load
-    if (loading) return;
+    if (loading) {return;}
 
     // If not authenticated, redirect to login
     if (!user) {
@@ -40,7 +40,7 @@ export function RouteGuard({ children }: RouteGuardProps) {
     if (!hasAccess) {
       // Log unauthorized access attempt
       console.warn(`[Route Guard] Unauthorized access attempt by ${user.role} to ${pathname}`);
-      
+
       // Don't redirect, show 403 page instead (better UX)
       // User might have bookmarked the URL or clicked a shared link
     }

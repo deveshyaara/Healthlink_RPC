@@ -4,7 +4,7 @@ import { UX4GButton } from '@/components/ui/ux4g-button';
 import { UX4GCard, UX4GCardContent, UX4GCardHeader, UX4GCardTitle } from '@/components/ui/ux4g-card';
 import { UX4GBadge } from '@/components/ui/ux4g-badge';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
-import { ArrowRight, Lock, Share2, Stethoscope, Shield, FileText, Activity, CheckCircle, Zap, Globe, Users } from 'lucide-react';
+import { ArrowRight, Lock, Share2, Stethoscope, Shield, FileText, Activity, CheckCircle, Zap, Users } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useAuth } from '@/contexts/auth-context';

@@ -223,13 +223,13 @@ export function getRoutesForRole(role: string | undefined): NavRoute[] {
  * Check if a user has access to a specific route
  */
 export function canAccessRoute(userRole: string | undefined, routeHref: string): boolean {
-  if (!userRole) return false;
+  if (!userRole) {return false;}
 
   const allRoutes = [...doctorRoutes, ...patientRoutes, ...adminRoutes, ...commonRoutes];
   const route = allRoutes.find((r) => r.href === routeHref);
 
   // If route not found, deny access (safest default)
-  if (!route) return false;
+  if (!route) {return false;}
 
   // Check if user's role is in the allowed roles for this route
   return route.roles.includes(userRole.toLowerCase());

@@ -1,4 +1,4 @@
-import { API_CONFIG, buildApiUrl, API_ENDPOINTS } from '@/config/api.config';
+import { API_CONFIG, API_ENDPOINTS } from '@/config/api.config';
 
 export interface ApiResponse<T = any> {
   success: boolean;

@@ -1,544 +1,227 @@
-##############################################################################
-# HealthLink Pro v2.0 - Comprehensive .gitignore
-# 
-# Purpose: Ironclad protection against committing sensitive data
-# Author: Release Manager & DevSecOps Engineer
-# Date: December 5, 2025
-# 
-# Covers: Node.js, Next.js, Supabase, Hyperledger Fabric, Docker
-##############################################################################
+# ============================================================================
+# HealthLink RPC - Git Ignore Configuration
+# ============================================================================
 
-##############################################################################
-# 🔴 CRITICAL SECURITY - NEVER COMMIT THESE 🔴
-##############################################################################
-
-# Environment Variables (Secrets & API Keys)
-.env
-.env.*
-.env.local
-.env.development
-.env.production
-.env.test
-.env.staging
-*.env
-!.env.example
-
-# Hyperledger Fabric - Identity Management (HIGH SECURITY RISK)
-wallet/
-**/wallet/
-keystore/
-**/keystore/
-fabric-samples/test-network/organizations/
-fabric-samples/test-network/crypto-config/
-fabric-samples/test-network/channel-artifacts/
-fabric-samples/test-network/system-genesis-block/
-**/organizations/peerOrganizations/
-**/organizations/ordererOrganizations/
-*.tx
-*.block
-
-# Uploaded Files & User Data (CAS Storage)
-uploads/
-**/uploads/
-user-uploads/
-temp-uploads/
-files/
-middleware-api/uploads/
-
-# Database Backups & Dumps
-*.sql
-*.sqlite
-*.db
-db-backup/
-database-backup/
-
-# SSL/TLS Certificates & Private Keys
-*.pem
-*.key
-*.crt
-*.csr
-*.p12
-*.pfx
-ssl/
-certs/
-certificates/
-
-# AWS & Cloud Provider Credentials
-.aws/
-*-credentials.json
-service-account-key.json
-
-##############################################################################
-# Node.js & NPM
-##############################################################################
-
-# Dependencies
+# ============================================================================
+# Node.js / NPM
+# ============================================================================
 node_modules/
-**/node_modules/
-jspm_packages/
-bower_components/
-
-# Package manager files (uncomment to ignore lock files)
-# package-lock.json
-# yarn.lock
-# pnpm-lock.yaml
-
-# Optional npm cache directory
-.npm
-.eslintcache
-.stylelintcache
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
 .pnpm-debug.log*
-
-# Node REPL history
-.node_repl_history
-
-# Output of 'npm pack'
-*.tgz
-
-# Yarn Integrity file
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+.npm
 .yarn-integrity
 
-##############################################################################
-# Next.js & Frontend
-##############################################################################
-
-# Next.js build output
+# ============================================================================
+# Next.js (Frontend)
+# ============================================================================
 .next/
 out/
 build/
 dist/
-
-# Next.js cache
-.next/cache/
-
-# Static files (if generated)
-public/build/
-
-# Vercel deployment
-.vercel
-
-# TypeScript cache
+.turbo/
 *.tsbuildinfo
 next-env.d.ts
 
-# Frontend specific
-frontend/.next/
-frontend/out/
-frontend/build/
-frontend/logs/
-frontend/*.pid
+# ============================================================================
+# Environment Variables
+# ============================================================================
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+.env*.local
+*.env
 
-# Frontend environment and cache
-frontend/.env.local
-frontend/.env.development
-frontend/.env.production
-frontend/node_modules/.cache/
+# ============================================================================
+# Hyperledger Fabric
+# ============================================================================
+# Wallets and identity credentials
+**/wallet/
+**/identity/
+**/*wallet*/
+**/*-wallet/
 
-##############################################################################
-# Build Artifacts & Compiled Files
-##############################################################################
-
-# Build directories
-build/
-dist/
-lib/
-target/
-
-# Compiled JavaScript
-*.js.map
-
-# Compiled TypeScript (except source declarations)
-*.d.ts
-!src/**/*.d.ts
-
-##############################################################################
-# Testing & Coverage
-##############################################################################
-
-# Test coverage
-coverage/
-*.lcov
-.nyc_output/
-jest-coverage/
-test-results/
-
-# Test snapshots
-*.test.js.snap
-
-##############################################################################
-# Logs & Monitoring
-##############################################################################
-
-# Application logs
-logs/
-*.log
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-lerna-debug.log*
-pnpm-debug.log*
-middleware-api/logs/
-middleware-api/server.log
-rpc-server.log
-server.log
-/tmp/*.log
-frontend-*.log
-backend-*.log
-middleware-*.log
-
-# Runtime logs
-nohup.out
-*.pid
-*.seed
-*.pid.lock
-
-# PM2 logs and process files
-.pm2/
-pids/
-middleware-api/*.pid
-
-##############################################################################
-# IDEs & Editors
-##############################################################################
-
-# Visual Studio Code
-.vscode/
-!.vscode/settings.json.example
-!.vscode/extensions.json
-*.code-workspace
-.vscode-test/
-
-# JetBrains IDEs (IntelliJ, WebStorm, etc.)
-.idea/
-*.iml
-*.ipr
-*.iws
-out/
-
-# Sublime Text
-*.sublime-project
-*.sublime-workspace
-
-# Vim
-*.swp
-*.swo
-*~
-.vim/
-.*.sw?
-
-# Emacs
-*~
-\#*\#
-.#*
-.\#*
-
-# Eclipse
-.project
-.classpath
-.settings/
-
-##############################################################################
-# Operating System Files
-##############################################################################
-
-# macOS
-.DS_Store
-.AppleDouble
-.LSOverride
-._*
-.Spotlight-V100
-.Trashes
-
-# Windows
-Thumbs.db
-Thumbs.db:encryptable
-ehthumbs.db
-ehthumbs_vista.db
-Desktop.ini
-$RECYCLE.BIN/
-*.lnk
-
-# Linux
-*~
-.fuse_hidden*
-.directory
-.Trash-*
-
-##############################################################################
-# Temporary Files & Backups
-##############################################################################
-
-# Temporary files
-*.tmp
-*.temp
-*.bak
-*.backup
-*.old
-*.orig
-*.swp
-*.rej
-*.diff
-*.patch
-
-# Backup directories
-backup/
-backup-*/
-backups/
-old/
-old-*/
-archive/
-archives/
-
-# Compressed archives
-*.tar
-*.tar.gz
-*.tgz
-*.zip
-*.rar
-*.7z
-*.gz
-*.bz2
-*.xz
-fabric-samples/test-network/*.tar.gz
-
-##############################################################################
-# Docker & Containerization
-##############################################################################
-
-# Docker volumes
-docker-volumes/
-volumes/
-fabric-samples/test-network/docker/
-
-# Docker Compose override (may contain secrets)
-docker-compose.override.yml
-
-##############################################################################
-# Hyperledger Fabric Specific
-##############################################################################
-
-# Fabric binaries (can be re-downloaded)
+# Fabric binaries
 fabric-samples/bin/
 fabric-samples/config/
 
 # Chaincode packages
-*_cc.tar.gz
+*.tar.gz
+*.tgz
+*.zip
 
-# Fabric CA server
-fabric-ca-server/
-fabric-ca-client/
+# Fabric CA files
+fabric-ca-client-config.yaml
+**/msp/
 
-# Ledger data
-ledgersData/
-**/ledgersData/
-fabric-samples/test-network/ledgers-backup/
+# Connection profiles
+**/connection-*.json
+**/connection-*.yaml
 
-# State database
-stateLeveldb/
-**/stateLeveldb/
+# Fabric network data
+fabric-samples/test-network/organizations/
+fabric-samples/test-network/channel-artifacts/
+fabric-samples/test-network/system-genesis-block/
+fabric-samples/test-network/ledgers/
+fabric-samples/test-network/log.txt
 
-# Fabric settings
-.fabricvscodesettings
-
-##############################################################################
-# Go / Chaincode
-##############################################################################
-
-# Binaries
-*.exe
-*.exe~
-*.dll
+# ============================================================================
+# Python
+# ============================================================================
+__pycache__/
+*.py[cod]
+*$py.class
 *.so
-*.dylib
+.Python
+*.egg
+*.egg-info/
+dist/
+build/
+.venv/
+venv/
+ENV/
+env/
 
-# Test binary
-*.test
+# ============================================================================
+# Logs
+# ============================================================================
+logs/
+*.log
+*.log.*
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+pids
+*.pid
+*.seed
+*.pid.lock
+fabric_*.log
+frontend.log
+middleware.log
 
-# Coverage
-*.out
+# ============================================================================
+# Databases
+# ============================================================================
+*.db
+*.sqlite
+*.sqlite3
+data/*.json
+users.json
+!users.json.example
 
-# Go workspace
-go.work
+# Backup files
+*.backup
+*.backup-*
+users.json.backup*
 
-# Vendor directories
-vendor/
+# ============================================================================
+# Testing
+# ============================================================================
+coverage/
+*.lcov
+.nyc_output
+lib-cov
+.grunt
+.cache
+.parcel-cache
 
-##############################################################################
-# CI/CD & Deployment
-##############################################################################
+# ============================================================================
+# IDE / Editor
+# ============================================================================
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+*.swp
+*.swo
+*~
+.idea/
+*.iml
+.project
+.classpath
+.c9/
+*.launch
+.settings/
+*.sublime-workspace
+.DS_Store
 
-# Terraform
-*.tfstate
-*.tfstate.*
-.terraform/
-terraform.tfvars
+# ============================================================================
+# OS
+# ============================================================================
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+desktop.ini
 
-# Kubernetes secrets
-secrets.yaml
-*-secrets.yaml
-
-# Ansible vault
-vault-pass.txt
-*.vault
-
-##############################################################################
-# Miscellaneous
-##############################################################################
-
-# Debug files
-debug.log
-debug/
-
-# Performance profiling
-*.profile
-*.trace
-
-# Crash reports
-crash-reports/
-*.crash
-
-# Core dumps
-core.*
-
-# Temporary directories
+# ============================================================================
+# Temporary Files
+# ============================================================================
 tmp/
 temp/
-.tmp/
+*.tmp
+*.temp
 .temp/
+.tmp/
 
-# Cache directories
-.cache/
-.parcel-cache/
+# ============================================================================
+# Documentation (generated)
+# ============================================================================
+*TROUBLESHOOTING*.md
+*FAILED_TO_FETCH*.md
+*SUPABASE_MIGRATION*.md
+*MIGRATION_*.md
+*_NOTES.md
+*_TODO.md
 
-##############################################################################
-# Project-Specific Exclusions
-##############################################################################
-
-# Auto-generated documentation (temporary)
-API_UPDATES_NOVEMBER_2025.md
-BEFORE_AFTER_CHANGES.md
-DEPLOYMENT_ISSUE_FOUND.md
-DOCUMENTATION_INDEX_COMPLETE.md
-DOCUMENTATION_INDEX.md
-FAILED_ENDPOINTS.md
-FIX_DASHBOARD_ERROR.md
-FIXED_APIS_SUMMARY.txt
-FRONTEND_ENDPOINT_VERIFICATION.md
-FRONTEND_SETUP.md
-INTEGRATION_TESTING.md
-INSTALLATION_GUIDE.md
-QUICK_FIX_REFERENCE.txt
-QUICK_REFERENCE.txt
-REMEDIATION_COMPLETE.md
-SESSION_SUMMARY.md
-SYSTEM_COMPLETE.md
-SYSTEM_READY.md
-SYSTEM_SUMMARY.md
-TEST_RESULTS.txt
-VERIFICATION_CHECKLIST.md
-VERIFICATION_REPORT.md
-VISUAL_GUIDE.md
-STATUS_BOARD.md
-
-# Session fix documentation (can be archived after verification)
-NETWORK_FIX_SUMMARY.md
-LOGIN_FIX_SUMMARY.md
-CODESPACES_SETUP.md
-NEXTJS_PARAMS_ERROR_FIXED.md
-NETWORK_FIX_CARD.md
-DEBUG_NETWORK_ERROR.md
-CORS_FIX_COMPLETE.md
-FINAL_FIX_COMPLETE.md
-
-# General temporary documentation patterns
-*_COMPLETE.md
-*_FIXED.md
-*_SUMMARY.md
-*_GUIDE.md
-*_TESTING.md
-*_RULES.md
-*_REFACTOR*.md
-*_QUICK_*.md
-DEBUG_*.md
-DEMO_*.md
-MANUAL_*.md
-CONTRACT_*.md
-RBAC_*.md
-
-# Development/testing convenience scripts (non-essential)
-codespace-startup.sh
-fix-records.sh
-full-restart.sh
-restart-final-fix.sh
-restart-frontend.sh
-restart-with-auth-fixes.sh
-restart-with-ipfs-fix.sh
-restart-with-record-type-fix.sh
-run.sh
-setup-and-run.sh
-test-api.sh
-test-auth.sh
-test-complete.sh
-test-cors.sh
-test-diagnostic.sh
-test-old.sh
-test-signup-fix.sh
-START_NOW.sh
-
-# Diagnostic and verification scripts (generated during debugging)
-check-services.sh
-verify-backend.sh
-verify_*.sh
-test_*.sh
-stream_logs.sh
-
-# Scripts backup directory
-scripts/backup/
-scripts/old/
-
-# Test data
-test-data/
-mock-data/
-seed-data/
-
-# Development utility scripts
-frontend_spy.js
-initialize_identities.js
-*_spy.js
+# Test files
 test_*.js
+verify_*.sh
+*_test.js
 
-# Documentation builds
-docs/_build/
-docs/archive/*.tar.gz
-docs/archive/*.zip
+# ============================================================================
+# Build Artifacts
+# ============================================================================
+*.war
+*.nar
+*.ear
+*.class
+*.jar
 
-##############################################################################
-# ✅ WHITELIST EXCEPTIONS - Force Include These ✅
-##############################################################################
+# ============================================================================
+# Certificates & Keys (IMPORTANT: Never commit sensitive data)
+# ============================================================================
+*.pem
+*.key
+*.crt
+*.cer
+*.p12
+*.pfx
+*.jks
+*.keystore
 
-# Example environment files
-!.env.example
-!.env.template
+# ============================================================================
+# Supabase (local development)
+# ============================================================================
+.supabase/
 
-# Important config examples
-!config.example.json
-!docker-compose.example.yml
-
-# Essential documentation
-!README.md
-!**/README.md
-!START_HERE.md
-!SCRIPTS_README.md
-
-# Core operational scripts
-!start.sh
-!stop.sh
-!status.sh
-
-# FIXES directory documentation
-!FIXES/
-!FIXES/*.md
-
-##############################################################################
-# End of .gitignore
-##############################################################################
+# ============================================================================
+# Misc
+# ============================================================================
+.cache/
+.vercel
+*.bak
+*.orig
+*.rej
+.eslintcache

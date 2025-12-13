@@ -31,7 +31,6 @@ interface LabTest {
  * Shows laboratory test results for doctor/patient/admin
  */
 export default function LabTestsPage() {
-  const { user } = useAuth();
   const [labTests, setLabTests] = useState<LabTest[]>([]);
   const [filteredLabTests, setFilteredLabTests] = useState<LabTest[]>([]);
   const [loading, setLoading] = useState(true);

@@ -2,7 +2,7 @@
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Calendar, Users, FileText, Activity, ClipboardList } from 'lucide-react';
+import { Calendar, FileText, Activity, ClipboardList } from 'lucide-react';
 import { useAuth } from '@/contexts/auth-context';
 import Link from 'next/link';
 import { DoctorStats } from '@/components/dashboard/DoctorStats';

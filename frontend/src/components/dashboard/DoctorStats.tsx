@@ -7,7 +7,7 @@ import { appointmentsApi, prescriptionsApi } from '@/lib/api-client';
 
 /**
  * DoctorStats Component
- * 
+ *
  * Displays dashboard statistics for DOCTOR role only
  * Fetches data specific to the current doctor user
  */
@@ -18,7 +18,7 @@ export function DoctorStats() {
     prescriptions: 0,
     consultations: 0,
   });
-  
+
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -29,7 +29,7 @@ export function DoctorStats() {
 
       try {
         // Fetch doctor-specific data in parallel with Promise.allSettled
-        const [appointmentsResult, prescriptionsResult] = 
+        const [appointmentsResult, prescriptionsResult] =
           await Promise.allSettled([
             appointmentsApi.getAll(),  // Backend filters by doctorId automatically
             prescriptionsApi.getAll(), // Backend filters by doctorId automatically
@@ -51,10 +51,10 @@ export function DoctorStats() {
         // Extract unique patient IDs from appointments and prescriptions
         const patientIds = new Set<string>();
         appointments.forEach((apt: any) => {
-          if (apt.patientId) patientIds.add(apt.patientId);
+          if (apt.patientId) {patientIds.add(apt.patientId);}
         });
         prescriptions.forEach((rx: any) => {
-          if (rx.patientId) patientIds.add(rx.patientId);
+          if (rx.patientId) {patientIds.add(rx.patientId);}
         });
 
         // Count consultations (completed appointments)

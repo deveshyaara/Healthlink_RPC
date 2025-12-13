@@ -4,6 +4,25 @@
 import { LucideIcon } from 'lucide-react';
 
 // ============================================================================
+// Base Types (defined first to avoid use-before-define)
+// ============================================================================
+
+export type UserRole = 'PATIENT' | 'DOCTOR' | 'ADMIN' | 'GOVERNMENT';
+
+export interface BlockchainEventPayload {
+  transactionId: string;
+  chaincodeName: string;
+  functionName: string;
+  data: Record<string, unknown>;
+}
+
+export interface ApiError {
+  code?: string;
+  message: string;
+  details?: Record<string, unknown>;
+}
+
+// ============================================================================
 // Medical Records
 // ============================================================================
 
@@ -59,13 +78,6 @@ export interface BlockchainEvent {
   blockNumber?: number;
 }
 
-export interface BlockchainEventPayload {
-  transactionId: string;
-  chaincodeName: string;
-  functionName: string;
-  data: Record<string, unknown>;
-}
-
 // ============================================================================
 // Navigation
 // ============================================================================
@@ -87,8 +99,6 @@ export interface NavigationSection {
 // ============================================================================
 // User & Authentication
 // ============================================================================
-
-export type UserRole = 'PATIENT' | 'DOCTOR' | 'ADMIN' | 'GOVERNMENT';
 
 export interface User {
   id: string;
@@ -157,12 +167,6 @@ export interface ApiResponse<T = unknown> {
   message?: string;
   data?: T;
   error?: ApiError;
-}
-
-export interface ApiError {
-  code?: string;
-  message: string;
-  details?: Record<string, unknown>;
 }
 
 // ============================================================================

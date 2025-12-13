@@ -6,6 +6,7 @@ import { useToast } from '@/hooks/use-toast';
 import { AuthLoading } from '@/components/auth-loading';
 import { authApi } from '@/lib/api-client';
 import { getApiBaseUrl } from '@/lib/env-utils';
+import { logger } from '@/lib/logger';
 
 export interface User {
   id: string;
@@ -27,27 +28,43 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// Helper function to store token
+// Helper function to check if window is available (SSR-safe)
+const isClient = () => typeof window !== 'undefined';
+
+// Helper function to store token (SSR-safe)
 const storeToken = (token: string) => {
-  if (typeof window !== 'undefined') {
-    localStorage.setItem('auth_token', token);
-    document.cookie = `auth_token=${token}; path=/; max-age=86400; samesite=strict`;
+  if (isClient()) {
+    try {
+      localStorage.setItem('auth_token', token);
+      document.cookie = `auth_token=${token}; path=/; max-age=86400; samesite=strict; secure`;
+    } catch (error) {
+      logger.error('Failed to store token:', error);
+    }
   }
 };
 
-// Helper function to retrieve token
+// Helper function to retrieve token (SSR-safe)
 const getStoredToken = (): string | null => {
-  if (typeof window !== 'undefined') {
-    return localStorage.getItem('auth_token');
+  if (isClient()) {
+    try {
+      return localStorage.getItem('auth_token');
+    } catch (error) {
+      logger.error('Failed to retrieve token:', error);
+      return null;
+    }
   }
   return null;
 };
 
-// Helper function to clear token
+// Helper function to clear token (SSR-safe)
 const clearStoredToken = () => {
-  if (typeof window !== 'undefined') {
-    localStorage.removeItem('auth_token');
-    document.cookie = 'auth_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
+  if (isClient()) {
+    try {
+      localStorage.removeItem('auth_token');
+      document.cookie = 'auth_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
+    } catch (error) {
+      logger.error('Failed to clear token:', error);
+    }
   }
 };
 
@@ -89,7 +106,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             clearStoredToken();
           }
         } catch (error) {
-          console.error('Auth verification failed:', error);
+          logger.error('Auth verification failed:', error);
           clearStoredToken();
         }
       }
@@ -101,18 +118,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const login = async (email: string, password: string) => {
     try {
-      console.log('[Auth Context] Starting login for:', email);
+      logger.log('[Auth Context] Starting login for:', email);
       const response = await authApi.login({ email, password });
-      console.log('[Auth Context] Login response:', response);
-      console.log('[Auth Context] response.token:', response.token);
-      console.log('[Auth Context] response.user:', response.user);
+      logger.log('[Auth Context] Login response:', response);
 
       if (response.token && response.user) {
         storeToken(response.token);
         setToken(response.token);
         setUser(response.user);
-        
-        console.log('[Auth Context] Token stored, user set');
+
+        logger.log('[Auth Context] Token stored, user set');
 
         toast({
           title: 'Login successful',
@@ -145,18 +160,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const register = async (data: { name: string; email: string; password: string; role: string }) => {
     try {
-      console.log('[Auth Context] Starting registration for:', data.email);
+      logger.log('[Auth Context] Starting registration for:', data.email);
       const response = await authApi.register(data);
-      console.log('[Auth Context] Register response:', response);
-      console.log('[Auth Context] response.token:', response.token);
-      console.log('[Auth Context] response.user:', response.user);
+      logger.log('[Auth Context] Register response:', response);
 
       if (response.token && response.user) {
         storeToken(response.token);
         setToken(response.token);
         setUser(response.user);
-        
-        console.log('[Auth Context] Token stored, user set');
+
+        logger.log('[Auth Context] Token stored, user set');
 
         toast({
           title: 'Registration successful',

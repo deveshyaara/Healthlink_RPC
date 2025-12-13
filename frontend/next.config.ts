@@ -2,36 +2,25 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
-  output: 'standalone', // Enable standalone output for production deployment
+  output: 'standalone',
   
-  // Production deployment configuration
+  // Production-ready TypeScript configuration
   typescript: {
-    // Temporarily allow build errors until all dependencies are resolved
-    ignoreBuildErrors: true,
+    ignoreBuildErrors: false, // Enforce TypeScript in production
   },
   
   eslint: {
-    // Temporarily allow ESLint warnings during development
-    ignoreDuringBuilds: true,
+    ignoreDuringBuilds: false, // Enforce ESLint in production
   },
-  
-  // Force dynamic rendering to avoid params freezing issue
-  // This is a workaround for Next.js 15.5.x read-only params error
-  dynamicIO: false,
   
   // Experimental features
   experimental: {
-    // Disable static params optimization to fix read-only params error
     serverActions: {
       bodySizeLimit: '2mb',
     },
-    // Fix for Next.js 15 read-only params issue
-    ppr: false,
-    // Disable static generation that causes params freezing
-    staticPageGenerationTimeout: 0,
   },
   
-  // Webpack configuration to handle params properly
+  // Webpack configuration
   webpack: (config: any) => {
     config.resolve = config.resolve || {};
     config.resolve.fallback = config.resolve.fallback || {};
@@ -40,18 +29,58 @@ const nextConfig: NextConfig = {
   
   // Image optimization
   images: {
-    domains: ['localhost', 'images.unsplash.com'],
+    domains: ['localhost'],
     remotePatterns: [
       {
         protocol: 'https',
-        hostname: '**',
+        hostname: 'images.unsplash.com',
+      },
+      {
+        protocol: 'https',
+        hostname: '**.app.github.dev', // Codespaces
       },
     ],
   },
   
+  // Security headers
+  async headers() {
+    return [
+      {
+        source: '/:path*',
+        headers: [
+          {
+            key: 'X-DNS-Prefetch-Control',
+            value: 'on'
+          },
+          {
+            key: 'Strict-Transport-Security',
+            value: 'max-age=63072000; includeSubDomains; preload'
+          },
+          {
+            key: 'X-Frame-Options',
+            value: 'SAMEORIGIN'
+          },
+          {
+            key: 'X-Content-Type-Options',
+            value: 'nosniff'
+          },
+          {
+            key: 'X-XSS-Protection',
+            value: '1; mode=block'
+          },
+          {
+            key: 'Referrer-Policy',
+            value: 'strict-origin-when-cross-origin'
+          },
+        ],
+      },
+    ];
+  },
+  
   // Environment variables
   env: {
-    NEXT_PUBLIC_APP_VERSION: '2.0.0-RELEASE',
+    NEXT_PUBLIC_APP_VERSION: '2.0.0',
+    NEXT_PUBLIC_APP_NAME: 'HealthLink Pro',
   },
 };
 

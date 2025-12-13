@@ -78,7 +78,7 @@ export function UploadRecordForm({
 
       // Import API client dynamically
       const { storageApi, recordsApi } = await import('@/lib/api-client');
-      
+
       // Upload file and get SHA-256 hash
       const uploadResult = await storageApi.upload(file);
       const realHash = uploadResult.hash; // Real SHA-256 hash from backend

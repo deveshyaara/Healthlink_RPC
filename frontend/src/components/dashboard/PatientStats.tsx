@@ -7,7 +7,7 @@ import { medicalRecordsApi, appointmentsApi, prescriptionsApi, consentsApi } fro
 
 /**
  * PatientStats Component
- * 
+ *
  * Displays dashboard statistics for PATIENT role only
  * Fetches data specific to the current patient user
  */
@@ -18,7 +18,7 @@ export function PatientStats() {
     prescriptions: 0,
     consents: 0,
   });
-  
+
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -30,7 +30,7 @@ export function PatientStats() {
       try {
         // Fetch all patient data in parallel with Promise.allSettled
         // This ensures one failure doesn't block the others
-        const [recordsResult, appointmentsResult, prescriptionsResult, consentsResult] = 
+        const [recordsResult, appointmentsResult, prescriptionsResult, consentsResult] =
           await Promise.allSettled([
             medicalRecordsApi.getAll(),
             appointmentsApi.getAll(),

@@ -3,50 +3,33 @@
  * Handles user authentication, credential validation, and JWT token management
  * 
  * V2.0 - Supabase Integration:
- * - User credentials stored in Supabase PostgreSQL
- * - Fallback to file-based storage if Supabase not configured
+ * - User credentials stored in Supabase PostgreSQL (required)
  * - Medical records remain on Hyperledger Fabric
  */
 
 import jwt from 'jsonwebtoken';
-import bcrypt from 'bcryptjs';
-import fs from 'fs/promises';
-import path from 'path';
-import { fileURLToPath } from 'url';
 import dbService from './db.service.js';
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
 
 const JWT_SECRET = process.env.JWT_SECRET || 'healthlink-secret-key-change-in-production';
 const JWT_EXPIRY = process.env.JWT_EXPIRY || '24h';
-const USERS_DB_PATH = path.join(__dirname, '../../data/users.json');
 
 class AuthService {
   constructor() {
-    this.usersCache = null;
     this.useSupabase = false;
     this.initializeUsersDB();
   }
 
   /**
-   * Initialize user storage backend (Supabase or file-based fallback)
+   * Initialize user storage backend (Supabase required)
    * 
-   * WHY: V2.0 supports dual-mode operation for production (Supabase) and dev (file storage)
+   * WHY: V2.0 requires Supabase for production-grade user management
    * WHEN: Called in constructor on service instantiation
    * 
-   * @returns {Promise<void>} Resolves when storage backend is initialized
-   * @throws {Error} Only logs errors, never throws (graceful degradation)
-   * 
-   * @example
-   * // With Supabase configured in .env:
-   * // ✅ Auth service using Supabase database
-   * 
-   * // Without Supabase:
-   * // ⚠️ Auth service using file-based storage (legacy mode)
+   * @returns {Promise<void>} Resolves when Supabase is initialized
+   * @throws {Error} If Supabase initialization fails
    */
   async initializeUsersDB() {
-    // Try to initialize Supabase
+    // Initialize Supabase (required)
     this.useSupabase = await dbService.initialize();
     
     if (this.useSupabase) {
@@ -54,76 +37,17 @@ class AuthService {
       return;
     }
 
-    // Fallback to file-based storage
-    console.log('⚠️  Auth service using file-based storage (legacy mode)');
-    try {
-      const dataDir = path.dirname(USERS_DB_PATH);
-      await fs.mkdir(dataDir, { recursive: true });
-      
-      try {
-        await fs.access(USERS_DB_PATH);
-      } catch {
-        // File doesn't exist, create with empty users array
-        await fs.writeFile(USERS_DB_PATH, JSON.stringify({ users: [] }, null, 2));
-      }
-    } catch (error) {
-      console.error('Failed to initialize users DB:', error);
-    }
+    // Supabase is required - no fallback
+    console.error('❌ SUPABASE_URL and SUPABASE_SERVICE_KEY must be configured in .env');
+    throw new Error('Database configuration required. Please set SUPABASE_URL and SUPABASE_SERVICE_KEY in .env file');
   }
 
   /**
-   * Load users from file system (legacy fallback mode only)
-   * 
-   * WHY: Provides backward compatibility when Supabase is not configured
-   * SECURITY: File contains bcrypt-hashed passwords, but prefer Supabase in production
-   * 
-   * @returns {Promise<Array<Object>>} Array of user objects with passwordHash
-   * @property {string} userId - Fabric enrollment ID
-   * @property {string} email - User email address
-   * @property {string} passwordHash - Bcrypt hashed password
-   * @property {string} role - User role (patient, doctor, admin, government)
-   * @property {string} name - User display name
-   * @property {string} createdAt - ISO timestamp of registration
-   * @property {string|null} lastLogin - ISO timestamp of last login
-   * @property {boolean} isActive - Account activation status
-   */
-  async loadUsers() {
-    try {
-      const data = await fs.readFile(USERS_DB_PATH, 'utf-8');
-      this.usersCache = JSON.parse(data);
-      return this.usersCache.users || [];
-    } catch (error) {
-      console.error('Failed to load users:', error);
-      return [];
-    }
-  }
-
-  /**
-   * Persist users to file system (legacy fallback mode only)
-   * 
-   * WHY: Atomic write operation to prevent data corruption
-   * SECURITY: File permissions should be restricted (600) in production
-   * 
-   * @param {Array<Object>} users - Array of user objects to persist
-   * @returns {Promise<void>} Resolves when file write completes
-   * @throws {Error} 'Failed to persist user data' if file write fails
-   */
-  async saveUsers(users) {
-    try {
-      this.usersCache = { users };
-      await fs.writeFile(USERS_DB_PATH, JSON.stringify(this.usersCache, null, 2));
-    } catch (error) {
-      console.error('Failed to save users:', error);
-      throw new Error('Failed to persist user data');
-    }
-  }
-
-  /**
-   * Register a new user with encrypted credentials
+   * Register a new user with encrypted credentials (Supabase required)
    * 
    * ARCHITECTURE: Two-phase registration process
    * 1. Fabric identity created first (wallet enrollment)
-   * 2. Credentials stored in Supabase/file (this method)
+   * 2. Credentials stored in Supabase (this method)
    * 
    * WHY TWO STORAGE LAYERS:
    * - Supabase: User auth credentials (email, password hash, profile metadata)
@@ -135,7 +59,7 @@ class AuthService {
    * @param {string} userData.userId - Fabric enrollment ID (links auth → blockchain)
    * @param {string} userData.email - User email (unique identifier)
    * @param {string} userData.password - Plain text password (will be hashed)
-   * @param {string} userData.role - User role: 'patient' | 'doctor' | 'admin' | 'government'
+   * @param {string} userData.role - User role: 'patient' | 'doctor' | 'admin'
    * @param {string} userData.name - Full name for display
    * @param {string} [userData.phoneNumber] - Contact phone number
    * @param {string} [userData.doctorLicenseNumber] - Doctor license (if role=doctor)
@@ -144,91 +68,41 @@ class AuthService {
    * @param {string} [userData.patientBloodGroup] - Blood type (if role=patient)
    * 
    * @returns {Promise<Object>} Created user object (without password)
-   * @returns {string} return.userId - Fabric enrollment ID
-   * @returns {string} return.email - User email
-   * @returns {string} return.role - User role
-   * @returns {string} return.name - Full name
-   * 
    * @throws {Error} 'User already exists' if email/userId collision
    * @throws {Error} 'Database not connected' if Supabase unavailable
-   * @throws {Error} 'Failed to persist user data' if file write fails
-   * 
-   * @example
-   * await authService.registerUser({
-   *   userId: 'user1',
-   *   email: 'doctor@hospital.com',
-   *   password: 'SecurePass123',
-   *   role: 'doctor',
-   *   name: 'Dr. Smith',
-   *   doctorLicenseNumber: 'MD12345',
-   *   doctorSpecialization: 'Cardiology'
-   * });
    */
   async registerUser(userData) {
     const { userId, email, password, role, name, phoneNumber, ...extraFields } = userData;
     
-    if (this.useSupabase && dbService.isReady()) {
-      // Supabase path - store in PostgreSQL
-      try {
-        const dbUser = await dbService.createUser({
-          email,
-          password,
-          role: role || 'patient',
-          fabricEnrollmentId: userId,
-          fullName: name || email.split('@')[0],
-          phoneNumber: phoneNumber || null,
-          ...extraFields
-        });
-
-        return {
-          userId: dbUser.fabric_enrollment_id,
-          email: dbUser.email,
-          role: dbUser.role,
-          name: dbUser.full_name
-        };
-      } catch (error) {
-        console.error('Supabase registration failed:', error);
-        throw error;
-      }
+    if (!this.useSupabase || !dbService.isReady()) {
+      throw new Error('Database not connected. Please ensure Supabase is configured.');
     }
 
-    // Legacy file-based storage fallback
-    const users = await this.loadUsers();
-    
-    // Check if user already exists
-    const existingUser = users.find(u => u.userId === userId || u.email === email);
-    if (existingUser) {
-      throw new Error('User already exists');
+    try {
+      const dbUser = await dbService.createUser({
+        email,
+        password,
+        role: role || 'patient',
+        fabricEnrollmentId: userId,
+        fullName: name || email.split('@')[0],
+        phoneNumber: phoneNumber || null,
+        ...extraFields
+      });
+
+      return {
+        userId: dbUser.fabric_enrollment_id,
+        email: dbUser.email,
+        role: dbUser.role,
+        name: dbUser.full_name
+      };
+    } catch (error) {
+      console.error('Supabase registration failed:', error);
+      throw error;
     }
-
-    // Hash password
-    const passwordHash = await bcrypt.hash(password, 10);
-
-    // Create user record
-    const newUser = {
-      userId,
-      email,
-      passwordHash,
-      role: role || 'patient',
-      name: name || userId,
-      createdAt: new Date().toISOString(),
-      lastLogin: null,
-      isActive: true
-    };
-
-    users.push(newUser);
-    await this.saveUsers(users);
-
-    return {
-      userId: newUser.userId,
-      email: newUser.email,
-      role: newUser.role,
-      name: newUser.name
-    };
   }
 
   /**
-   * Authenticate user credentials and verify active status
+   * Authenticate user credentials (Supabase required)
    * 
    * SECURITY FEATURES:
    * - Constant-time password comparison (bcrypt.compare prevents timing attacks)
@@ -245,98 +119,55 @@ class AuthService {
    * @param {string} password - Plain text password to verify
    * 
    * @returns {Promise<Object>} Authenticated user object (without password)
-   * @returns {string} return.userId - Fabric enrollment ID
-   * @returns {string} return.email - User email
-   * @returns {string} return.role - User role (patient, doctor, admin, government)
-   * @returns {string} return.name - Full name
-   * 
    * @throws {Error} 'Invalid credentials' if user not found or password mismatch
    * @throws {Error} 'Account is inactive' if user deactivated
    * @throws {Error} 'Database not connected' if Supabase unavailable
-   * 
-   * @example
-   * // Login with email
-   * const user = await authService.authenticateUser('doctor@hospital.com', 'password123');
-   * // Login with Fabric ID
-   * const user = await authService.authenticateUser('user1', 'password123');
    */
   async authenticateUser(identifier, password) {
-    if (this.useSupabase && dbService.isReady()) {
-      // Supabase path - query PostgreSQL
-      try {
-        const user = await dbService.findUserByEmail(identifier);
-        
-        if (!user) {
-          throw new Error('Invalid credentials');
-        }
+    if (!this.useSupabase || !dbService.isReady()) {
+      throw new Error('Database not connected. Please ensure Supabase is configured.');
+    }
 
-        if (!user.is_active) {
-          throw new Error('Account is inactive');
-        }
-
-        // Verify password
-        const isValidPassword = await dbService.verifyPassword(password, user.password_hash);
-        if (!isValidPassword) {
-          throw new Error('Invalid credentials');
-        }
-
-        // Update last login
-        await dbService.updateLastLogin(user.id);
-
-        // Log authentication event
-        await dbService.logAuditEvent(user.id, 'login', {
-          ipAddress: null, // Can be passed from req.ip in controller
-          userAgent: null  // Can be passed from req.headers['user-agent']
-        });
-
-        return {
-          userId: user.fabric_enrollment_id,
-          email: user.email,
-          role: user.role,
-          name: user.full_name
-        };
-      } catch (error) {
-        console.error('Supabase authentication failed:', error);
-        throw error;
+    try {
+      const user = await dbService.findUserByEmail(identifier);
+      
+      if (!user) {
+        throw new Error('Invalid credentials');
       }
+
+      if (!user.is_active) {
+        throw new Error('Account is inactive');
+      }
+
+      // Verify password
+      const isValidPassword = await dbService.verifyPassword(password, user.password_hash);
+      if (!isValidPassword) {
+        throw new Error('Invalid credentials');
+      }
+
+      // Update last login
+      await dbService.updateLastLogin(user.id);
+
+      // Log authentication event
+      await dbService.logAuditEvent(user.id, 'login', {
+        ipAddress: null,
+        userAgent: null
+      });
+
+      return {
+        userId: user.fabric_enrollment_id,
+        email: user.email,
+        role: user.role,
+        name: user.full_name
+      };
+    } catch (error) {
+      console.error('Supabase authentication failed:', error);
+      throw error;
     }
-
-    // Legacy file-based storage fallback
-    const users = await this.loadUsers();
-    
-    // Find user by userId or email
-    const user = users.find(u => 
-      u.userId === identifier || u.email === identifier
-    );
-
-    if (!user) {
-      throw new Error('Invalid credentials');
-    }
-
-    if (!user.isActive) {
-      throw new Error('Account is inactive');
-    }
-
-    // Verify password
-    const isValidPassword = await bcrypt.compare(password, user.passwordHash);
-    if (!isValidPassword) {
-      throw new Error('Invalid credentials');
-    }
-
-    // Update last login
-    user.lastLogin = new Date().toISOString();
-    await this.saveUsers(users);
-
-    return {
-      userId: user.userId,
-      email: user.email,
-      role: user.role,
-      name: user.name
-    };
   }
 
   /**
-   * Retrieve user profile by Fabric enrollment ID
+   * Retrieve user profile by Fabric enrollment ID (Supabase required)
    * 
    * WHY FABRIC ID LOOKUP:
    * - JWT tokens contain userId (Fabric enrollment ID)
@@ -346,70 +177,37 @@ class AuthService {
    * SECURITY: Returns user-safe data (no password hash)
    * 
    * @param {string} userId - Hyperledger Fabric enrollment ID
-   * 
    * @returns {Promise<Object|null>} User profile or null if not found
-   * @returns {string} return.userId - Fabric enrollment ID
-   * @returns {string} return.email - User email
-   * @returns {string} return.role - User role
-   * @returns {string} return.name - Full name
-   * @returns {string} [return.phoneNumber] - Phone number (V2)
-   * @returns {string} [return.avatarUrl] - Profile picture URL (V2)
-   * @returns {string} return.createdAt - Registration timestamp
-   * @returns {string|null} return.lastLogin - Last login timestamp
-   * @returns {boolean} return.isActive - Account status
-   * @returns {boolean} [return.emailVerified] - Email verification status (V2)
-   * 
-   * @example
-   * const user = await authService.getUserById('user1');
-   * if (user && user.isActive) {
-   *   console.log(`Welcome ${user.name}`);
-   * }
+   * @throws {Error} If database connection fails
    */
   async getUserById(userId) {
-    if (this.useSupabase && dbService.isReady()) {
-      // Supabase path - query by fabric_enrollment_id
-      try {
-        const user = await dbService.findUserByFabricId(userId);
-        
-        if (!user) {
-          return null;
-        }
+    if (!this.useSupabase || !dbService.isReady()) {
+      throw new Error('Database not connected. Please ensure Supabase is configured.');
+    }
 
-        return {
-          userId: user.fabric_enrollment_id,
-          email: user.email,
-          role: user.role,
-          name: user.full_name,
-          phoneNumber: user.phone_number,
-          avatarUrl: user.avatar_url,
-          createdAt: user.created_at,
-          lastLogin: user.last_login_at,
-          isActive: user.is_active,
-          emailVerified: user.email_verified
-        };
-      } catch (error) {
-        console.error('Failed to fetch user from Supabase:', error);
+    try {
+      const user = await dbService.findUserByFabricId(userId);
+      
+      if (!user) {
         return null;
       }
-    }
 
-    // Legacy file-based storage fallback
-    const users = await this.loadUsers();
-    const user = users.find(u => u.userId === userId);
-    
-    if (!user) {
-      return null;
+      return {
+        userId: user.fabric_enrollment_id,
+        email: user.email,
+        role: user.role,
+        name: user.full_name,
+        phoneNumber: user.phone_number,
+        avatarUrl: user.avatar_url,
+        createdAt: user.created_at,
+        lastLogin: user.last_login_at,
+        isActive: user.is_active,
+        emailVerified: user.email_verified
+      };
+    } catch (error) {
+      console.error('Failed to fetch user from Supabase:', error);
+      throw error;
     }
-
-    return {
-      userId: user.userId,
-      email: user.email,
-      role: user.role,
-      name: user.name,
-      createdAt: user.createdAt,
-      lastLogin: user.lastLogin,
-      isActive: user.isActive
-    };
   }
 
   /**
@@ -566,73 +364,54 @@ class AuthService {
    * );
    */
   async changePassword(userId, oldPassword, newPassword) {
-    if (this.useSupabase && dbService.isReady()) {
-      // Supabase path
-      try {
-        const user = await dbService.findUserByFabricId(userId);
-        
-        if (!user) {
-          throw new Error('User not found');
-        }
+    if (!this.useSupabase || !dbService.isReady()) {
+      throw new Error('Database not connected. Please ensure Supabase is configured.');
+    }
 
-        // Get full user data with password hash
-        const { data: fullUser, error } = await dbService.supabase
-          .from('users')
-          .select('id, password_hash')
-          .eq('fabric_enrollment_id', userId)
-          .single();
-
-        if (error || !fullUser) {
-          throw new Error('User not found');
-        }
-
-        // Verify old password
-        const isValidPassword = await dbService.verifyPassword(oldPassword, fullUser.password_hash);
-        if (!isValidPassword) {
-          throw new Error('Invalid current password');
-        }
-
-        // Hash and update new password
-        const newPasswordHash = await dbService.hashPassword(newPassword);
-        
-        const { error: updateError } = await dbService.supabase
-          .from('users')
-          .update({ password_hash: newPasswordHash })
-          .eq('id', fullUser.id);
-
-        if (updateError) {
-          throw new Error('Failed to update password');
-        }
-
-        // Log password change event
-        await dbService.logAuditEvent(fullUser.id, 'password_changed');
-
-        return true;
-      } catch (error) {
-        console.error('Supabase password change failed:', error);
-        throw error;
+    try {
+      const user = await dbService.findUserByFabricId(userId);
+      
+      if (!user) {
+        throw new Error('User not found');
       }
+
+      // Get full user data with password hash
+      const { data: fullUser, error } = await dbService.supabase
+        .from('healthlink_users')
+        .select('id, password_hash')
+        .eq('fabric_enrollment_id', userId)
+        .single();
+
+      if (error || !fullUser) {
+        throw new Error('User not found');
+      }
+
+      // Verify old password
+      const isValidPassword = await dbService.verifyPassword(oldPassword, fullUser.password_hash);
+      if (!isValidPassword) {
+        throw new Error('Invalid current password');
+      }
+
+      // Hash and update new password
+      const newPasswordHash = await dbService.hashPassword(newPassword);
+      
+      const { error: updateError } = await dbService.supabase
+        .from('healthlink_users')
+        .update({ password_hash: newPasswordHash })
+        .eq('id', fullUser.id);
+
+      if (updateError) {
+        throw new Error('Failed to update password');
+      }
+
+      // Log password change event
+      await dbService.logAuditEvent(fullUser.id, 'password_changed');
+
+      return true;
+    } catch (error) {
+      console.error('Supabase password change failed:', error);
+      throw error;
     }
-
-    // Legacy file-based storage fallback
-    const users = await this.loadUsers();
-    const user = users.find(u => u.userId === userId);
-    
-    if (!user) {
-      throw new Error('User not found');
-    }
-
-    // Verify old password
-    const isValidPassword = await bcrypt.compare(oldPassword, user.passwordHash);
-    if (!isValidPassword) {
-      throw new Error('Invalid current password');
-    }
-
-    // Hash and update new password
-    user.passwordHash = await bcrypt.hash(newPassword, 10);
-    await this.saveUsers(users);
-
-    return true;
   }
 }
 

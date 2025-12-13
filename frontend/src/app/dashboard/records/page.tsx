@@ -182,7 +182,7 @@ export default function RecordsPage() {
     await fetchRecords();
   };
 
-  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const _handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
       setUploadForm(prev => ({ ...prev, file }));
@@ -190,14 +190,14 @@ export default function RecordsPage() {
   };
 
   const filteredRecords = records.filter(record => {
-    if (!searchTerm) return true;
-    
+    if (!searchTerm) {return true;}
+
     const searchLower = searchTerm.toLowerCase();
     const descriptionMatch = record.description?.toLowerCase().includes(searchLower) || false;
     const tagsMatch = record.tags?.some(tag => tag.toLowerCase().includes(searchLower)) || false;
     const recordTypeMatch = record.recordType?.toLowerCase().includes(searchLower) || false;
     const recordIdMatch = record.recordId?.toLowerCase().includes(searchLower) || false;
-    
+
     return descriptionMatch || tagsMatch || recordTypeMatch || recordIdMatch;
   });
 
@@ -274,7 +274,7 @@ export default function RecordsPage() {
                       <UploadCloud className="h-12 w-12 text-muted-foreground mb-4" />
                       <h3 className="text-lg font-semibold mb-2">No Records Found</h3>
                       <p className="text-muted-foreground mb-4">
-                        {searchTerm 
+                        {searchTerm
                           ? `No records match "${searchTerm}". Try a different search term.`
                           : 'You haven\'t uploaded any health records yet. Start by uploading your first record.'}
                       </p>
@@ -382,7 +382,7 @@ export default function RecordsPage() {
               <div>
                 <label className="text-sm font-medium text-muted-foreground">Tags</label>
                 <div className="flex gap-1 flex-wrap mt-1">
-                  {selectedRecord.tags && selectedRecord.tags.length > 0 
+                  {selectedRecord.tags && selectedRecord.tags.length > 0
                     ? selectedRecord.tags.map(tag => <Badge key={tag} variant="outline">{tag}</Badge>)
                     : <span className="text-muted-foreground text-sm">No tags</span>
                   }
