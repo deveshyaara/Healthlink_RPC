@@ -8,7 +8,6 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge';
 import { useState, useEffect } from 'react';
 import { labTestsApi } from '@/lib/api-client';
-import { useAuth } from '@/contexts/auth-context';
 import { ErrorBanner } from '@/components/ui/error-banner';
 import { TestTube, PlusCircle, FileText, Search, Eye } from 'lucide-react';
 

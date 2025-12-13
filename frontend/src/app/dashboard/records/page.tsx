@@ -55,10 +55,10 @@ export default function RecordsPage() {
     try {
       const response = await medicalRecordsApi.getAllRecords();
       console.log('Records API response:', response);
-      
+
       // Handle different response formats
       let recordsData: MedicalRecord[] = [];
-      
+
       if (Array.isArray(response)) {
         recordsData = response;
       } else if (response && typeof response === 'object') {
@@ -68,7 +68,7 @@ export default function RecordsPage() {
           recordsData = response.records;
         }
       }
-      
+
       setRecords(recordsData);
       console.log('Loaded records:', recordsData.length);
     } catch (error) {

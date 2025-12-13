@@ -7,7 +7,7 @@
 
 import Link from 'next/link';
 import { useState, useEffect } from 'react';
-import { Menu, X, Shield, ChevronDown, Globe, Volume2, Moon, Sun } from 'lucide-react';
+import { Menu, X, Shield, ChevronDown, Globe, Moon, Sun } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { UserNav } from './user-nav';
 import { useAuth } from '@/contexts/auth-context';
@@ -49,9 +49,9 @@ const authenticatedNavItems: NavItem[] = [
 export function GovernmentNavbar() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [activeDropdown, setActiveDropdown] = useState<string | null>(null);
-  const [textSize, setTextSize] = useState<'small' | 'normal' | 'large'>('normal');
-  const [language, setLanguage] = useState('en');
-  const [screenReader, setScreenReader] = useState(false);
+  const [_textSize, _setTextSize] = useState<'small' | 'normal' | 'large'>('normal');
+  const [_language, _setLanguage] = useState('en');
+  const [_screenReader, setScreenReader] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const { theme, setTheme } = useTheme();
   const { isAuthenticated } = useAuth();
@@ -64,16 +64,16 @@ export function GovernmentNavbar() {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
-  const changeTextSize = (size: 'small' | 'normal' | 'large') => {
-    setTextSize(size);
+  const _changeTextSize = (size: 'small' | 'normal' | 'large') => {
+    _setTextSize(size);
     const root = document.documentElement;
     root.classList.remove('text-small', 'text-normal', 'text-large');
     root.classList.add(`text-${size}`);
   };
 
-  const toggleScreenReader = () => {
-    setScreenReader(!screenReader);
-    if (!screenReader) {
+  const _toggleScreenReader = () => {
+    setScreenReader(!_screenReader);
+    if (!_screenReader) {
       document.body.setAttribute('aria-live', 'polite');
     } else {
       document.body.removeAttribute('aria-live');

@@ -17,7 +17,7 @@ const RoleContext = createContext<RoleContextType | undefined>(undefined);
 
 /**
  * RoleProvider
- * 
+ *
  * Global provider for user roles from Ethereum smart contract
  * Wrap your app with this provider to access roles anywhere
  */
@@ -37,10 +37,10 @@ export function RoleProvider({ children }: { children: ReactNode }) {
  */
 export function useRole(): RoleContextType {
   const context = useContext(RoleContext);
-  
+
   if (context === undefined) {
     throw new Error('useRole must be used within a RoleProvider');
   }
-  
+
   return context;
 }

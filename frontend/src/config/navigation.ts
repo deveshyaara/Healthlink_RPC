@@ -14,9 +14,6 @@ import {
   Users,
   History,
   Settings,
-  Heart,
-  Stethoscope,
-  ClipboardList,
 } from 'lucide-react';
 
 export interface NavRoute {
@@ -255,7 +252,7 @@ export function isRestrictedRoute(pathname: string): { isRestricted: boolean; al
 /**
  * Get page title from route href
  */
-export function getPageTitle(href: string, role?: string): string {
+export function getPageTitle(href: string, _role?: string): string {
   const allRoutes = [...doctorRoutes, ...patientRoutes, ...adminRoutes, ...commonRoutes];
   const route = allRoutes.find((r) => r.href === href);
   return route?.label || 'Dashboard';
@@ -264,7 +261,7 @@ export function getPageTitle(href: string, role?: string): string {
 /**
  * Get page description from route href
  */
-export function getPageDescription(href: string, role?: string): string {
+export function getPageDescription(href: string, _role?: string): string {
   const allRoutes = [...doctorRoutes, ...patientRoutes, ...adminRoutes, ...commonRoutes];
   const route = allRoutes.find((r) => r.href === href);
   return route?.description || '';

@@ -27,7 +27,7 @@ interface Patient {
  * Shows list of all patients the doctor has treated/created records for
  */
 export default function DoctorPatientsPage() {
-  const { user } = useAuth();
+  const { user: _user } = useAuth();
   const [patients, setPatients] = useState<Patient[]>([]);
   const [filteredPatients, setFilteredPatients] = useState<Patient[]>([]);
   const [loading, setLoading] = useState(true);
