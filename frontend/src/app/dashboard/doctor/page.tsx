@@ -6,12 +6,16 @@ import { Calendar, FileText, Activity, ClipboardList } from 'lucide-react';
 import { useAuth } from '@/contexts/auth-context';
 import Link from 'next/link';
 import { DoctorStats } from '@/components/dashboard/DoctorStats';
+import { AddPatientDialog, ScheduleAppointmentDialog } from '@/components/doctor/DoctorActions';
+import { CreatePrescriptionDialog } from '@/components/doctor/CreatePrescriptionDialog';
+import { RequireDoctor } from '@/components/auth/RequireRole';
 
 export default function DoctorDashboard() {
   const { user } = useAuth();
 
   return (
-    <div className="space-y-6">
+    <RequireDoctor>
+      <div className="space-y-6">
       {/* Welcome Header */}
       <div className="flex items-center justify-between">
         <div>
@@ -21,6 +25,11 @@ export default function DoctorDashboard() {
           <p className="text-muted-foreground mt-2">
             Here's your overview for today
           </p>
+        </div>
+        <div className="flex gap-2 flex-wrap">
+          <AddPatientDialog />
+          <CreatePrescriptionDialog />
+          <ScheduleAppointmentDialog />
         </div>
       </div>
 
@@ -141,5 +150,6 @@ export default function DoctorDashboard() {
         </CardContent>
       </Card>
     </div>
+    </RequireDoctor>
   );
 }

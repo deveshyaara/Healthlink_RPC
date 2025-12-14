@@ -12,6 +12,7 @@ import { useAuth } from '@/contexts/auth-context';
 import { ErrorBanner } from '@/components/ui/error-banner';
 import { Users, Search, Eye, FileText, PlusCircle } from 'lucide-react';
 import Link from 'next/link';
+import { RequireDoctor } from '@/components/auth/RequireRole';
 
 interface Patient {
   patientId: string;
@@ -27,6 +28,14 @@ interface Patient {
  * Shows list of all patients the doctor has treated/created records for
  */
 export default function DoctorPatientsPage() {
+  return (
+    <RequireDoctor>
+      <DoctorPatientsPageContent />
+    </RequireDoctor>
+  );
+}
+
+function DoctorPatientsPageContent() {
   const { user: _user } = useAuth();
   const [patients, setPatients] = useState<Patient[]>([]);
   const [filteredPatients, setFilteredPatients] = useState<Patient[]>([]);

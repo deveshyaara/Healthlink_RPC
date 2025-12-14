@@ -14,6 +14,7 @@ import { useAuth } from '@/contexts/auth-context';
 import { ErrorBanner } from '@/components/ui/error-banner';
 import { FileText, Search, Eye, Download, Filter, Upload } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { RequireDoctor } from '@/components/auth/RequireRole';
 
 interface MedicalRecord {
   recordId: string;
@@ -32,6 +33,14 @@ interface MedicalRecord {
  * Shows all medical records across all patients with search/filter capabilities
  */
 export default function DoctorRecordsPage() {
+  return (
+    <RequireDoctor>
+      <DoctorRecordsPageContent />
+    </RequireDoctor>
+  );
+}
+
+function DoctorRecordsPageContent() {
   const { user } = useAuth();
   const [records, setRecords] = useState<MedicalRecord[]>([]);
   const [filteredRecords, setFilteredRecords] = useState<MedicalRecord[]>([]);
