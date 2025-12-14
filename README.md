@@ -412,9 +412,9 @@ This project is licensed under the **MIT License** - see the [LICENSE](LICENSE) 
 
 ## 👥 Team
 
-**Lead Developer**: Devesh Yaara  
-**Project Type**: Final Year Project / Portfolio Project  
-**Institution**: [Your University Name]  
+**Lead Developer**: Devesh Yaara   
+**Frontend Developer**: Avani D Poojary
+**Tester**: Asad Fathima
 **GitHub**: [@deveshyaara](https://github.com/deveshyaara)
 
 ### Acknowledgments
@@ -425,6 +425,7 @@ This project is licensed under the **MIT License** - see the [LICENSE](LICENSE) 
 - **Vercel** - For Next.js and hosting infrastructure
 - **Supabase** - For PostgreSQL database and authentication
 - **shadcn/ui** - For beautiful accessible components
+- **Edunet Foundation** - For a great mentoring session
 
 ---
 
