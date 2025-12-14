@@ -8,6 +8,7 @@ import { useState, useEffect } from 'react';
 import { appointmentsApi } from '@/lib/api-client';
 import { Calendar, Clock, User, PlusCircle } from 'lucide-react';
 import { ErrorBanner } from '@/components/ui/error-banner';
+import { ScheduleAppointmentDialog } from '@/components/doctor/DoctorActions';
 
 interface Appointment {
   appointmentId: string;
@@ -26,6 +27,7 @@ export default function AppointmentsPage() {
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [showScheduleDialog, setShowScheduleDialog] = useState(false);
 
   useEffect(() => {
     const fetchAppointments = async () => {
@@ -78,9 +80,12 @@ export default function AppointmentsPage() {
                         Manage patient appointments and schedules
           </p>
         </div>
-        <Button className="bg-government-blue hover:bg-government-blue/90">
+        <Button
+          className="bg-government-blue hover:bg-government-blue/90"
+          onClick={() => setShowScheduleDialog(true)}
+        >
           <PlusCircle className="mr-2 h-4 w-4" />
-                    Schedule Appointment
+          Schedule Appointment
         </Button>
       </div>
 
@@ -154,6 +159,19 @@ export default function AppointmentsPage() {
           )}
         </CardContent>
       </Card>
+
+      {/* Schedule Appointment Dialog */}
+      {showScheduleDialog && (
+        <ScheduleAppointmentDialog
+          open={showScheduleDialog}
+          onOpenChange={setShowScheduleDialog}
+          onSuccess={() => {
+            setShowScheduleDialog(false);
+            // Refresh appointments list
+            window.location.reload();
+          }}
+        />
+      )}
     </div>
   );
 }

@@ -356,11 +356,25 @@ export function AddPatientDialog() {
  *
  * Properly implements appointment scheduling with all the same safeguards
  */
-export function ScheduleAppointmentDialog() {
+interface ScheduleAppointmentDialogProps {
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
+  onSuccess?: () => void;
+}
+
+export function ScheduleAppointmentDialog({
+  open: controlledOpen,
+  onOpenChange: controlledOnOpenChange,
+  onSuccess
+}: ScheduleAppointmentDialogProps = {}) {
   const { toast } = useToast();
-  const [open, setOpen] = useState(false);
+  const [internalOpen, setInternalOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Use controlled state if provided, otherwise use internal state
+  const open = controlledOpen !== undefined ? controlledOpen : internalOpen;
+  const setOpen = controlledOnOpenChange !== undefined ? controlledOnOpenChange : setInternalOpen;
 
   const [formData, setFormData] = useState({
     appointmentId: '',
@@ -447,6 +461,11 @@ export function ScheduleAppointmentDialog() {
 
       resetForm();
       setOpen(false);
+
+      // Call onSuccess callback if provided
+      if (onSuccess) {
+        onSuccess();
+      }
 
     } catch (err) {
       console.error('❌ Transaction failed:', err);

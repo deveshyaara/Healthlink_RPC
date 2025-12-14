@@ -13,6 +13,8 @@ import { ErrorBanner } from '@/components/ui/error-banner';
 import { Users, Search, Eye, FileText, PlusCircle } from 'lucide-react';
 import Link from 'next/link';
 import { RequireDoctor } from '@/components/auth/RequireRole';
+import { ActionModal } from '@/components/ui/action-modal';
+import { UploadRecordForm } from '@/components/forms/upload-record-form';
 
 interface Patient {
   patientId: string;
@@ -42,6 +44,9 @@ function DoctorPatientsPageContent() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [showUploadDialog, setShowUploadDialog] = useState(false);
+  const [_isSubmittingForm, setIsSubmittingForm] = useState(false);
+  const [selectedPatientId, setSelectedPatientId] = useState<string>('');
 
   useEffect(() => {
     const fetchPatients = async () => {
@@ -137,8 +142,12 @@ function DoctorPatientsPageContent() {
           label: 'Upload New Record',
           icon: PlusCircle,
           onClick: () => {
-            // Navigate to records page with upload action
-            window.location.href = '/dashboard/records';
+            // eslint-disable-next-line no-alert
+            const patientId = prompt('Enter Patient ID:');
+            if (patientId) {
+              setSelectedPatientId(patientId);
+              setShowUploadDialog(true);
+            }
           },
         }}
       />
@@ -235,6 +244,32 @@ function DoctorPatientsPageContent() {
           )}
         </CardContent>
       </Card>
+
+      {/* Upload Record Dialog */}
+      <ActionModal
+        isOpen={showUploadDialog}
+        onClose={() => {
+          setShowUploadDialog(false);
+          setIsSubmittingForm(false);
+          setSelectedPatientId('');
+        }}
+        title="Upload Medical Record"
+        description="Upload a new medical record for your patient"
+      >
+        {selectedPatientId && (
+          <UploadRecordForm
+            patientId={selectedPatientId}
+            onSuccess={() => {
+              setShowUploadDialog(false);
+              setIsSubmittingForm(false);
+              setSelectedPatientId('');
+              // Refresh the records list
+              window.location.reload();
+            }}
+            onSubmitting={setIsSubmittingForm}
+          />
+        )}
+      </ActionModal>
     </div>
   );
 }
