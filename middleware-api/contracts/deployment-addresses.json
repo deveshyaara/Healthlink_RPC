@@ -1,0 +1,13 @@
+{
+  "network": "sepolia",
+  "chainId": 11155111,
+  "deployer": "0x7C5c1D2A8ED6d47Bb3334AF5ac61558Dc1342742",
+  "timestamp": "2025-12-13T19:30:33.367Z",
+  "contracts": {
+    "HealthLink": "0x0405DcAf713C90eb962eAA333de91CB101A12204",
+    "PatientRecords": "0xf1fAf7AD8B516C8FB3B989361e1b0Ea8FF3EBF7f",
+    "Appointments": "0x88E1ED2140fF44B920D52222B28e257e6456528B",
+    "Prescriptions": "0x2bF912b9d40dd3e1b64ECB2c3d687eD0FBA1f33e",
+    "DoctorCredentials": "0x9458F3D05aCCb1E30578b9D756F6EeB6Bf8cC274"
+  }
+}

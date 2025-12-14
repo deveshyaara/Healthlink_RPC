@@ -61,11 +61,11 @@ class EthereumService {
     async loadContracts() {
         try {
             // Load deployment addresses
-            const deploymentPath = path.join(__dirname, '..', '..', '..', 'ethereum-contracts', 'deployment-addresses.json');
+            const deploymentPath = path.join(__dirname, '..', '..', 'contracts', 'deployment-addresses.json');
             const deploymentData = JSON.parse(fs.readFileSync(deploymentPath, 'utf8'));
 
             // Load contract ABIs
-            const artifactsPath = path.join(__dirname, '..', '..', '..', 'ethereum-contracts', 'artifacts', 'contracts');
+            const artifactsPath = path.join(__dirname, '..', '..', 'contracts', 'artifacts', 'contracts');
 
             const contractNames = ['HealthLink', 'PatientRecords', 'Appointments', 'Prescriptions', 'DoctorCredentials'];
 
