@@ -3,13 +3,10 @@
 import { useState, useEffect, useCallback } from 'react';
 import { ethers } from 'ethers';
 import { useAuth } from '@/contexts/auth-context';
+import { ROLE_HASHES } from '@/lib/roleHelpers';
 
-// Role hashes from OpenZeppelin AccessControl
-const ROLES = {
-  ADMIN: ethers.keccak256(ethers.toUtf8Bytes('ADMIN_ROLE')),
-  DOCTOR: ethers.keccak256(ethers.toUtf8Bytes('DOCTOR_ROLE')),
-  PATIENT: ethers.keccak256(ethers.toUtf8Bytes('PATIENT_ROLE')),
-};
+// Role hashes from roleHelpers (centralized)
+const ROLES = ROLE_HASHES;
 
 interface UserRoleState {
   isDoctor: boolean;

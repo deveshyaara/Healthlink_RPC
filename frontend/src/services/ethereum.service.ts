@@ -153,15 +153,18 @@ class EthereumService {
     try {
       // Load deployment addresses
       const addressesResponse = await fetch('/contracts/deployment-addresses.json');
-      const addresses = await addressesResponse.json();
+      const addressesData = await addressesResponse.json();
+
+      // Extract contract addresses (handles both formats)
+      const contracts = addressesData.contracts || addressesData;
 
       // Update config with loaded addresses
       this.config.contracts = {
-        healthLink: addresses.healthLink,
-        patientRecords: addresses.patientRecords,
-        appointments: addresses.appointments,
-        prescriptions: addresses.prescriptions,
-        doctorCredentials: addresses.doctorCredentials,
+        healthLink: contracts.HealthLink || contracts.healthLink,
+        patientRecords: contracts.PatientRecords || contracts.patientRecords,
+        appointments: contracts.Appointments || contracts.appointments,
+        prescriptions: contracts.Prescriptions || contracts.prescriptions,
+        doctorCredentials: contracts.DoctorCredentials || contracts.doctorCredentials,
       };
 
       // Load ABIs
