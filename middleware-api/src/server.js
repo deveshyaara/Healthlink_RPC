@@ -126,6 +126,18 @@ app.use(`/api/${API_VERSION}/healthcare`, healthcareRoutes);
 // Mount medical records routes (aliased for frontend compatibility)
 app.use('/api/medical-records', healthcareRoutes);
 
+// Mount appointments routes (aliased for frontend compatibility)
+app.use('/api/appointments', healthcareRoutes);
+
+// Mount prescriptions routes (aliased for frontend compatibility)
+app.use('/api/prescriptions', healthcareRoutes);
+
+// Mount consents routes (aliased for frontend compatibility)
+app.use('/api/consents', healthcareRoutes);
+
+// Mount patients routes (aliased for frontend compatibility)
+app.use('/api/patients', healthcareRoutes);
+
 // Mount legacy transaction routes (for backward compatibility)
 app.use(`/api/${API_VERSION}`, transactionRoutes);
 

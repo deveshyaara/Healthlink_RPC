@@ -90,9 +90,37 @@ router.get('/records/:recordId', healthcareController.getMedicalRecord);
  */
 router.post('/consents', healthcareController.createConsent);
 
+/**
+ * @route   GET /api/consents
+ * @desc    Get all consents for current user
+ * @access  Protected
+ */
+router.get('/consents', authenticateJWT, healthcareController.getCurrentUserConsents);
+
+/**
+ * @route   GET /api/consents/:consentId
+ * @desc    Get a specific consent
+ * @access  Protected
+ */
+router.get('/consents/:consentId', authenticateJWT, healthcareController.getConsent);
+
+/**
+ * @route   PATCH /api/consents/:consentId/revoke
+ * @desc    Revoke a consent
+ * @access  Protected
+ */
+router.patch('/consents/:consentId/revoke', authenticateJWT, healthcareController.revokeConsent);
+
 // ======================
 // Appointment Routes
 // ======================
+
+/**
+ * @route   GET /api/appointments
+ * @desc    Get all appointments for current user
+ * @access  Protected
+ */
+router.get('/appointments', authenticateJWT, healthcareController.getCurrentUserAppointments);
 
 /**
  * @route   POST /api/v1/healthcare/appointments
@@ -101,9 +129,37 @@ router.post('/consents', healthcareController.createConsent);
  */
 router.post('/appointments', healthcareController.createAppointment);
 
+/**
+ * @route   GET /api/appointments/:appointmentId
+ * @desc    Get a specific appointment
+ * @access  Protected
+ */
+router.get('/appointments/:appointmentId', authenticateJWT, healthcareController.getAppointment);
+
+/**
+ * @route   PUT /api/appointments/:appointmentId
+ * @desc    Update an appointment
+ * @access  Protected
+ */
+router.put('/appointments/:appointmentId', authenticateJWT, healthcareController.updateAppointment);
+
+/**
+ * @route   POST /api/appointments/:appointmentId/cancel
+ * @desc    Cancel an appointment
+ * @access  Protected
+ */
+router.post('/appointments/:appointmentId/cancel', authenticateJWT, healthcareController.cancelAppointment);
+
 // ======================
 // Prescription Routes
 // ======================
+
+/**
+ * @route   GET /api/prescriptions
+ * @desc    Get all prescriptions for current user
+ * @access  Protected
+ */
+router.get('/prescriptions', authenticateJWT, healthcareController.getCurrentUserPrescriptions);
 
 /**
  * @route   POST /api/v1/healthcare/prescriptions
@@ -111,6 +167,20 @@ router.post('/appointments', healthcareController.createAppointment);
  * @access  Public (should be protected in production)
  */
 router.post('/prescriptions', healthcareController.createPrescription);
+
+/**
+ * @route   GET /api/prescriptions/:prescriptionId
+ * @desc    Get a specific prescription
+ * @access  Protected
+ */
+router.get('/prescriptions/:prescriptionId', authenticateJWT, healthcareController.getPrescription);
+
+/**
+ * @route   PUT /api/prescriptions/:prescriptionId
+ * @desc    Update a prescription
+ * @access  Protected
+ */
+router.put('/prescriptions/:prescriptionId', authenticateJWT, healthcareController.updatePrescription);
 
 // ======================
 // Doctor Routes

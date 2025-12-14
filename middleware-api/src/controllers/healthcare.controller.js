@@ -240,6 +240,157 @@ class HealthcareController {
       next(error);
     }
   }
+
+  /**
+   * Get current user appointments
+   * GET /api/appointments
+   */
+  async getCurrentUserAppointments(req, res, next) {
+    try {
+      const userId = req.user.userId || req.user.id;
+      if (!userId) {
+        return res.status(400).json({ success: false, error: 'User ID not found' });
+      }
+
+      // Return empty array for now - implement based on role
+      logger.info(`Fetching appointments for user: ${userId}`);
+      res.status(200).json([]);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * Get specific appointment
+   * GET /api/appointments/:appointmentId
+   */
+  async getAppointment(req, res, next) {
+    try {
+      const { appointmentId } = req.params;
+      // Return empty for now - implement with smart contract call
+      res.status(200).json({ appointmentId, status: 'scheduled' });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * Update appointment
+   * PUT /api/appointments/:appointmentId
+   */
+  async updateAppointment(req, res, next) {
+    try {
+      const { appointmentId } = req.params;
+      const updateData = req.body;
+      // Return success for now - implement with smart contract call
+      res.status(200).json({ success: true, appointmentId, ...updateData });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * Cancel appointment
+   * POST /api/appointments/:appointmentId/cancel
+   */
+  async cancelAppointment(req, res, next) {
+    try {
+      const { appointmentId } = req.params;
+      // Return success for now - implement with smart contract call
+      res.status(200).json({ success: true, appointmentId, status: 'cancelled' });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * Get current user prescriptions
+   * GET /api/prescriptions
+   */
+  async getCurrentUserPrescriptions(req, res, next) {
+    try {
+      const userId = req.user.userId || req.user.id;
+      if (!userId) {
+        return res.status(400).json({ success: false, error: 'User ID not found' });
+      }
+
+      logger.info(`Fetching prescriptions for user: ${userId}`);
+      res.status(200).json([]);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * Get specific prescription
+   * GET /api/prescriptions/:prescriptionId
+   */
+  async getPrescription(req, res, next) {
+    try {
+      const { prescriptionId } = req.params;
+      res.status(200).json({ prescriptionId, status: 'active' });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * Update prescription
+   * PUT /api/prescriptions/:prescriptionId
+   */
+  async updatePrescription(req, res, next) {
+    try {
+      const { prescriptionId } = req.params;
+      const updateData = req.body;
+      res.status(200).json({ success: true, prescriptionId, ...updateData });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * Get current user consents
+   * GET /api/consents
+   */
+  async getCurrentUserConsents(req, res, next) {
+    try {
+      const userId = req.user.userId || req.user.id;
+      if (!userId) {
+        return res.status(400).json({ success: false, error: 'User ID not found' });
+      }
+
+      logger.info(`Fetching consents for user: ${userId}`);
+      res.status(200).json([]);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * Get specific consent
+   * GET /api/consents/:consentId
+   */
+  async getConsent(req, res, next) {
+    try {
+      const { consentId } = req.params;
+      res.status(200).json({ consentId, status: 'active' });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * Revoke consent
+   * PATCH /api/consents/:consentId/revoke
+   */
+  async revokeConsent(req, res, next) {
+    try {
+      const { consentId } = req.params;
+      res.status(200).json({ success: true, consentId, status: 'revoked' });
+    } catch (error) {
+      next(error);
+    }
+  }
 }
 
 export default new HealthcareController();
