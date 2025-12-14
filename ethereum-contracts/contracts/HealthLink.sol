@@ -72,11 +72,16 @@ contract HealthLink is AccessControl, ReentrancyGuard {
 
     /**
      * @dev Create a new patient record
+     * Can be called by admins or doctors (healthcare providers)
      */
     function createPatient(
         string memory _patientId,
         string memory _publicData
-    ) external onlyRole(ADMIN_ROLE) nonReentrant {
+    ) external nonReentrant {
+        require(
+            hasRole(ADMIN_ROLE, msg.sender) || hasRole(DOCTOR_ROLE, msg.sender),
+            "Only admins or doctors can create patients"
+        );
         require(!patients[_patientId].exists, "Patient already exists");
         
         patients[_patientId] = Patient({
