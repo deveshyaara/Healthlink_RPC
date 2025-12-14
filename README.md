@@ -14,6 +14,8 @@
 **Enterprise-Grade Healthcare Management System**  
 *Ethereum Smart Contracts | OpenZeppelin Security | Production-Ready*
 
+### 🌐 [Live Demo](https://healthlink-rpc.vercel.app) | [Backend API](https://healthlink-rpc.onrender.com/health)
+
 [📚 Documentation](#-documentation) • [🚀 Quick Start](#-quick-start) • [🏗️ Architecture](#️-architecture) • [✨ Features](#-features) • [🎯 Migration](#-migration-status)
 
 </div>
