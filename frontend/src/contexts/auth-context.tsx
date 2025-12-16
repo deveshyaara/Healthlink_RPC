@@ -7,6 +7,7 @@ import { AuthLoading } from '@/components/auth-loading';
 import { authApi } from '@/lib/api-client';
 import { getApiBaseUrl } from '@/lib/env-utils';
 import { logger } from '@/lib/logger';
+import { authUtils } from '@/lib/auth-utils';
 
 export interface User {
   id: string;
@@ -34,36 +35,28 @@ const isClient = () => typeof window !== 'undefined';
 // Helper function to store token (SSR-safe)
 const storeToken = (token: string) => {
   if (isClient()) {
+    authUtils.setToken(token);
     try {
-      localStorage.setItem('auth_token', token);
       document.cookie = `auth_token=${token}; path=/; max-age=86400; samesite=strict; secure`;
     } catch (error) {
-      logger.error('Failed to store token:', error);
+      logger.error('Failed to set cookie:', error);
     }
   }
 };
 
 // Helper function to retrieve token (SSR-safe)
 const getStoredToken = (): string | null => {
-  if (isClient()) {
-    try {
-      return localStorage.getItem('auth_token');
-    } catch (error) {
-      logger.error('Failed to retrieve token:', error);
-      return null;
-    }
-  }
-  return null;
+  return authUtils.getToken();
 };
 
 // Helper function to clear token (SSR-safe)
 const clearStoredToken = () => {
   if (isClient()) {
+    authUtils.removeToken();
     try {
-      localStorage.removeItem('auth_token');
       document.cookie = 'auth_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
     } catch (error) {
-      logger.error('Failed to clear token:', error);
+      logger.error('Failed to clear cookie:', error);
     }
   }
 };

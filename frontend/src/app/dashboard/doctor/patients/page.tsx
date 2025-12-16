@@ -15,6 +15,7 @@ import Link from 'next/link';
 import { RequireDoctor } from '@/components/auth/RequireRole';
 import { ActionModal } from '@/components/ui/action-modal';
 import { UploadRecordForm } from '@/components/forms/upload-record-form';
+import { PatientIdDialog } from '@/components/doctor/PatientIdDialog';
 
 interface Patient {
   patientId: string;
@@ -47,58 +48,59 @@ function DoctorPatientsPageContent() {
   const [showUploadDialog, setShowUploadDialog] = useState(false);
   const [_isSubmittingForm, setIsSubmittingForm] = useState(false);
   const [selectedPatientId, setSelectedPatientId] = useState<string>('');
+  const [showPatientIdDialog, setShowPatientIdDialog] = useState(false);
 
-  useEffect(() => {
-    const fetchPatients = async () => {
-      try {
-        setError(null);
-        setLoading(true);
+  const fetchPatients = async () => {
+    try {
+      setError(null);
+      setLoading(true);
 
-        // Get all medical records created by this doctor
-        const records = await medicalRecordsApi.getAll();
+      // Get all medical records created by this doctor
+      const records = await medicalRecordsApi.getAll();
 
-        // Extract unique patients from records
-        const patientMap = new Map<string, Patient>();
+      // Extract unique patients from records
+      const patientMap = new Map<string, Patient>();
 
-        if (Array.isArray(records)) {
-          records.forEach((record: { id: string; patientId: string; diagnosis: string; patientName?: string; patientEmail?: string; createdAt?: string; timestamp?: string }) => {
-            const patientId = record.patientId;
-            if (patientId) {
-              if (!patientMap.has(patientId)) {
-                patientMap.set(patientId, {
-                  patientId: patientId,
-                  name: record.patientName || patientId,
-                  email: record.patientEmail,
-                  lastVisit: record.createdAt || record.timestamp,
-                  recordCount: 1,
-                  status: 'Active',
-                });
-              } else {
-                const existing = patientMap.get(patientId)!;
-                existing.recordCount = (existing.recordCount || 0) + 1;
-                // Update last visit if newer
-                if (record.createdAt && (!existing.lastVisit || record.createdAt > existing.lastVisit)) {
-                  existing.lastVisit = record.createdAt;
-                }
+      if (Array.isArray(records)) {
+        records.forEach((record: { id: string; patientId: string; diagnosis: string; patientName?: string; patientEmail?: string; createdAt?: string; timestamp?: string }) => {
+          const patientId = record.patientId;
+          if (patientId) {
+            if (!patientMap.has(patientId)) {
+              patientMap.set(patientId, {
+                patientId: patientId,
+                name: record.patientName || patientId,
+                email: record.patientEmail,
+                lastVisit: record.createdAt || record.timestamp,
+                recordCount: 1,
+                status: 'Active',
+              });
+            } else {
+              const existing = patientMap.get(patientId)!;
+              existing.recordCount = (existing.recordCount || 0) + 1;
+              // Update last visit if newer
+              if (record.createdAt && (!existing.lastVisit || record.createdAt > existing.lastVisit)) {
+                existing.lastVisit = record.createdAt;
               }
             }
-          });
-        }
-
-        const patientList = Array.from(patientMap.values());
-        setPatients(patientList);
-        setFilteredPatients(patientList);
-      } catch (err) {
-        console.error('Failed to fetch patients:', err);
-        const errorMessage = err instanceof Error ? err.message : 'Failed to load patients';
-        setError(errorMessage);
-        setPatients([]);
-        setFilteredPatients([]);
-      } finally {
-        setLoading(false);
+          }
+        });
       }
-    };
 
+      const patientList = Array.from(patientMap.values());
+      setPatients(patientList);
+      setFilteredPatients(patientList);
+    } catch (err) {
+      console.error('Failed to fetch patients:', err);
+      const errorMessage = err instanceof Error ? err.message : 'Failed to load patients';
+      setError(errorMessage);
+      setPatients([]);
+      setFilteredPatients([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
     fetchPatients();
   }, []);
 
@@ -141,14 +143,7 @@ function DoctorPatientsPageContent() {
         actionButton={{
           label: 'Upload New Record',
           icon: PlusCircle,
-          onClick: () => {
-            // eslint-disable-next-line no-alert
-            const patientId = prompt('Enter Patient ID:');
-            if (patientId) {
-              setSelectedPatientId(patientId);
-              setShowUploadDialog(true);
-            }
-          },
+          onClick: () => setShowPatientIdDialog(true),
         }}
       />
 
@@ -263,13 +258,25 @@ function DoctorPatientsPageContent() {
               setShowUploadDialog(false);
               setIsSubmittingForm(false);
               setSelectedPatientId('');
-              // Refresh the records list
-              window.location.reload();
+              // Refresh the patients list properly
+              fetchPatients();
             }}
             onSubmitting={setIsSubmittingForm}
           />
         )}
       </ActionModal>
+
+      {/* Patient ID Input Dialog */}
+      <PatientIdDialog
+        open={showPatientIdDialog}
+        onOpenChange={setShowPatientIdDialog}
+        onSubmit={(patientId) => {
+          setSelectedPatientId(patientId);
+          setShowUploadDialog(true);
+        }}
+        title="Upload Medical Record"
+        description="Enter the patient ID for whom you want to upload a medical record"
+      />
     </div>
   );
 }

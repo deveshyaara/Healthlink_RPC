@@ -131,7 +131,7 @@ export const patientRoutes: NavRoute[] = [
 
 /**
  * ADMIN ROUTES
- * Admin views have system-wide access
+ * Admin views have system-wide access to everything
  */
 export const adminRoutes: NavRoute[] = [
   {
@@ -139,6 +139,34 @@ export const adminRoutes: NavRoute[] = [
     icon: LayoutDashboard,
     label: 'Dashboard',
     description: 'System overview',
+    roles: ['admin'],
+  },
+  {
+    href: '/dashboard/doctor',
+    icon: LayoutDashboard,
+    label: 'Doctor Dashboard',
+    description: 'Doctor portal view',
+    roles: ['admin'],
+  },
+  {
+    href: '/dashboard/patient',
+    icon: LayoutDashboard,
+    label: 'Patient Dashboard',
+    description: 'Patient portal view',
+    roles: ['admin'],
+  },
+  {
+    href: '/dashboard/doctor/patients',
+    icon: Users,
+    label: 'All Patients',
+    description: 'Manage all patients',
+    roles: ['admin'],
+  },
+  {
+    href: '/dashboard/doctor/records',
+    icon: FileText,
+    label: 'Doctor Records',
+    description: 'Search patient records',
     roles: ['admin'],
   },
   {
@@ -218,18 +246,30 @@ export function getRoutesForRole(role: string | undefined): NavRoute[] {
 
 /**
  * Check if a user has access to a specific route
+ * Admin users have access to ALL routes
  */
 export function canAccessRoute(userRole: string | undefined, routeHref: string): boolean {
-  if (!userRole) {return false;}
+  if (!userRole) {
+    return false;
+  }
+
+  const normalizedRole = userRole.toLowerCase();
+
+  // ADMIN HAS ACCESS TO EVERYTHING
+  if (normalizedRole === 'admin') {
+    return true;
+  }
 
   const allRoutes = [...doctorRoutes, ...patientRoutes, ...adminRoutes, ...commonRoutes];
   const route = allRoutes.find((r) => r.href === routeHref);
 
-  // If route not found, deny access (safest default)
-  if (!route) {return false;}
+  // If route not found, deny access for non-admin (safest default)
+  if (!route) {
+    return false;
+  }
 
   // Check if user's role is in the allowed roles for this route
-  return route.roles.includes(userRole.toLowerCase());
+  return route.roles.includes(normalizedRole);
 }
 
 /**

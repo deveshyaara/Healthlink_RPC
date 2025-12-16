@@ -10,6 +10,7 @@ import { ThemeToggle } from '@/components/theme-toggle';
 import { useTheme } from '@/components/theme-provider';
 import { useState, useEffect } from 'react';
 import { useToast } from '@/hooks/use-toast';
+import { safeStorage } from '@/lib/safe-storage';
 
 export default function SettingsPage() {
   const { theme } = useTheme();
@@ -35,7 +36,7 @@ export default function SettingsPage() {
     try {
       // Simulate API call
       await new Promise(resolve => setTimeout(resolve, 1000));
-      localStorage.setItem('userProfile', JSON.stringify(profileData));
+      safeStorage.setJSON('userProfile', profileData);
       toast({
         title: 'Profile Updated',
         description: 'Your profile has been successfully updated.',
@@ -56,7 +57,7 @@ export default function SettingsPage() {
     try {
       // Simulate API call
       await new Promise(resolve => setTimeout(resolve, 1000));
-      localStorage.setItem('notificationSettings', JSON.stringify(notifications));
+      safeStorage.setJSON('notificationSettings', notifications);
       toast({
         title: 'Notifications Updated',
         description: 'Your notification preferences have been saved.',
@@ -77,7 +78,7 @@ export default function SettingsPage() {
     try {
       // Simulate API call
       await new Promise(resolve => setTimeout(resolve, 1000));
-      localStorage.setItem('securitySettings', JSON.stringify(security));
+      safeStorage.setJSON('securitySettings', security);
       toast({
         title: 'Security Settings Updated',
         description: 'Your security preferences have been saved.',
@@ -93,21 +94,24 @@ export default function SettingsPage() {
     }
   };
 
-  // Load saved settings on component mount
+  // Load saved settings on component mount with safe JSON parsing
   useEffect(() => {
-    const savedProfile = localStorage.getItem('userProfile');
-    const savedNotifications = localStorage.getItem('notificationSettings');
-    const savedSecurity = localStorage.getItem('securitySettings');
+    const defaultProfile = { name: 'Current User', email: 'user@example.com' };
+    const defaultNotifications = {
+      emailNotifications: true,
+      smsNotifications: false,
+      auditAlerts: true,
+      consentRequests: true,
+    };
+    const defaultSecurity = { twoFactorEnabled: false, sessionTimeout: '30' };
 
-    if (savedProfile) {
-      setProfileData(JSON.parse(savedProfile));
-    }
-    if (savedNotifications) {
-      setNotifications(JSON.parse(savedNotifications));
-    }
-    if (savedSecurity) {
-      setSecurity(JSON.parse(savedSecurity));
-    }
+    const savedProfile = safeStorage.getJSON('userProfile', defaultProfile);
+    const savedNotifications = safeStorage.getJSON('notificationSettings', defaultNotifications);
+    const savedSecurity = safeStorage.getJSON('securitySettings', defaultSecurity);
+
+    setProfileData(savedProfile);
+    setNotifications(savedNotifications);
+    setSecurity(savedSecurity);
   }, []);
 
   return (

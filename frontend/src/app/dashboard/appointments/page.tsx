@@ -29,21 +29,22 @@ export default function AppointmentsPage() {
   const [error, setError] = useState<string | null>(null);
   const [showScheduleDialog, setShowScheduleDialog] = useState(false);
 
+  const fetchAppointments = async () => {
+    try {
+      setError(null);
+      const data = await appointmentsApi.getAll();
+      setAppointments(Array.isArray(data) ? data : []);
+    } catch (err) {
+      console.error('Failed to fetch appointments:', err);
+      const errorMessage = err instanceof Error ? err.message : 'Failed to load appointments';
+      setError(errorMessage);
+      setAppointments([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
-    const fetchAppointments = async () => {
-      try {
-        setError(null);
-        const data = await appointmentsApi.getAll();
-        setAppointments(Array.isArray(data) ? data : []);
-      } catch (err) {
-        console.error('Failed to fetch appointments:', err);
-        const errorMessage = err instanceof Error ? err.message : 'Failed to load appointments';
-        setError(errorMessage);
-        setAppointments([]);
-      } finally {
-        setLoading(false);
-      }
-    };
     fetchAppointments();
   }, []);
 
@@ -167,8 +168,8 @@ export default function AppointmentsPage() {
           onOpenChange={setShowScheduleDialog}
           onSuccess={() => {
             setShowScheduleDialog(false);
-            // Refresh appointments list
-            window.location.reload();
+            // Refresh appointments list properly
+            fetchAppointments();
           }}
         />
       )}

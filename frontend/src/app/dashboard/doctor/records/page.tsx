@@ -9,12 +9,13 @@ import { Badge } from '@/components/ui/badge';
 import { ActionModal } from '@/components/ui/action-modal';
 import { UploadRecordForm } from '@/components/forms/upload-record-form';
 import { useState, useEffect } from 'react';
-import { medicalRecordsApi } from '@/lib/api-client';
+import { medicalRecordsApi, storageApi } from '@/lib/api-client';
 import { useAuth } from '@/contexts/auth-context';
 import { ErrorBanner } from '@/components/ui/error-banner';
 import { FileText, Search, Eye, Download, Filter, Upload } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { RequireDoctor } from '@/components/auth/RequireRole';
+import { authUtils } from '@/lib/auth-utils';
 
 interface MedicalRecord {
   recordId: string;
@@ -103,19 +104,14 @@ function DoctorRecordsPageContent() {
 
   const handleDownloadFile = async (hash: string, recordId: string) => {
     try {
-      const token = localStorage.getItem('auth_token');
+      const token = authUtils.getToken();
       if (!token) {
         return;
       }
 
-      const response = await fetch(`http://localhost:3000/api/storage/${hash}`, {
-        method: 'GET',
-        headers: { 'Authorization': `Bearer ${token}` },
-      });
+      // Use storageApi for downloading files
+      const blob = await storageApi.download(hash);
 
-      if (!response.ok) {throw new Error('Download failed');}
-
-      const blob = await response.blob();
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;

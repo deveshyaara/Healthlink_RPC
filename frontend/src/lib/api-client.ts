@@ -5,6 +5,7 @@
 
 import { getApiBaseUrl } from './env-utils';
 import { logger } from './logger';
+import { authUtils } from './auth-utils';
 
 // ========================================
 // TYPES
@@ -55,8 +56,8 @@ async function fetchApi<T>(
   const apiUrl = getApiBaseUrl();
   const url = `${apiUrl}${endpoint}`;
 
-  // Get token from localStorage if available
-  const token = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null;
+  // Get token from centralized auth utility
+  const token = authUtils.getToken();
 
   const defaultHeaders: HeadersInit = {
     'Content-Type': 'application/json',
@@ -132,7 +133,7 @@ async function fetchApi<T>(
 async function uploadFile(endpoint: string, formData: FormData): Promise<any> {
   const apiUrl = getApiBaseUrl();
   const url = `${apiUrl}${endpoint}`;
-  const token = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null;
+  const token = authUtils.getToken();
 
   const headers: HeadersInit = {};
   if (token) {
@@ -415,7 +416,7 @@ export const storageApi = {
    * Returns: Blob of the file
    */
   download: async (hash: string): Promise<Blob> => {
-    const token = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null;
+    const token = authUtils.getToken();
     const apiUrl = getApiBaseUrl();
     const response = await fetch(`${apiUrl}/api/storage/${hash}`, {
       method: 'GET',

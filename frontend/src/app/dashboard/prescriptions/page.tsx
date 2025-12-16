@@ -87,7 +87,7 @@ export default function PrescriptionsPage() {
                         Manage patient prescriptions and medications
           </p>
         </div>
-        {user?.role === 'doctor' && (
+        {(user?.role === 'doctor' || user?.role === 'admin') && (
           <Button
             className="bg-government-blue hover:bg-government-blue/90"
             onClick={() => setShowCreateDialog(true)}
@@ -174,7 +174,7 @@ export default function PrescriptionsPage() {
       </Card>
 
       {/* Create Prescription Modal */}
-      {user?.role === 'doctor' && (
+      {(user?.role === 'doctor' || user?.role === 'admin') && (
         <ActionModal
           title="Create New Prescription"
           description="Create a prescription with medication details for your patient"

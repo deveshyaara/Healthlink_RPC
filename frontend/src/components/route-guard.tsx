@@ -26,11 +26,18 @@ export function RouteGuard({ children }: RouteGuardProps) {
 
   useEffect(() => {
     // Wait for auth to load
-    if (loading) {return;}
+    if (loading) {
+      return;
+    }
 
     // If not authenticated, redirect to login
     if (!user) {
       router.push('/signin');
+      return;
+    }
+
+    // Admin has access to all routes - skip access check
+    if (user.role?.toLowerCase() === 'admin') {
       return;
     }
 
@@ -58,6 +65,11 @@ export function RouteGuard({ children }: RouteGuardProps) {
   // Not authenticated
   if (!user) {
     return null; // Will redirect in useEffect
+  }
+
+  // Admin users bypass all access checks
+  if (user.role?.toLowerCase() === 'admin') {
+    return <>{children}</>;
   }
 
   // Check access

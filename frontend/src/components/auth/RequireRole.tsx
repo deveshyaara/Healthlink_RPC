@@ -55,6 +55,15 @@ export function RequireRole({
     let mounted = true;
 
     async function checkRole() {
+      // Admin users always have access
+      if (user?.role?.toLowerCase() === 'admin') {
+        if (mounted) {
+          setHasRole(true);
+          setLoading(false);
+        }
+        return;
+      }
+
       if (!user) {
         setLoading(false);
         setHasRole(false);
