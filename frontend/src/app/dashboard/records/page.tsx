@@ -54,7 +54,6 @@ export default function RecordsPage() {
     setLoading(true);
     try {
       const response = await medicalRecordsApi.getAll();
-      console.log('Records API response:', response);
 
       // Handle different response formats
       let recordsData: MedicalRecord[] = [];
@@ -74,11 +73,9 @@ export default function RecordsPage() {
       }
 
       setRecords(recordsData);
-      console.log('Loaded records:', recordsData.length);
-    } catch (error) {
-      console.error('Failed to fetch records:', error);
+    } catch {
       toast.error('Failed to Load Records', {
-        description: error instanceof Error ? error.message : 'Unable to connect to the server. Please check your connection.',
+        description: 'Unable to connect to the server. Please check your connection.',
       });
       setRecords([]);
     } finally {
@@ -96,8 +93,8 @@ export default function RecordsPage() {
       const details = await medicalRecordsApi.getRecord(record.recordId, 'Viewing record details');
       setSelectedRecord({ ...record, ...(details && typeof details === 'object' ? details : {}) });
       setShowDetailsDialog(true);
-    } catch (error) {
-      console.warn('Record details fetch failed (showing basic info):', error);
+    } catch {
+      // Show basic info if details fetch fails
       setSelectedRecord(record);
       setShowDetailsDialog(true);
     } finally {

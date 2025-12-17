@@ -23,40 +23,40 @@ const transactionQueue = new Bull('transactions', {
  */
 transactionQueue.process(async (job) => {
   const { type, functionName, args, userId, transientData } = job.data;
-  
-  logger.info(`Processing queue job: ${type} - ${functionName}`, { 
+
+  logger.info(`Processing queue job: ${type} - ${functionName}`, {
     jobId: job.id,
     userId,
   });
 
   try {
     let result;
-    
+
     switch (type) {
       case 'submit':
         result = await transactionService.submitTransaction(functionName, args, userId);
         break;
-        
+
       case 'submit-private':
         result = await transactionService.submitPrivateTransaction(
           functionName,
           transientData,
           args,
-          userId
+          userId,
         );
         break;
-        
+
       case 'query':
         result = await transactionService.queryLedger(functionName, args, userId);
         break;
-        
+
       default:
         throw new Error(`Unknown job type: ${type}`);
     }
-    
+
     logger.info(`Queue job ${job.id} completed successfully`);
     return result;
-    
+
   } catch (error) {
     logger.error(`Queue job ${job.id} failed:`, error);
     throw error;
@@ -94,7 +94,7 @@ export const addTransactionToQueue = async (
   args = [],
   userId = null,
   transientData = null,
-  options = {}
+  options = {},
 ) => {
   try {
     const job = await transactionQueue.add(
@@ -114,15 +114,15 @@ export const addTransactionToQueue = async (
         removeOnComplete: true,
         removeOnFail: false,
         ...options,
-      }
+      },
     );
-    
-    logger.info(`Transaction added to queue`, {
+
+    logger.info('Transaction added to queue', {
       jobId: job.id,
       type,
       functionName,
     });
-    
+
     return {
       jobId: job.id,
       status: 'queued',
@@ -143,16 +143,16 @@ export const addTransactionToQueue = async (
 export const getJobStatus = async (jobId) => {
   try {
     const job = await transactionQueue.getJob(jobId);
-    
+
     if (!job) {
       return { status: 'not_found' };
     }
-    
+
     const state = await job.getState();
     const progress = job.progress();
     const result = job.returnvalue;
     const failedReason = job.failedReason;
-    
+
     return {
       jobId,
       status: state,
@@ -182,7 +182,7 @@ export const getQueueStats = async () => {
       transactionQueue.getFailedCount(),
       transactionQueue.getDelayedCount(),
     ]);
-    
+
     return {
       waiting,
       active,

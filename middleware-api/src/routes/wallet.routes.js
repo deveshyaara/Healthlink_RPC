@@ -11,7 +11,7 @@ const router = express.Router();
  */
 router.post(
   '/enroll-admin',
-  walletController.enrollAdmin.bind(walletController)
+  walletController.enrollAdmin.bind(walletController),
 );
 
 /**
@@ -22,7 +22,7 @@ router.post(
 router.post(
   '/register',
   validate(schemas.registerUser),
-  walletController.registerUser.bind(walletController)
+  walletController.registerUser.bind(walletController),
 );
 
 /**
@@ -32,7 +32,7 @@ router.post(
  */
 router.get(
   '/identity/:userId',
-  walletController.getIdentity.bind(walletController)
+  walletController.getIdentity.bind(walletController),
 );
 
 /**
@@ -42,7 +42,7 @@ router.get(
  */
 router.get(
   '/identities',
-  walletController.listIdentities.bind(walletController)
+  walletController.listIdentities.bind(walletController),
 );
 
 /**
@@ -52,7 +52,7 @@ router.get(
  */
 router.delete(
   '/identity/:userId',
-  walletController.removeIdentity.bind(walletController)
+  walletController.removeIdentity.bind(walletController),
 );
 
 export default router;

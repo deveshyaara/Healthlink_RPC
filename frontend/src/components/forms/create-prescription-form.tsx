@@ -159,13 +159,9 @@ export function CreatePrescriptionForm({
         appointmentId: data.appointmentId || undefined,
       };
 
-      console.log('Creating prescription:', prescriptionPayload);
-
       // Import dynamically to avoid circular dependencies
       const { prescriptionsApi } = await import('@/lib/api-client');
-      const response = await prescriptionsApi.create(prescriptionPayload);
-
-      console.log('Prescription created successfully:', response);
+      const _response = await prescriptionsApi.create(prescriptionPayload);
 
       // Import toast dynamically
       const { toast } = await import('sonner');

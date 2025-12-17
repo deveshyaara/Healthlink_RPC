@@ -4,7 +4,7 @@ import { API_CONFIG } from '@/config/api.config';
 
 interface ContractEvent {
   eventName: string;
-  payload: any;
+  payload: Record<string, unknown>;
   chaincodeName: string;
   transactionId: string;
   blockNumber: number;
@@ -42,29 +42,24 @@ export const useBlockchainEvents = (options: UseBlockchainEventsOptions = {}) =>
     });
 
     newSocket.on('connect', () => {
-      console.log('Connected to blockchain event server');
       setConnected(true);
       setError(null);
     });
 
     newSocket.on('disconnect', () => {
-      console.log('Disconnected from blockchain event server');
       setConnected(false);
     });
 
     newSocket.on('connect_error', (err) => {
-      console.error('Connection error:', err);
       setError(err.message);
       setConnected(false);
     });
 
     newSocket.on('contract-event', (event: ContractEvent) => {
-      console.log('Contract event received:', event);
       setContractEvents((prev) => [...prev, event]);
     });
 
     newSocket.on('block-event', (event: BlockEvent) => {
-      console.log('Block event received:', event);
       setBlockEvents((prev) => [...prev, event]);
     });
 
@@ -89,7 +84,6 @@ export const useBlockchainEvents = (options: UseBlockchainEventsOptions = {}) =>
     (contractName: string, eventName: string) => {
       if (socket && connected) {
         socket.emit('subscribe-contract-event', { contractName, eventName });
-        console.log(`Subscribed to ${contractName}:${eventName}`);
       }
     },
     [socket, connected],
@@ -99,7 +93,6 @@ export const useBlockchainEvents = (options: UseBlockchainEventsOptions = {}) =>
     (contractName: string, eventName: string) => {
       if (socket && connected) {
         socket.emit('unsubscribe-contract-event', { contractName, eventName });
-        console.log(`Unsubscribed from ${contractName}:${eventName}`);
       }
     },
     [socket, connected],
@@ -109,7 +102,6 @@ export const useBlockchainEvents = (options: UseBlockchainEventsOptions = {}) =>
     (startBlock?: number) => {
       if (socket && connected) {
         socket.emit('subscribe-block-event', { startBlock });
-        console.log('Subscribed to block events');
       }
     },
     [socket, connected],
@@ -118,7 +110,6 @@ export const useBlockchainEvents = (options: UseBlockchainEventsOptions = {}) =>
   const unsubscribeFromBlockEvents = useCallback(() => {
     if (socket && connected) {
       socket.emit('unsubscribe-block-event');
-      console.log('Unsubscribed from block events');
     }
   }, [socket, connected]);
 

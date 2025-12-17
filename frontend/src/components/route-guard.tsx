@@ -45,9 +45,6 @@ export function RouteGuard({ children }: RouteGuardProps) {
     const hasAccess = canAccessRoute(user.role, pathname);
 
     if (!hasAccess) {
-      // Log unauthorized access attempt
-      console.warn(`[Route Guard] Unauthorized access attempt by ${user.role} to ${pathname}`);
-
       // Don't redirect, show 403 page instead (better UX)
       // User might have bookmarked the URL or clicked a shared link
     }
@@ -89,7 +86,7 @@ export function RouteGuard({ children }: RouteGuardProps) {
             Access Denied
           </h1>
           <p className="text-neutral-600 dark:text-neutral-400 mb-6">
-            You don't have permission to access this page. This feature is not available for {user.role}s.
+            You don&apos;t have permission to access this page. This feature is not available for {user.role}s.
           </p>
           <div className="space-y-3">
             <Button asChild className="w-full bg-government-blue hover:bg-government-blue/90">

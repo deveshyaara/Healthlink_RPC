@@ -39,27 +39,19 @@ export function DoctorStats() {
         const appointments = appointmentsResult.status === 'fulfilled' ? appointmentsResult.value : [];
         const prescriptions = prescriptionsResult.status === 'fulfilled' ? prescriptionsResult.value : [];
 
-        // Log any failures for debugging
-        if (appointmentsResult.status === 'rejected') {
-          console.warn('[DoctorStats] Failed to fetch appointments:', appointmentsResult.reason);
-        }
-        if (prescriptionsResult.status === 'rejected') {
-          console.warn('[DoctorStats] Failed to fetch prescriptions:', prescriptionsResult.reason);
-        }
-
         // Calculate stats from fetched data
         // Extract unique patient IDs from appointments and prescriptions
         const patientIds = new Set<string>();
-        appointments.forEach((apt: any) => {
+        appointments.forEach((apt: { patientId?: string }) => {
           if (apt.patientId) {patientIds.add(apt.patientId);}
         });
-        prescriptions.forEach((rx: any) => {
+        prescriptions.forEach((rx: { patientId?: string }) => {
           if (rx.patientId) {patientIds.add(rx.patientId);}
         });
 
         // Count consultations (completed appointments)
         const completedAppointments = appointments.filter(
-          (apt: any) => apt.status === 'Completed'
+          (apt: { status?: string }) => apt.status === 'Completed'
         );
 
         // Update stats

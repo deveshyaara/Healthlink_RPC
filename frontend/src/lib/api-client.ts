@@ -149,21 +149,15 @@ async function uploadFile(endpoint: string, formData: FormData): Promise<any> {
     mode: 'cors',
   };
 
-  try {
-    console.log('[API Client] Uploading file to:', url);
-    const response = await fetch(url, config);
+  const response = await fetch(url, config);
 
-    if (!response.ok) {
-      const errorResponse = await response.json();
-      throw new Error(errorResponse.message || `Upload failed: ${response.statusText}`);
-    }
-
-    const jsonResponse = await response.json();
-    return jsonResponse.data || jsonResponse;
-  } catch (error) {
-    console.error('[API Client] Upload failed:', error);
-    throw error;
+  if (!response.ok) {
+    const errorResponse = await response.json();
+    throw new Error(errorResponse.message || `Upload failed: ${response.statusText}`);
   }
+
+  const jsonResponse = await response.json();
+  return jsonResponse.data || jsonResponse;
 }
 
 // ========================================
@@ -461,22 +455,18 @@ export const getAllConsents = consentsApi.getAll;
 
 export const auditApi = {
   getAll: async (): Promise<any[]> => {
-    console.warn('[API Client] auditApi.getAll() not yet implemented');
     return [];
   },
   getById: async (_id: string): Promise<any> => {
-    console.warn('[API Client] auditApi.getById() not yet implemented');
     throw new Error('Audit API not yet implemented');
   },
 };
 
 export const labTestsApi = {
   getAll: async (): Promise<any[]> => {
-    console.warn('[API Client] labTestsApi.getAll() not yet implemented');
     return [];
   },
   getById: async (_id: string): Promise<any> => {
-    console.warn('[API Client] labTestsApi.getById() not yet implemented');
     throw new Error('Lab Tests API not yet implemented');
   },
   create: async (_data: any): Promise<any> => {

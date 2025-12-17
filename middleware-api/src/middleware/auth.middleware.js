@@ -4,7 +4,6 @@
  */
 
 import authService from '../services/auth.service.js';
-import { getWalletServiceInstance } from '../services/wallet.service.js';
 
 /**
  * Authenticate JWT token and load Fabric identity
@@ -13,7 +12,7 @@ export const authenticateJWT = async (req, res, next) => {
   try {
     // Extract token from Authorization header
     const authHeader = req.headers.authorization;
-    
+
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
       return res.status(401).json({
         status: 'error',
@@ -21,8 +20,8 @@ export const authenticateJWT = async (req, res, next) => {
         message: 'No authentication token provided',
         error: {
           code: 'AUTH_TOKEN_MISSING',
-          details: 'Authorization header with Bearer token is required'
-        }
+          details: 'Authorization header with Bearer token is required',
+        },
       });
     }
 
@@ -39,8 +38,8 @@ export const authenticateJWT = async (req, res, next) => {
         message: 'Invalid or expired token',
         error: {
           code: 'AUTH_TOKEN_INVALID',
-          details: error.message
-        }
+          details: error.message,
+        },
       });
     }
 
@@ -53,8 +52,8 @@ export const authenticateJWT = async (req, res, next) => {
         message: 'User not found',
         error: {
           code: 'USER_NOT_FOUND',
-          details: 'User associated with token does not exist'
-        }
+          details: 'User associated with token does not exist',
+        },
       });
     }
 
@@ -65,8 +64,8 @@ export const authenticateJWT = async (req, res, next) => {
         message: 'Account is inactive',
         error: {
           code: 'ACCOUNT_INACTIVE',
-          details: 'User account has been deactivated'
-        }
+          details: 'User account has been deactivated',
+        },
       });
     }
 
@@ -78,7 +77,7 @@ export const authenticateJWT = async (req, res, next) => {
       req.fabricIdentity = {
         userId: 'admin', // Use admin for blockchain operations
         mspId: 'Org1MSP',
-        type: 'X.509'
+        type: 'X.509',
       };
 
       next();
@@ -90,8 +89,8 @@ export const authenticateJWT = async (req, res, next) => {
         message: 'Failed to load blockchain identity',
         error: {
           code: 'IDENTITY_LOAD_ERROR',
-          details: error.message
-        }
+          details: error.message,
+        },
       });
     }
   } catch (error) {
@@ -102,8 +101,8 @@ export const authenticateJWT = async (req, res, next) => {
       message: 'Authentication failed',
       error: {
         code: 'AUTH_MIDDLEWARE_ERROR',
-        details: error.message
-      }
+        details: error.message,
+      },
     });
   }
 };
@@ -114,7 +113,7 @@ export const authenticateJWT = async (req, res, next) => {
  */
 export const optionalAuth = async (req, res, next) => {
   const authHeader = req.headers.authorization;
-  
+
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
     // No token, continue without user context
     req.user = null;
@@ -138,8 +137,8 @@ export const requireRole = (...allowedRoles) => {
         message: 'Authentication required',
         error: {
           code: 'AUTH_REQUIRED',
-          details: 'This endpoint requires authentication'
-        }
+          details: 'This endpoint requires authentication',
+        },
       });
     }
 
@@ -150,8 +149,8 @@ export const requireRole = (...allowedRoles) => {
         message: 'Insufficient permissions',
         error: {
           code: 'PERMISSION_DENIED',
-          details: `Required role: ${allowedRoles.join(' or ')}. Your role: ${req.user.role}`
-        }
+          details: `Required role: ${allowedRoles.join(' or ')}. Your role: ${req.user.role}`,
+        },
       });
     }
 

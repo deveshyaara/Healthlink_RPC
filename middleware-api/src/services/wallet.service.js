@@ -24,13 +24,13 @@ class WalletService {
     try {
       // Resolve wallet path to absolute path
       const walletPath = path.resolve(config.wallet.path);
-      
+
       // Ensure wallet directory exists
       if (!fs.existsSync(walletPath)) {
         fs.mkdirSync(walletPath, { recursive: true });
         logger.info(`Created wallet directory at: ${walletPath}`);
       }
-      
+
       // Create wallet instance
       this.wallet = await Wallets.newFileSystemWallet(walletPath);
       logger.info(`Wallet initialized at: ${walletPath}`);
@@ -38,7 +38,7 @@ class WalletService {
       // Initialize CA client with absolute path
       const connectionProfilePath = path.resolve(config.fabric.connectionProfilePath);
       const connectionProfile = JSON.parse(
-        fs.readFileSync(connectionProfilePath, 'utf8')
+        fs.readFileSync(connectionProfilePath, 'utf8'),
       );
 
       const caInfo = connectionProfile.certificateAuthorities[
@@ -48,7 +48,7 @@ class WalletService {
       this.caClient = new FabricCAServices(
         caInfo.url,
         { trustedRoots: caTLSCACerts, verify: false },
-        caInfo.caName
+        caInfo.caName,
       );
 
       logger.info('CA Client initialized');
@@ -65,7 +65,7 @@ class WalletService {
   async enrollAdmin() {
     try {
       const adminId = config.wallet.adminUserId;
-      
+
       // Check if admin already enrolled
       const identity = await this.wallet.get(adminId);
       if (identity) {
@@ -135,7 +135,7 @@ class WalletService {
           role,
           attrs: [{ name: 'role', value: role, ecert: true }],
         },
-        adminUser
+        adminUser,
       );
 
       // Enroll the user
@@ -156,8 +156,8 @@ class WalletService {
       await this.wallet.put(userId, x509Identity);
       logger.info(`User ${userId} registered and enrolled successfully`);
 
-      return { 
-        message: 'User registered successfully', 
+      return {
+        message: 'User registered successfully',
         userId,
         role,
       };

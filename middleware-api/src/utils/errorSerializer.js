@@ -8,7 +8,7 @@ import { inspect } from 'util';
 /**
  * Safe stringify with circular reference handling
  * Uses util.inspect for robust serialization of complex objects
- * 
+ *
  * @param {any} obj - Object to stringify
  * @param {number} depth - Maximum depth (default: 2)
  * @returns {string} JSON-safe string representation
@@ -47,7 +47,7 @@ export function safeStringify(obj, depth = 2) {
 /**
  * Serialize error object safely
  * Handles Redis errors, Fabric SDK errors, and native Error objects
- * 
+ *
  * @param {Error} error - Error object to serialize
  * @returns {Object} Safe error representation
  */
@@ -117,7 +117,7 @@ export function serializeError(error) {
 /**
  * Create safe JSON response from error
  * Ensures no circular references in HTTP responses
- * 
+ *
  * @param {Error} error - Error to convert
  * @param {boolean} includeStack - Include stack trace (default: false)
  * @returns {Object} JSON-serializable error object
@@ -155,13 +155,13 @@ export function createSafeErrorResponse(error, includeStack = false) {
 /**
  * Extract Fabric-specific error information
  * Parses Fabric SDK error messages for specific error types
- * 
+ *
  * @param {Error} error - Fabric error
  * @returns {Object} Parsed error info
  */
 export function parseFabricErrorDetails(error) {
   const message = error?.message || String(error);
-  
+
   const patterns = {
     IDENTITY_NOT_FOUND: /identity.*not found/i,
     MVCC_CONFLICT: /MVCC_READ_CONFLICT|mvcc.*conflict/i,

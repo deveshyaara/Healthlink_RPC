@@ -1,6 +1,5 @@
 import transactionService from '../services/transaction.service.js';
 import { addTransactionToQueue, getJobStatus } from '../queue/transaction.queue.js';
-import logger from '../utils/logger.js';
 
 /**
  * TransactionController
@@ -48,7 +47,7 @@ class TransactionController {
         functionName,
         transientData,
         args,
-        userId
+        userId,
       );
 
       res.status(200).json(result);
@@ -101,7 +100,7 @@ class TransactionController {
       const result = await transactionService.getAllAssets(
         parseInt(pageSize) || 10,
         bookmark || '',
-        userId
+        userId,
       );
 
       res.status(200).json(result);

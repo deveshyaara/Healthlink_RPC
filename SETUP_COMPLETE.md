@@ -339,4 +339,4 @@ Refer to [ETHEREUM_SETUP_GUIDE.md](ETHEREUM_SETUP_GUIDE.md) for detailed usage i
 **Need Help?**
 - Check logs in `middleware-api/logs/`
 - Review [ethereum-contracts/README.md](ethereum-contracts/README.md)
-- See [MIGRATION_SUMMARY.md](MIGRATION_SUMMARY.md) for technical details
+- See [README.md](README.md) for system overview

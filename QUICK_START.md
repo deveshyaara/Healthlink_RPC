@@ -225,7 +225,7 @@ npm run dev
 
 ## 📞 Need Help?
 
-1. Check `MIGRATION_COMPLETE.md` for detailed documentation
+1. Check [README.md](README.md) for detailed documentation
 2. Review test files for usage examples:
    - `middleware-api/test-backend.js`
    - `ethereum-contracts/test/*.test.js`

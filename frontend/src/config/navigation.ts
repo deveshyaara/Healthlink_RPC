@@ -4,6 +4,7 @@
  * This is the single source of truth for sidebar navigation
  */
 
+import React from 'react';
 import {
   LayoutDashboard,
   FileText,
@@ -18,7 +19,7 @@ import {
 
 export interface NavRoute {
   href: string;
-  icon: any;
+  icon: React.ComponentType<{ className?: string }>;
   label: string;
   description?: string;
   roles: string[];

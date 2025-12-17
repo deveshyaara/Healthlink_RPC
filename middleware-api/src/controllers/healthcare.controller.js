@@ -15,7 +15,7 @@ class HealthcareController {
       const { patientId, name, age, bloodType, allergies } = req.body;
 
       const result = await transactionService.createPatient(
-        patientId, name, age, bloodType, allergies || ''
+        patientId, name, age, bloodType, allergies || '',
       );
 
       res.status(201).json(result);
@@ -49,7 +49,7 @@ class HealthcareController {
       const { recordId, patientId, doctorId, recordType, ipfsHash, metadata } = req.body;
 
       const result = await transactionService.createMedicalRecord(
-        recordId, patientId, doctorId, recordType, ipfsHash, metadata || ''
+        recordId, patientId, doctorId, recordType, ipfsHash, metadata || '',
       );
 
       res.status(201).json(result);
@@ -130,7 +130,7 @@ class HealthcareController {
       const { consentId, patientId, doctorAddress, validityDays } = req.body;
 
       const result = await transactionService.createConsent(
-        consentId, patientId, doctorAddress, validityDays
+        consentId, patientId, doctorAddress, validityDays,
       );
 
       res.status(201).json(result);
@@ -148,7 +148,7 @@ class HealthcareController {
       const { appointmentId, patientId, doctorAddress, timestamp, notes } = req.body;
 
       const result = await transactionService.createAppointment(
-        appointmentId, patientId, doctorAddress, timestamp, notes || ''
+        appointmentId, patientId, doctorAddress, timestamp, notes || '',
       );
 
       res.status(201).json(result);
@@ -166,7 +166,7 @@ class HealthcareController {
       const { prescriptionId, patientId, doctorAddress, medication, dosage, expiryTimestamp } = req.body;
 
       const result = await transactionService.createPrescription(
-        prescriptionId, patientId, doctorAddress, medication, dosage, expiryTimestamp
+        prescriptionId, patientId, doctorAddress, medication, dosage, expiryTimestamp,
       );
 
       res.status(201).json(result);
@@ -184,7 +184,7 @@ class HealthcareController {
       const { doctorAddress, name, specialization, licenseNumber, hospitalAffiliation } = req.body;
 
       const result = await transactionService.registerDoctor(
-        doctorAddress, name, specialization, licenseNumber, hospitalAffiliation
+        doctorAddress, name, specialization, licenseNumber, hospitalAffiliation,
       );
 
       res.status(201).json(result);
@@ -232,7 +232,7 @@ class HealthcareController {
       const { limit } = req.query;
 
       const result = await transactionService.getAuditRecords(
-        parseInt(limit) || 10
+        parseInt(limit) || 10,
       );
 
       res.status(200).json(result);

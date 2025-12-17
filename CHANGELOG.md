@@ -15,10 +15,10 @@ This release represents a complete transformation from prototype to production-r
 
 ### 🚀 Added
 
-#### Database Layer (Prisma ORM Migration)
+#### Database Layer (Prisma ORM Integration)
 - **Prisma ORM Integration**: Replaced raw Supabase client calls with type-safe Prisma Client
   - Auto-generated TypeScript types for all database models
-  - Schema migration management with version control
+  - Schema management with version control
   - Query builder with auto-completion and compile-time validation
   - Automatic connection pooling and query optimization
   
@@ -28,8 +28,8 @@ This release represents a complete transformation from prototype to production-r
   - Type-safe enums: `Role` (PATIENT, DOCTOR, ADMIN, GOVERNMENT)
   - Type-safe enums: `DoctorVerificationStatus` (PENDING, VERIFIED, SUSPENDED)
   
-- **Migration Infrastructure**:
-  - `migrate.sh`: Automated migration script with 6 modes (dev, deploy, push, generate, reset, studio)
+- **Schema Management Infrastructure**:
+  - `migrate.sh`: Automated schema script with 6 modes (dev, deploy, push, generate, reset, studio)
   - `schema.prisma`: Declarative database schema with full documentation
   - Automatic schema synchronization with database
   
@@ -37,13 +37,12 @@ This release represents a complete transformation from prototype to production-r
 - **JSDoc/TSDoc Comments**: 930+ lines of comprehensive documentation across core services
   - `auth.service.js`: 10 methods fully documented (250+ lines)
   - `db.service.js`: 14 methods fully documented (300+ lines)
-  - `fabricGateway.service.js`: 8 methods fully documented (200+ lines)
   - `api-client.ts`: 15+ API namespaces documented (180+ lines)
   
 - **Architecture Documentation**:
   - `ARCHITECTURE_DIAGRAM.md`: Master system architecture with 3 Mermaid diagrams
   - Complete data flow visualizations (login, create record)
-  - Data separation table (Supabase vs Fabric vs CAS)
+  - Data separation table (Supabase vs Ethereum Blockchain)
   - Port configuration reference (10+ services)
   - Security architecture documentation
   
@@ -63,7 +62,7 @@ This release represents a complete transformation from prototype to production-r
 - **Type Safety**: Full TypeScript/JSDoc type inference across all database operations
 - **Auto-Completion**: IDE support for database queries with field suggestions
 - **Compile-Time Validation**: Catch database errors before runtime
-- **Migration History**: Version-controlled database schema changes
+- **Schema History**: Version-controlled database schema changes
 - **Prisma Studio**: Visual database browser (accessible via `./migrate.sh studio`)
 
 ### 🔄 Changed
@@ -89,7 +88,7 @@ This release represents a complete transformation from prototype to production-r
 #### Error Handling
 - **Before**: Generic error messages with inconsistent formats
 - **After**: Prisma-specific error codes with meaningful messages
-  - `P2002`: Unique constraint violation (duplicate email/fabricId)
+  - `P2002`: Unique constraint violation (duplicate email/userId)
   - Automatic foreign key validation
   - Type mismatch detection at compile-time
 
@@ -141,7 +140,7 @@ users (
   email VARCHAR(255) UNIQUE,
   password_hash TEXT,
   role VARCHAR(50) CHECK,
-  fabric_enrollment_id VARCHAR(255) UNIQUE,
+  blockchain_address VARCHAR(255) UNIQUE,
   full_name VARCHAR(255),
   phone_number VARCHAR(20),
   avatar_url TEXT,
@@ -177,7 +176,7 @@ user_audit_log (
 #### Indexes Created
 - `idx_users_email` - Fast email lookups (login)
 - `idx_users_role` - Filter by role (admin queries)
-- `idx_users_fabric_enrollment_id` - JWT token verification
+- `idx_users_blockchain_address` - JWT token verification
 - `idx_users_created_at` - Sort by registration date
 - `idx_audit_user_id` - User audit history
 - `idx_audit_created_at` - Recent activity queries
@@ -266,7 +265,7 @@ user_audit_log (
   
 - **Dual Storage Strategy**:
   - Supabase: User authentication data (OFF-CHAIN)
-  - Fabric: Medical records (ON-CHAIN, immutable)
+  - Ethereum: Medical records (ON-CHAIN, immutable)
   - Clear separation enforced in code
 
 #### Developer Tools
@@ -282,7 +281,7 @@ user_audit_log (
 
 ### 🔄 Changed
 - **Authentication Flow**: JWT-based with Supabase backend
-  - Registration creates Fabric identity + Supabase user
+  - Registration creates Ethereum wallet + Supabase user
   - Login verifies against Supabase, issues JWT token
   - Token stored in localStorage + httpOnly cookie
   
@@ -306,20 +305,19 @@ user_audit_log (
 
 ## [1.0.0] - 2025-11-20
 
-### 🎯 Initial Release: Hyperledger Fabric Foundation
+### 🎯 Initial Release: Ethereum Foundation
 
 #### Added
 
 ##### Blockchain Infrastructure
-- **Hyperledger Fabric Network**: 2-organization test network
-  - 2 Peers: `peer0.org1`, `peer0.org2`
-  - 1 Orderer: Raft consensus
-  - 2 Certificate Authorities: `ca_org1`, `ca_org2`
-  - Channel: `mychannel`
-  - State Database: CouchDB for rich queries
+- **Ethereum Network**: Local development network with Hardhat
+  - Local Ethereum node for testing
+  - Automated smart contract deployment
+  - ethers.js for blockchain interaction
+  - Gas optimization and estimation
   
-##### Smart Contracts (Chaincodes)
-- **Patient Records Contract** (`patient-records-contract`):
+##### Smart Contracts
+- **Patient Records Contract**:
   - `CreatePatientRecord`: Store medical record metadata
   - `GetPatientRecord`: Retrieve record by ID
   - `GetAllRecords`: Query all records
@@ -359,7 +357,7 @@ user_audit_log (
 
 ##### Middleware API
 - **Express.js REST API**: Node.js backend
-  - Fabric Gateway SDK integration
+  - ethers.js integration for Ethereum
   - JWT authentication middleware
   - Request validation (Joi schemas)
   - Error handling with standardized responses
@@ -384,26 +382,27 @@ user_audit_log (
   
 ##### Infrastructure
 - **Docker Compose**: Multi-container orchestration
-  - 7+ containers (peers, orderers, CAs, databases)
-  - Network isolation (fabric_test network)
+  - Ethereum node container
+  - PostgreSQL database
+  - Network isolation
   - Volume persistence for blockchain data
   
-- **Fabric CA**: X.509 certificate management
-  - Identity enrollment
-  - Certificate issuance
-  - Wallet storage (file-based)
+- **Smart Contract Management**:
+  - Hardhat deployment framework
+  - Contract verification
+  - Automated testing with ethers.js
 
 #### Technical Stack
 - **Backend**: Node.js 18+, Express.js 4.18
-- **Blockchain**: Hyperledger Fabric 2.5.x
-- **Database**: CouchDB (state database)
-- **Languages**: JavaScript (ES modules), Go (chaincodes)
-- **Security**: JWT, bcrypt, TLS 1.3
+- **Blockchain**: Ethereum with Hardhat 2.22+
+- **Database**: PostgreSQL (state management)
+- **Languages**: JavaScript (ES modules), Solidity 0.8+
+- **Security**: JWT, bcrypt, HTTPS
 
 #### Architecture Decisions
-- **Gateway Pattern**: Simplified Fabric SDK interaction
-- **Discovery Service**: Dynamic peer/orderer discovery with `asLocalhost=true`
-- **Connection Pooling**: Singleton gateway instances
+- **Smart Contract Pattern**: Modular Solidity contracts
+- **Web3 Integration**: ethers.js for reliable blockchain interaction
+- **Connection Management**: Singleton provider instances
 - **Error Handling**: Standardized blockchain error parsing
 - **Logging**: Winston structured logging
 
@@ -414,10 +413,10 @@ user_audit_log (
 ### 🛠️ Proof of Concept
 
 #### Added
-- Basic Fabric network setup (1 peer, 1 orderer)
-- Simple chaincode for storing records
+- Basic Ethereum network setup (local Hardhat node)
+- Simple smart contracts for storing records
 - Command-line interaction scripts
-- Manual certificate generation
+- Basic deployment automation
 
 #### Limitations
 - No frontend
@@ -430,7 +429,7 @@ user_audit_log (
 
 ## Upgrade Guide
 
-### From v1.5 to v2.0 (Prisma Migration)
+### From v1.5 to v2.0 (Prisma Integration)
 
 #### Prerequisites
 1. Backup your database:
@@ -515,7 +514,7 @@ git checkout v1.5.0
 |---------|------|---------------|--------|
 | **2.0.0-RELEASE** | 2025-12-05 | Prisma ORM + Complete Documentation | ✅ Current |
 | 1.5.0 | 2025-12-04 | Frontend + Supabase Integration | 📦 Stable |
-| 1.0.0 | 2025-11-20 | Fabric + Middleware API | 📦 Stable |
+| 1.0.0 | 2025-11-20 | Ethereum + Middleware API | 📦 Stable |
 | 0.1.0 | 2025-11-01 | Proof of Concept | ⚠️ Deprecated |
 
 ---

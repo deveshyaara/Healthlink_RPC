@@ -1,5 +1,4 @@
 import { getWalletServiceInstance } from '../services/wallet.service.js';
-import logger from '../utils/logger.js';
 
 /**
  * WalletController

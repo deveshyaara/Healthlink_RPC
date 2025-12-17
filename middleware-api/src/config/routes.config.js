@@ -1,7 +1,7 @@
 /**
  * Dynamic Routes Configuration
  * Maps REST endpoints to Hyperledger Fabric chaincode functions
- * 
+ *
  * Configuration Structure:
  * {
  *   path: string - REST endpoint path
@@ -36,7 +36,7 @@ export const routesConfig = [
       licenseNumber: 'body.licenseNumber',
       hospital: 'body.hospital',
       credentials: 'body.credentials', // JSON stringified
-      contact: 'body.contact' // JSON stringified
+      contact: 'body.contact', // JSON stringified
     },
     validation: Joi.object({
       doctorId: Joi.string().required(),
@@ -45,13 +45,13 @@ export const routesConfig = [
       licenseNumber: Joi.string().required(),
       hospital: Joi.string().required(),
       credentials: Joi.object({
-        degree: Joi.string().required()
+        degree: Joi.string().required(),
       }).required(),
       contact: Joi.object({
         email: Joi.string().email().required(),
-        phone: Joi.string().required()
-      }).required()
-    })
+        phone: Joi.string().required(),
+      }).required(),
+    }),
   },
   {
     path: '/doctors/:doctorId',
@@ -61,8 +61,8 @@ export const routesConfig = [
     channel: 'mychannel',
     auth: false,
     paramMapping: {
-      doctorId: 'params.doctorId'
-    }
+      doctorId: 'params.doctorId',
+    },
   },
   {
     path: '/doctors/:doctorId/verify',
@@ -75,12 +75,12 @@ export const routesConfig = [
     paramMapping: {
       doctorId: 'params.doctorId',
       status: 'body.status',
-      comments: 'body.comments'
+      comments: 'body.comments',
     },
     validation: Joi.object({
       status: Joi.string().valid('verified', 'rejected').required(),
-      comments: Joi.string().optional()
-    })
+      comments: Joi.string().optional(),
+    }),
   },
   {
     path: '/doctors/:doctorId/suspend',
@@ -92,11 +92,11 @@ export const routesConfig = [
     roles: ['admin'],
     paramMapping: {
       doctorId: 'params.doctorId',
-      reason: 'body.reason'
+      reason: 'body.reason',
     },
     validation: Joi.object({
-      reason: Joi.string().required()
-    })
+      reason: Joi.string().required(),
+    }),
   },
 
   // ==========================================
@@ -116,15 +116,15 @@ export const routesConfig = [
       doctorId: 'user.userId',
       recordType: 'body.recordType',
       ipfsHash: 'body.ipfsHash',
-      metadata: 'body.metadata' // Will be JSON stringified
+      metadata: 'body.metadata', // Will be JSON stringified
     },
     validation: Joi.object({
       recordId: Joi.string().required(),
       patientId: Joi.string().required(),
       ipfsHash: Joi.string().required(),
       recordType: Joi.string().optional(),
-      metadata: Joi.object().optional()
-    })
+      metadata: Joi.object().optional(),
+    }),
   },
   {
     path: '/medical-records',
@@ -134,8 +134,8 @@ export const routesConfig = [
     channel: 'mychannel',
     auth: true,
     paramMapping: {
-      patientId: 'user.userId'
-    }
+      patientId: 'user.userId',
+    },
   },
   {
     path: '/medical-records/:recordId',
@@ -145,8 +145,8 @@ export const routesConfig = [
     channel: 'mychannel',
     auth: true,
     paramMapping: {
-      recordId: 'params.recordId'
-    }
+      recordId: 'params.recordId',
+    },
   },
   {
     path: '/medical-records/patient/:patientId',
@@ -156,8 +156,8 @@ export const routesConfig = [
     channel: 'mychannel',
     auth: true,
     paramMapping: {
-      patientId: 'params.patientId'
-    }
+      patientId: 'params.patientId',
+    },
   },
   {
     path: '/medical-records/paginated',
@@ -168,8 +168,8 @@ export const routesConfig = [
     auth: true,
     paramMapping: {
       pageSize: 'query.pageSize',
-      bookmark: 'query.bookmark'
-    }
+      bookmark: 'query.bookmark',
+    },
   },
 
   // ==========================================
@@ -189,7 +189,7 @@ export const routesConfig = [
       appointmentDate: 'body.appointmentDate',
       startTime: 'body.startTime',
       endTime: 'body.endTime',
-      reason: 'body.reason'
+      reason: 'body.reason',
     },
     validation: Joi.object({
       appointmentId: Joi.string().required(),
@@ -198,8 +198,8 @@ export const routesConfig = [
       appointmentDate: Joi.string().required(),
       startTime: Joi.string().required(),
       endTime: Joi.string().required(),
-      reason: Joi.string().required()
-    })
+      reason: Joi.string().required(),
+    }),
   },
   {
     path: '/appointments/:appointmentId',
@@ -209,8 +209,8 @@ export const routesConfig = [
     channel: 'mychannel',
     auth: true,
     paramMapping: {
-      appointmentId: 'params.appointmentId'
-    }
+      appointmentId: 'params.appointmentId',
+    },
   },
   {
     path: '/appointments',
@@ -219,7 +219,7 @@ export const routesConfig = [
     function: 'GetAllAppointments',
     channel: 'mychannel',
     auth: true,
-    paramMapping: {}
+    paramMapping: {},
   },
   {
     path: '/appointments/:appointmentId/confirm',
@@ -230,8 +230,8 @@ export const routesConfig = [
     auth: true,
     roles: ['doctor', 'receptionist', 'admin'],
     paramMapping: {
-      appointmentId: 'params.appointmentId'
-    }
+      appointmentId: 'params.appointmentId',
+    },
   },
   {
     path: '/appointments/:appointmentId/complete',
@@ -244,8 +244,8 @@ export const routesConfig = [
     paramMapping: {
       appointmentId: 'params.appointmentId',
       diagnosis: 'body.diagnosis',
-      notes: 'body.notes'
-    }
+      notes: 'body.notes',
+    },
   },
   {
     path: '/appointments/:appointmentId/cancel',
@@ -257,11 +257,11 @@ export const routesConfig = [
     paramMapping: {
       appointmentId: 'params.appointmentId',
       reason: 'body.reason',
-      cancelledBy: 'user.userId'
+      cancelledBy: 'user.userId',
     },
     validation: Joi.object({
-      reason: Joi.string().required()
-    })
+      reason: Joi.string().required(),
+    }),
   },
   {
     path: '/patients/:patientId/appointments',
@@ -271,8 +271,8 @@ export const routesConfig = [
     channel: 'mychannel',
     auth: true,
     paramMapping: {
-      patientId: 'params.patientId'
-    }
+      patientId: 'params.patientId',
+    },
   },
   {
     path: '/doctors/:doctorId/appointments',
@@ -282,8 +282,8 @@ export const routesConfig = [
     channel: 'mychannel',
     auth: true,
     paramMapping: {
-      doctorId: 'params.doctorId'
-    }
+      doctorId: 'params.doctorId',
+    },
   },
 
   // ==========================================
@@ -303,7 +303,7 @@ export const routesConfig = [
       doctorId: 'body.doctorId',
       medications: 'body.medications', // JSON stringified array
       diagnosis: 'body.diagnosis',
-      appointmentId: 'body.appointmentId'
+      appointmentId: 'body.appointmentId',
     },
     validation: Joi.object({
       prescriptionId: Joi.string().required(),
@@ -316,12 +316,12 @@ export const routesConfig = [
           frequency: Joi.string().required(),
           duration: Joi.string().required(),
           quantity: Joi.number().required(),
-          instructions: Joi.string().required()
-        })
+          instructions: Joi.string().required(),
+        }),
       ).required(),
       diagnosis: Joi.string().optional(),
-      appointmentId: Joi.string().optional()
-    })
+      appointmentId: Joi.string().optional(),
+    }),
   },
   {
     path: '/prescriptions/:prescriptionId',
@@ -331,8 +331,8 @@ export const routesConfig = [
     channel: 'mychannel',
     auth: true,
     paramMapping: {
-      prescriptionId: 'params.prescriptionId'
-    }
+      prescriptionId: 'params.prescriptionId',
+    },
   },
   {
     path: '/prescriptions',
@@ -341,7 +341,7 @@ export const routesConfig = [
     function: 'GetAllPrescriptions',
     channel: 'mychannel',
     auth: true,
-    paramMapping: {}
+    paramMapping: {},
   },
   {
     path: '/prescriptions/:prescriptionId/dispense',
@@ -355,13 +355,13 @@ export const routesConfig = [
       prescriptionId: 'params.prescriptionId',
       pharmacyId: 'body.pharmacyId',
       dispensedBy: 'body.dispensedBy',
-      notes: 'body.notes'
+      notes: 'body.notes',
     },
     validation: Joi.object({
       pharmacyId: Joi.string().required(),
       dispensedBy: Joi.string().required(),
-      notes: Joi.string().optional()
-    })
+      notes: Joi.string().optional(),
+    }),
   },
   {
     path: '/patients/:patientId/prescriptions',
@@ -371,8 +371,8 @@ export const routesConfig = [
     channel: 'mychannel',
     auth: true,
     paramMapping: {
-      patientId: 'params.patientId'
-    }
+      patientId: 'params.patientId',
+    },
   },
   {
     path: '/doctors/:doctorId/prescriptions',
@@ -382,8 +382,8 @@ export const routesConfig = [
     channel: 'mychannel',
     auth: true,
     paramMapping: {
-      doctorId: 'params.doctorId'
-    }
+      doctorId: 'params.doctorId',
+    },
   },
 
   // ==========================================
@@ -405,7 +405,7 @@ export const routesConfig = [
       testType: 'body.testType',
       testName: 'body.testName',
       instructions: 'body.instructions',
-      priority: 'body.priority'
+      priority: 'body.priority',
     },
     validation: Joi.object({
       labTestId: Joi.string().required(),
@@ -415,8 +415,8 @@ export const routesConfig = [
       testType: Joi.string().required(),
       testName: Joi.string().required(),
       instructions: Joi.string().required(),
-      priority: Joi.string().valid('routine', 'urgent', 'asap').required()
-    })
+      priority: Joi.string().valid('routine', 'urgent', 'asap').required(),
+    }),
   },
   {
     path: '/lab-tests/:labTestId',
@@ -426,8 +426,8 @@ export const routesConfig = [
     channel: 'mychannel',
     auth: true,
     paramMapping: {
-      labTestId: 'params.labTestId'
-    }
+      labTestId: 'params.labTestId',
+    },
   },
   {
     path: '/lab-tests',
@@ -436,7 +436,7 @@ export const routesConfig = [
     function: 'GetAllLabTests',
     channel: 'mychannel',
     auth: true,
-    paramMapping: {}
+    paramMapping: {},
   },
   {
     path: '/lab-tests/:labTestId/result',
@@ -450,13 +450,13 @@ export const routesConfig = [
       labTestId: 'params.labTestId',
       results: 'body.results',
       status: 'body.status',
-      notes: 'body.notes'
+      notes: 'body.notes',
     },
     validation: Joi.object({
       results: Joi.string().required(),
       status: Joi.string().valid('pending', 'completed', 'cancelled').required(),
-      notes: Joi.string().optional()
-    })
+      notes: Joi.string().optional(),
+    }),
   },
 
   // ==========================================
@@ -475,8 +475,8 @@ export const routesConfig = [
       providerId: 'body.providerId',
       insuranceId: 'body.insuranceId',
       amount: 'body.amount',
-      description: 'body.description'
-    }
+      description: 'body.description',
+    },
   },
   {
     path: '/claims/:claimId',
@@ -486,8 +486,8 @@ export const routesConfig = [
     channel: 'mychannel',
     auth: true,
     paramMapping: {
-      claimId: 'params.claimId'
-    }
+      claimId: 'params.claimId',
+    },
   },
 
   // ==========================================
@@ -501,8 +501,8 @@ export const routesConfig = [
     channel: 'mychannel',
     auth: true,
     paramMapping: {
-      patientId: 'user.userId' // Auto-inject from JWT (Me pattern)
-    }
+      patientId: 'user.userId', // Auto-inject from JWT (Me pattern)
+    },
   },
   {
     path: '/consents',
@@ -517,15 +517,15 @@ export const routesConfig = [
       granteeId: 'body.granteeId',
       scope: 'body.scope',
       purpose: 'body.purpose',
-      validUntil: 'body.validUntil'
+      validUntil: 'body.validUntil',
     },
     validation: Joi.object({
       consentId: Joi.string().required(),
       granteeId: Joi.string().required(),
       scope: Joi.string().required(),
       purpose: Joi.string().required(),
-      validUntil: Joi.string().isoDate().required()
-    })
+      validUntil: Joi.string().isoDate().required(),
+    }),
   },
   {
     path: '/consents/:consentId',
@@ -535,8 +535,8 @@ export const routesConfig = [
     channel: 'mychannel',
     auth: true,
     paramMapping: {
-      consentId: 'params.consentId'
-    }
+      consentId: 'params.consentId',
+    },
   },
   {
     path: '/consents/:consentId/revoke',
@@ -546,12 +546,12 @@ export const routesConfig = [
     channel: 'mychannel',
     auth: true,
     paramMapping: {
-      consentId: 'params.consentId'
+      consentId: 'params.consentId',
     },
     validation: Joi.object({
-      reason: Joi.string().optional()
-    })
-  }
+      reason: Joi.string().optional(),
+    }),
+  },
 ];
 
 export default routesConfig;

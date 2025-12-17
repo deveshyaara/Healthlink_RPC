@@ -108,7 +108,7 @@ class EventService {
         {
           type: 'full', // Get full block data
         },
-        new RegExp(eventName) // Event name filter (regex)
+        new RegExp(eventName), // Event name filter (regex)
       );
 
       // Store listener reference
@@ -165,7 +165,7 @@ class EventService {
         {
           type: 'full',
           startBlock: 'newest',
-        }
+        },
       );
 
       // Store listener reference

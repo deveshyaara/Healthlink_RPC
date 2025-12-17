@@ -1,7 +1,7 @@
 /**
  * Authentication Routes
  * JWT-based authentication endpoints
- * 
+ *
  * Security: Protected with strict rate limiting (5 attempts per 15 min)
  */
 

@@ -5,7 +5,7 @@ import { AuthProvider } from '@/contexts/auth-context';
 import { RoleProvider } from '@/contexts/role-context';
 import { Toaster } from '@/components/ui/toaster';
 import { Toaster as SonnerToaster } from 'sonner';
-import Chatbot from '@/components/Chatbot';
+import { ChatWidget } from '@/components/ChatWidget';
 
 export const metadata: Metadata = {
   title: 'HealthLink Pro - Digital Health Data Exchange',
@@ -29,7 +29,7 @@ export default function RootLayout({
                 {children}
               </main>
 
-              <Chatbot />
+              <ChatWidget />
               <Toaster />
               <SonnerToaster position="top-right" richColors />
             </RoleProvider>

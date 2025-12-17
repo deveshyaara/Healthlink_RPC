@@ -19,7 +19,7 @@ export default function PatientDashboard() {
             Welcome back, {user?.name || 'Patient'}!
           </h1>
           <p className="text-muted-foreground mt-2">
-            Here's an overview of your health information
+            Here&apos;s an overview of your health information
           </p>
         </div>
       </div>

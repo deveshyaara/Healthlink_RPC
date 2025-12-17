@@ -66,28 +66,28 @@ const config = {
   cors: {
     origin: function (origin, callback) {
       // Allow requests with no origin (like mobile apps, curl, Postman)
-      if (!origin) return callback(null, true);
-      
+      if (!origin) {return callback(null, true);}
+
       // Base allowed origins (strings)
       const allowedOrigins = [
-        'http://localhost:3000', 
+        'http://localhost:3000',
         'http://localhost:9002',
       ];
-      
+
       // Add custom origins from environment variable
       if (process.env.CORS_ORIGIN) {
         allowedOrigins.push(...process.env.CORS_ORIGIN.split(',').map(o => o.trim()));
       }
-      
+
       // Always allow GitHub Codespaces domains (regex)
       const githubCodespacesPattern = /https:\/\/.*\.app\.github\.dev$/;
-      
+
       // Check if origin matches allowed strings
       const isAllowedString = allowedOrigins.includes(origin);
-      
+
       // Check if origin matches Codespaces pattern
       const isCodespaces = githubCodespacesPattern.test(origin);
-      
+
       if (isAllowedString || isCodespaces) {
         callback(null, true);
       } else {
@@ -112,7 +112,7 @@ requiredConfig.forEach((key) => {
   keys.forEach((k) => {
     value = value?.[k];
   });
-  
+
   if (!value) {
     throw new Error(`Missing required configuration: ${key}`);
   }

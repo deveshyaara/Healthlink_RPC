@@ -103,11 +103,11 @@ export const FABRIC_NETWORK = {
  * Path resolution for Fabric connection profiles
  */
 export const CONNECTION_PROFILES = {
-  default: process.env.CONNECTION_PROFILE_PATH || 
+  default: process.env.CONNECTION_PROFILE_PATH ||
     path.resolve(__dirname, '../../connection-profile.json'),
-  org1: process.env.ORG1_CONNECTION_PROFILE_PATH || 
+  org1: process.env.ORG1_CONNECTION_PROFILE_PATH ||
     path.resolve(__dirname, '../../connection-org1.json'),
-  org2: process.env.ORG2_CONNECTION_PROFILE_PATH || 
+  org2: process.env.ORG2_CONNECTION_PROFILE_PATH ||
     path.resolve(__dirname, '../../connection-org2.json'),
 };
 
@@ -119,7 +119,7 @@ export const WALLET_CONFIG = {
   basePath: process.env.WALLET_PATH || path.resolve(__dirname, '../../wallet'),
   adminUserId: process.env.ADMIN_USER_ID || 'admin',
   appUserId: process.env.APP_USER_ID || 'appUser',
-  
+
   // Default credentials for admin enrollment
   admin: {
     enrollmentID: process.env.ADMIN_ENROLLMENT_ID || 'admin',
@@ -137,7 +137,7 @@ export const TRANSACTION_CONFIG = {
     endorse: parseInt(process.env.TX_ENDORSE_TIMEOUT, 10) || 30, // 30 seconds
     query: parseInt(process.env.TX_QUERY_TIMEOUT, 10) || 10, // 10 seconds
   },
-  
+
   retry: {
     maxAttempts: parseInt(process.env.TX_MAX_RETRY_ATTEMPTS, 10) || 3,
     backoffMs: parseInt(process.env.TX_RETRY_BACKOFF_MS, 10) || 1000,
@@ -147,7 +147,7 @@ export const TRANSACTION_CONFIG = {
 /**
  * Gateway Connection Options Factory
  * Creates properly configured connection options for Fabric Gateway
- * 
+ *
  * @param {Object} wallet - Wallet instance
  * @param {string} userId - User identity to connect with
  * @param {boolean} isLocalhost - Whether running in localhost mode
@@ -197,7 +197,7 @@ export function validateFabricConfig() {
   ];
 
   const missing = required.filter(({ value }) => !value);
-  
+
   if (missing.length > 0) {
     const keys = missing.map(({ key }) => key).join(', ');
     throw new Error(`Missing required Fabric configuration: ${keys}`);

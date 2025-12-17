@@ -4,7 +4,6 @@
  */
 
 import authService from '../services/auth.service.js';
-import { getWalletServiceInstance } from '../services/wallet.service.js';
 
 class AuthController {
   /**
@@ -23,8 +22,8 @@ class AuthController {
           message: 'Email and password are required',
           error: {
             code: 'MISSING_CREDENTIALS',
-            details: 'Both email and password must be provided'
-          }
+            details: 'Both email and password must be provided',
+          },
         });
       }
 
@@ -33,7 +32,7 @@ class AuthController {
 
       // Note: Blockchain operations now use admin identity, so user wallet identity is not required for login
       // This allows authentication to work without individual user blockchain identities
-      
+
       // Generate JWT token
       const token = authService.generateToken(user);
 
@@ -47,13 +46,13 @@ class AuthController {
             id: user.userId,
             name: user.name,
             email: user.email,
-            role: user.role
-          }
-        }
+            role: user.role,
+          },
+        },
       });
     } catch (error) {
       console.error('Login error:', error);
-      
+
       if (error.message === 'Invalid credentials' || error.message === 'Account is inactive') {
         return res.status(401).json({
           status: 'error',
@@ -61,8 +60,8 @@ class AuthController {
           message: error.message,
           error: {
             code: 'AUTH_FAILED',
-            details: error.message
-          }
+            details: error.message,
+          },
         });
       }
 
@@ -72,8 +71,8 @@ class AuthController {
         message: 'Login failed',
         error: {
           code: 'LOGIN_ERROR',
-          details: error.message
-        }
+          details: error.message,
+        },
       });
     }
   }
@@ -94,8 +93,8 @@ class AuthController {
           message: 'Name, email, and password are required',
           error: {
             code: 'MISSING_FIELDS',
-            details: 'All registration fields must be provided'
-          }
+            details: 'All registration fields must be provided',
+          },
         });
       }
 
@@ -108,8 +107,8 @@ class AuthController {
           message: 'Invalid email format',
           error: {
             code: 'INVALID_EMAIL',
-            details: 'Please provide a valid email address'
-          }
+            details: 'Please provide a valid email address',
+          },
         });
       }
 
@@ -121,8 +120,8 @@ class AuthController {
           message: 'Password must be at least 6 characters',
           error: {
             code: 'WEAK_PASSWORD',
-            details: 'Password must be at least 6 characters long'
-          }
+            details: 'Password must be at least 6 characters long',
+          },
         });
       }
 
@@ -138,22 +137,22 @@ class AuthController {
           message: 'User already exists',
           error: {
             code: 'USER_EXISTS',
-            details: 'An account with this email already exists'
-          }
+            details: 'An account with this email already exists',
+          },
         });
       }
 
       // Note: Blockchain operations use admin identity
       // User blockchain identity registration is no longer required
       // Users will authenticate via JWT and blockchain operations use admin credentials
-      
+
       // Register user with password
       const user = await authService.registerUser({
         userId,
         email,
         password,
         role: role || 'client',
-        name
+        name,
       });
 
       // Generate JWT token
@@ -169,13 +168,13 @@ class AuthController {
             id: user.userId,
             name: user.name,
             email: user.email,
-            role: user.role
-          }
-        }
+            role: user.role,
+          },
+        },
       });
     } catch (error) {
       console.error('Registration error:', error);
-      
+
       if (error.message === 'User already exists') {
         return res.status(409).json({
           status: 'error',
@@ -183,8 +182,8 @@ class AuthController {
           message: 'User already exists',
           error: {
             code: 'USER_EXISTS',
-            details: error.message
-          }
+            details: error.message,
+          },
         });
       }
 
@@ -194,8 +193,8 @@ class AuthController {
         message: 'Registration failed',
         error: {
           code: 'REGISTRATION_ERROR',
-          details: error.message
-        }
+          details: error.message,
+        },
       });
     }
   }
@@ -209,26 +208,26 @@ class AuthController {
     try {
       // In a stateless JWT system, logout is handled client-side
       // You could implement token blacklisting here if needed
-      
+
       return res.status(200).json({
         status: 'success',
         statusCode: 200,
         message: 'Logout successful',
         data: {
-          message: 'Token invalidated on client side'
-        }
+          message: 'Token invalidated on client side',
+        },
       });
     } catch (error) {
       console.error('Logout error:', error);
-      
+
       return res.status(500).json({
         status: 'error',
         statusCode: 500,
         message: 'Logout failed',
         error: {
           code: 'LOGOUT_ERROR',
-          details: error.message
-        }
+          details: error.message,
+        },
       });
     }
   }
@@ -250,8 +249,8 @@ class AuthController {
           message: 'User not found',
           error: {
             code: 'USER_NOT_FOUND',
-            details: 'User profile does not exist'
-          }
+            details: 'User profile does not exist',
+          },
         });
       }
 
@@ -264,21 +263,21 @@ class AuthController {
             id: user.userId,
             name: user.name,
             email: user.email,
-            role: user.role
-          }
-        }
+            role: user.role,
+          },
+        },
       });
     } catch (error) {
       console.error('Get profile error:', error);
-      
+
       return res.status(500).json({
         status: 'error',
         statusCode: 500,
         message: 'Failed to retrieve profile',
         error: {
           code: 'PROFILE_ERROR',
-          details: error.message
-        }
+          details: error.message,
+        },
       });
     }
   }
@@ -302,20 +301,20 @@ class AuthController {
         statusCode: 200,
         message: 'Token refreshed successfully',
         data: {
-          token: newToken
-        }
+          token: newToken,
+        },
       });
     } catch (error) {
       console.error('Token refresh error:', error);
-      
+
       return res.status(401).json({
         status: 'error',
         statusCode: 401,
         message: 'Token refresh failed',
         error: {
           code: 'REFRESH_ERROR',
-          details: error.message
-        }
+          details: error.message,
+        },
       });
     }
   }
@@ -336,8 +335,8 @@ class AuthController {
           message: 'Old and new passwords are required',
           error: {
             code: 'MISSING_PASSWORDS',
-            details: 'Both old and new passwords must be provided'
-          }
+            details: 'Both old and new passwords must be provided',
+          },
         });
       }
 
@@ -348,8 +347,8 @@ class AuthController {
           message: 'New password must be at least 6 characters',
           error: {
             code: 'WEAK_PASSWORD',
-            details: 'Password must be at least 6 characters long'
-          }
+            details: 'Password must be at least 6 characters long',
+          },
         });
       }
 
@@ -360,12 +359,12 @@ class AuthController {
         statusCode: 200,
         message: 'Password changed successfully',
         data: {
-          message: 'Your password has been updated'
-        }
+          message: 'Your password has been updated',
+        },
       });
     } catch (error) {
       console.error('Change password error:', error);
-      
+
       if (error.message === 'Invalid current password') {
         return res.status(400).json({
           status: 'error',
@@ -373,8 +372,8 @@ class AuthController {
           message: 'Invalid current password',
           error: {
             code: 'INVALID_PASSWORD',
-            details: 'The current password is incorrect'
-          }
+            details: 'The current password is incorrect',
+          },
         });
       }
 
@@ -384,8 +383,8 @@ class AuthController {
         message: 'Password change failed',
         error: {
           code: 'PASSWORD_CHANGE_ERROR',
-          details: error.message
-        }
+          details: error.message,
+        },
       });
     }
   }

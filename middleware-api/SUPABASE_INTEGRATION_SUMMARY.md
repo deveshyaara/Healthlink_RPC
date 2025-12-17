@@ -8,7 +8,7 @@
 
 ## 🎯 Objective Achieved
 
-Successfully integrated **Supabase (PostgreSQL)** as the persistent storage layer for **user authentication and profile metadata** while maintaining **strict separation** from medical records on **Hyperledger Fabric**.
+Successfully integrated **Supabase (PostgreSQL)** as the persistent storage layer for **user authentication and profile metadata** while maintaining **strict separation** from medical records on **Ethereum blockchain**.
 
 ---
 
@@ -28,7 +28,7 @@ Successfully integrated **Supabase (PostgreSQL)** as the persistent storage laye
 - Role-based columns (doctor/patient-specific fields)
 - Row Level Security (RLS) policies
 - Auto-updating `updated_at` trigger
-- Indexes for performance (email, role, fabric_enrollment_id)
+- Indexes for performance (email, role, blockchain_address)
 - Default admin user (admin@healthlink.com)
 
 **Security**:
@@ -55,7 +55,7 @@ Successfully integrated **Supabase (PostgreSQL)** as the persistent storage laye
 - `createUser(userData)` - Register new user in database
 - `findUserByEmail(email)` - Authenticate user
 - `findUserById(userId)` - Get user by UUID
-- `findUserByFabricId(fabricId)` - Get user by blockchain ID
+- `findUserByBlockchainAddress(address)` - Get user by blockchain address
 - `updateUserProfile(userId, updates)` - Update profile fields
 - `getAllUsers(filters)` - Admin: list all users
 
@@ -110,16 +110,16 @@ await saveUsers(users);
 if (this.useSupabase) {
   // Store in Supabase
   const dbUser = await dbService.createUser({
-    email, password, role, fabricEnrollmentId, fullName, ...
+    email, password, role, blockchainAddress, fullName, ...
   });
-  return { userId: dbUser.fabric_enrollment_id, ... };
+  return { userId: dbUser.blockchain_address, ... };
 }
 // Fallback to file storage
 ```
 
 **Key Changes**:
 - ✅ Password hashing done in `db.service.js`
-- ✅ Returns consistent format (fabricEnrollmentId → userId)
+- ✅ Returns consistent format (blockchainAddress → userId)
 - ✅ Supports doctor/patient-specific fields
 
 ---
@@ -147,7 +147,7 @@ if (this.useSupabase) {
 - ✅ Queries Supabase PostgreSQL
 - ✅ Auto-logs authentication events
 - ✅ Updates last login timestamp
-- ✅ Returns fabric_enrollment_id as userId
+- ✅ Returns blockchain_address as userId
 
 ---
 
@@ -162,9 +162,9 @@ return { userId, email, role, name };
 **After**:
 ```javascript
 if (this.useSupabase) {
-  const user = await dbService.findUserByFabricId(userId);
+  const user = await dbService.findUserByBlockchainAddress(userId);
   return {
-    userId: user.fabric_enrollment_id,
+    userId: user.blockchain_address,
     email: user.email,
     role: user.role,
     name: user.full_name,
@@ -177,7 +177,7 @@ if (this.useSupabase) {
 ```
 
 **Key Changes**:
-- ✅ Maps `fabric_enrollment_id` → `userId` (JWT compatibility)
+- ✅ Maps `blockchain_address` → `userId` (JWT compatibility)
 - ✅ Returns additional profile fields (phone, avatar, verification status)
 - ✅ Used by `/api/auth/me` endpoint
 
@@ -196,11 +196,11 @@ await saveUsers(users);
 **After**:
 ```javascript
 if (this.useSupabase) {
-  const user = await dbService.findUserByFabricId(userId);
+  const user = await dbService.findUserByBlockchainAddress(userId);
   const { data: fullUser } = await dbService.supabase
     .from('users')
     .select('id, password_hash')
-    .eq('fabric_enrollment_id', userId)
+    .eq('blockchain_address', userId)
     .single();
   
   const isValid = await dbService.verifyPassword(oldPassword, fullUser.password_hash);
@@ -234,7 +234,7 @@ if (this.useSupabase) {
 - API contracts unchanged (same request/response formats)
 
 **Endpoints Still Working**:
-- ✅ `POST /api/auth/register` - Creates user in Supabase + Fabric identity
+- ✅ `POST /api/auth/register` - Creates user in Supabase + Ethereum wallet
 - ✅ `POST /api/auth/login` - Validates against Supabase
 - ✅ `GET /api/auth/me` - Fetches profile from Supabase
 - ✅ `POST /api/auth/change-password` - Updates Supabase password
@@ -258,8 +258,8 @@ if (this.useSupabase) {
                     │                │                │
                     ▼                ▼                ▼
          ┌──────────────┐  ┌─────────────┐  ┌──────────────┐
-         │  Supabase    │  │ Hyperledger │  │ Content-     │
-         │  PostgreSQL  │  │   Fabric    │  │ Addressable  │
+         │  Supabase    │  │  Ethereum   │  │ Content-     │
+         │  PostgreSQL  │  │  Ethereum   │  │ Addressable  │
          │              │  │             │  │   Storage    │
          └──────────────┘  └─────────────┘  └──────────────┘
          
@@ -275,7 +275,7 @@ if (this.useSupabase) {
 
 ## 🔒 Data Separation Enforcement
 
-| Data Category | Supabase | Fabric | CAS |
+| Data Category | Supabase | Ethereum | CAS |
 |--------------|----------|--------|-----|
 | **Email/Password** | ✅ YES | ❌ NO | ❌ NO |
 | **User Profiles** | ✅ YES | ❌ NO | ❌ NO |
@@ -307,7 +307,7 @@ curl -X POST http://localhost:4000/api/auth/register \
 
 ✅ Response: 201 Created
 ✅ Database: Row inserted in users table
-✅ Fabric: Identity created in wallet
+✅ Ethereum: Wallet created
 ```
 
 ### Test 3: User Login
@@ -368,7 +368,7 @@ curl -X GET http://localhost:4000/api/auth/me \
 ### Prerequisites
 1. Supabase account (free tier works)
 2. Node.js v18+
-3. Existing Hyperledger Fabric network
+3. Existing Ethereum network
 
 ### Setup Steps
 
@@ -475,10 +475,10 @@ cd /workspaces/Healthlink_RPC
 | **Create db.service.js** | ✅ Done | 450 lines, 16 methods |
 | **Initialize Supabase client** | ✅ Done | Uses SUPABASE_URL + SUPABASE_SERVICE_KEY |
 | **Define SQL schema** | ✅ Done | users + audit_log tables |
-| **Refactor register()** | ✅ Done | Creates Fabric identity + Supabase row |
+| **Refactor register()** | ✅ Done | Creates Ethereum wallet + Supabase row |
 | **Refactor login()** | ✅ Done | Queries Supabase, verifies bcrypt hash |
 | **Update /api/auth/me** | ✅ Done | Fetches from Supabase (name, avatar, etc.) |
-| **Strict separation** | ✅ Done | Medical records remain on Fabric |
+| **Strict separation** | ✅ Done | Medical records remain on Ethereum |
 
 ---
 
@@ -494,7 +494,7 @@ cd /workspaces/Healthlink_RPC
 7. ✅ Zero breaking changes (backward compatible)
 
 **What You Didn't Get** (as per requirements):
-- ❌ Medical records in Supabase (correctly stays on Fabric)
+- ❌ Medical records in Supabase (correctly stays on Ethereum)
 - ❌ Frontend changes (not needed - API contracts unchanged)
 - ❌ Blockchain data in PostgreSQL (correct separation maintained)
 

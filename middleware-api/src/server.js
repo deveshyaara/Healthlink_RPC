@@ -6,12 +6,14 @@ import rateLimit from 'express-rate-limit';
 import { createServer } from 'http';
 import config from './config/index.js';
 import logger from './utils/logger.js';
+import { validateEnvironment } from './utils/validateEnv.js';
 import errorHandler from './middleware/errorHandler.js';
 import healthcareRoutes from './routes/healthcare.routes.js';
 import transactionRoutes from './routes/transaction.routes.js';
 import walletRoutes from './routes/wallet.routes.js';
 import authRoutes from './routes/auth.routes.js';
 import storageRoutes from './routes/storage.routes.js';
+import chatRoutes from './routes/chat.routes.js';
 import ethereumService from './services/ethereum.service.js';
 
 /**
@@ -89,7 +91,7 @@ app.get('/api/health', async (req, res) => {
     } catch (error) {
       logger.error('Ethereum health check failed:', error);
     }
-    
+
     res.status(200).json({
       status: ethereumStatus === 'UP' ? 'UP' : 'DEGRADED',
       timestamp: new Date().toISOString(),
@@ -116,6 +118,9 @@ const API_VERSION = config.server.apiVersion;
 
 // Mount authentication routes
 app.use('/api/auth', authRoutes);
+
+// Mount chat routes (AI agent)
+app.use('/api/chat', chatRoutes);
 
 // Mount storage routes (for IPFS/file storage)
 app.use('/api/storage', storageRoutes);
@@ -199,11 +204,14 @@ app.use(errorHandler);
 
 const startServer = async () => {
   try {
+    // Validate environment variables first
+    validateEnvironment();
+
     // Initialize Ethereum service first
     try {
       const rpcUrl = process.env.ETHEREUM_RPC_URL || 'http://127.0.0.1:8545';
       const privateKey = process.env.PRIVATE_KEY || process.env.DEPLOYER_PRIVATE_KEY;
-      
+
       logger.info(`🔗 Connecting to Ethereum network at: ${rpcUrl}`);
       await ethereumService.initialize(rpcUrl, privateKey);
       logger.info('🔗 Ethereum service initialized successfully');
@@ -227,7 +235,7 @@ const startServer = async () => {
 ║   Blockchain: Ethereum${' '.repeat(35)}║
 ╚════════════════════════════════════════════════════════════╝
       `);
-      
+
       logger.info('✅ Server started successfully');
       logger.info(`📊 API Documentation available at: http://localhost:${config.server.port}/api/${API_VERSION}`);
     });
@@ -235,11 +243,11 @@ const startServer = async () => {
     // Graceful shutdown handling
     const gracefulShutdown = async (signal) => {
       logger.info(`${signal} received. Starting graceful shutdown...`);
-      
+
       // Stop accepting new requests
       httpServer.close(async () => {
         logger.info('HTTP server closed');
-        
+
         try {
           logger.info('✅ Graceful shutdown completed');
           process.exit(0);

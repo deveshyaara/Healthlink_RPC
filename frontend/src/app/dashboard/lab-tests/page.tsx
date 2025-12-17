@@ -1,5 +1,6 @@
 'use client';
 
+import { toast } from 'sonner';
 import { PageHeader } from '@/components/page-header';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -119,8 +120,7 @@ export default function LabTestsPage() {
           label: 'Order Lab Test',
           icon: PlusCircle,
           onClick: () => {
-            // TODO: Navigate to order form or open modal
-            console.log('Order Lab Test clicked');
+            toast.info('Feature Coming Soon', { description: 'Lab test ordering will be available in the next update.' });
           },
         }}
       />
@@ -160,7 +160,7 @@ export default function LabTestsPage() {
               {!searchQuery && (
                 <Button
                   variant="outline"
-                  onClick={() => console.log('Order first test')}
+                  onClick={() => toast.info('Feature Coming Soon', { description: 'Lab test ordering will be available soon.' })}
                   className="mt-4"
                 >
                   <PlusCircle className="mr-2 h-4 w-4" />
@@ -212,7 +212,7 @@ export default function LabTestsPage() {
                         <Button
                           variant="outline"
                           size="sm"
-                          onClick={() => console.log('View test:', test.labTestId)}
+                          onClick={() => toast.info('Lab Test Details', { description: `Viewing test ${test.labTestId}` })}
                         >
                           <Eye className="mr-1 h-3 w-3" />
                                                     View
@@ -221,7 +221,7 @@ export default function LabTestsPage() {
                           <Button
                             variant="ghost"
                             size="sm"
-                            onClick={() => console.log('Download results:', test.labTestId)}
+                            onClick={() => toast.info('Download Results', { description: 'File download will be available soon.' })}
                           >
                             <FileText className="mr-1 h-3 w-3" />
                                                         Results

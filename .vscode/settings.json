@@ -1,0 +1,23 @@
+{
+  "python.defaultInterpreterPath": "${workspaceFolder}/middleware-api/venv/Scripts/python.exe",
+  "python.terminal.activateEnvironment": true,
+  "python.envFile": "${workspaceFolder}/middleware-api/.env",
+  "python.analysis.extraPaths": [
+    "${workspaceFolder}/middleware-api/python_agent"
+  ],
+  "python.linting.enabled": true,
+  "python.linting.pylintEnabled": false,
+  "python.linting.flake8Enabled": true,
+  "python.formatting.provider": "black",
+  "[python]": {
+    "editor.formatOnSave": true,
+    "editor.codeActionsOnSave": {
+      "source.organizeImports": "explicit"
+    }
+  },
+  "files.watcherExclude": {
+    "**/node_modules/**": true,
+    "**/venv/**": true,
+    "**/.git/**": true
+  }
+}

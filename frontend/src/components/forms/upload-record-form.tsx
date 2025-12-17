@@ -83,7 +83,6 @@ export function UploadRecordForm({
       const uploadResult = await storageApi.upload(file);
       const realHash = uploadResult.hash; // Real SHA-256 hash from backend
 
-      console.log('✅ File uploaded to storage:', realHash);
       setUploadProgress(60);
 
       // Parse tags (comma-separated)
@@ -112,11 +111,9 @@ export function UploadRecordForm({
 
       setUploadProgress(80);
 
-      const response = await recordsApi.create(recordPayload);
+      const _response = await recordsApi.create(recordPayload);
 
       setUploadProgress(100);
-
-      console.log('✅ Blockchain record created successfully:', response);
 
       // Import toast dynamically
       const { toast } = await import('sonner');
@@ -168,7 +165,7 @@ export function UploadRecordForm({
         </Label>
         <Select
           value={recordType}
-          onValueChange={(value) => setValue('recordType', value as any)}
+          onValueChange={(value) => setValue('recordType', value as typeof recordType)}
           disabled={isSubmitting}
         >
           <SelectTrigger id="recordType">

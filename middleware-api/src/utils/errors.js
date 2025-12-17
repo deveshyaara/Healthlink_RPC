@@ -96,25 +96,25 @@ export class UnauthorizedError extends AppError {
  */
 export const parseFabricError = (error) => {
   const errorMessage = error.message || error.toString();
-  
+
   // MVCC Read Conflict
   if (errorMessage.includes('MVCC_READ_CONFLICT')) {
     return new MVCCConflictError(errorMessage);
   }
-  
+
   // Peer unavailable
-  if (errorMessage.includes('CONNECTION_REFUSED') || 
+  if (errorMessage.includes('CONNECTION_REFUSED') ||
       errorMessage.includes('UNAVAILABLE') ||
       errorMessage.includes('failed to connect')) {
     return new PeerUnavailableError(errorMessage);
   }
-  
+
   // Chaincode error
-  if (errorMessage.includes('chaincode') || 
+  if (errorMessage.includes('chaincode') ||
       errorMessage.includes('transaction returned with failure')) {
     return new ChaincodeError('Chaincode execution failed', errorMessage);
   }
-  
+
   // Default blockchain error
   return new BlockchainError(errorMessage, error);
 };

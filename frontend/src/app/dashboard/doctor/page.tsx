@@ -23,7 +23,7 @@ export default function DoctorDashboard() {
             Welcome back, Dr. {user?.name || 'Doctor'}!
           </h1>
           <p className="text-muted-foreground mt-2">
-            Here's your overview for today
+            Here&apos;s your overview for today
           </p>
         </div>
         <div className="flex gap-2 flex-wrap">
@@ -43,7 +43,7 @@ export default function DoctorDashboard() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Calendar className="h-5 w-5" />
-              Today's Schedule
+              Today&apos;s Schedule
             </CardTitle>
             <CardDescription>Your appointments for today</CardDescription>
           </CardHeader>

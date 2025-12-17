@@ -38,9 +38,9 @@ class TransactionService {
     try {
       await this.initialize();
       logger.info('Service: Creating patient', { patientId, name });
-      
+
       const result = await ethereumService.createPatient(patientId, name, age, bloodType, allergies);
-      
+
       return {
         success: true,
         data: result,
@@ -62,9 +62,9 @@ class TransactionService {
     try {
       await this.initialize();
       logger.info('Service: Getting patient', { patientId });
-      
+
       const result = await ethereumService.getPatient(patientId);
-      
+
       return {
         success: true,
         data: result,
@@ -94,11 +94,11 @@ class TransactionService {
     try {
       await this.initialize();
       logger.info('Service: Creating medical record', { recordId, patientId });
-      
+
       const result = await ethereumService.createMedicalRecord(
-        recordId, patientId, doctorId, recordType, ipfsHash, metadata
+        recordId, patientId, doctorId, recordType, ipfsHash, metadata,
       );
-      
+
       return {
         success: true,
         data: result,
@@ -120,9 +120,9 @@ class TransactionService {
     try {
       await this.initialize();
       logger.info('Service: Getting medical record', { recordId });
-      
+
       const result = await ethereumService.getMedicalRecord(recordId);
-      
+
       return {
         success: true,
         data: result,
@@ -147,9 +147,9 @@ class TransactionService {
     try {
       await this.initialize();
       logger.info('Service: Getting records by patient', { patientId });
-      
+
       const result = await ethereumService.getRecordsByPatient(patientId);
-      
+
       return {
         success: true,
         data: result,
@@ -174,9 +174,9 @@ class TransactionService {
     try {
       await this.initialize();
       logger.info('Service: Creating consent', { consentId, patientId });
-      
+
       const result = await ethereumService.createConsent(consentId, patientId, doctorAddress, validityDays);
-      
+
       return {
         success: true,
         data: result,
@@ -198,9 +198,9 @@ class TransactionService {
     try {
       await this.initialize();
       logger.info('Service: Getting audit records', { limit });
-      
+
       const result = await ethereumService.getAuditRecords(limit);
-      
+
       return {
         success: true,
         data: result,
@@ -226,11 +226,11 @@ class TransactionService {
     try {
       await this.initialize();
       logger.info('Service: Creating appointment', { appointmentId, patientId });
-      
+
       const result = await ethereumService.createAppointment(
-        appointmentId, patientId, doctorAddress, timestamp, notes
+        appointmentId, patientId, doctorAddress, timestamp, notes,
       );
-      
+
       return {
         success: true,
         data: result,
@@ -257,11 +257,11 @@ class TransactionService {
     try {
       await this.initialize();
       logger.info('Service: Creating prescription', { prescriptionId, patientId });
-      
+
       const result = await ethereumService.createPrescription(
-        prescriptionId, patientId, doctorAddress, medication, dosage, expiryTimestamp
+        prescriptionId, patientId, doctorAddress, medication, dosage, expiryTimestamp,
       );
-      
+
       return {
         success: true,
         data: result,
@@ -287,11 +287,11 @@ class TransactionService {
     try {
       await this.initialize();
       logger.info('Service: Registering doctor', { doctorAddress, name });
-      
+
       const result = await ethereumService.registerDoctor(
-        doctorAddress, name, specialization, licenseNumber, hospitalAffiliation
+        doctorAddress, name, specialization, licenseNumber, hospitalAffiliation,
       );
-      
+
       return {
         success: true,
         data: result,
@@ -313,9 +313,9 @@ class TransactionService {
     try {
       await this.initialize();
       logger.info('Service: Verifying doctor', { doctorAddress });
-      
+
       const result = await ethereumService.verifyDoctor(doctorAddress);
-      
+
       return {
         success: true,
         data: result,
@@ -336,9 +336,9 @@ class TransactionService {
     try {
       await this.initialize();
       logger.info('Service: Getting verified doctors');
-      
+
       const result = await ethereumService.getVerifiedDoctors();
-      
+
       return {
         success: true,
         data: result,
@@ -354,51 +354,51 @@ class TransactionService {
   /**
    * Legacy method - not applicable to Ethereum
    */
-  async getAssetHistory(assetId, userId = null) {
+  async getAssetHistory(assetId, _userId = null) {
     throw new BlockchainError('getAssetHistory not applicable to Ethereum healthcare contracts');
   }
 
   /**
    * Legacy method - use specific healthcare queries instead
    */
-  async getAllAssets(pageSize = 10, bookmark = '', userId = null) {
+  async getAllAssets(_pageSize = 10, _bookmark = '', _userId = null) {
     throw new BlockchainError('getAllAssets not applicable. Use getRecordsByPatient or similar methods');
   }
 
   /**
    * Legacy method - use specific healthcare queries instead
    */
-  async queryAssets(queryObject, userId = null) {
+  async queryAssets(queryObject, _userId = null) {
     throw new BlockchainError('queryAssets not applicable. Use specific healthcare queries');
   }
 
   /**
    * Legacy method - use specific create methods
    */
-  async createAsset(assetData, userId = null) {
+  async createAsset(assetData, _userId = null) {
     throw new BlockchainError('createAsset not applicable. Use createPatient, createMedicalRecord, etc.');
   }
 
   /**
    * Legacy method - not directly supported
    */
-  async updateAsset(assetId, updateData, userId = null) {
+  async updateAsset(assetId, updateData, _userId = null) {
     throw new BlockchainError('updateAsset not applicable. Use specific update methods for records, appointments, etc.');
   }
 
   /**
    * Legacy method - use specific delete methods
    */
-  async deleteAsset(assetId, userId = null) {
+  async deleteAsset(assetId, _userId = null) {
     throw new BlockchainError('deleteAsset not applicable. Use specific healthcare contract methods');
   }
 
   /**
    * Legacy submit transaction - routes to specific methods
    */
-  async submitTransaction(functionName, args = [], userId = null) {
+  async submitTransaction(functionName, args = [], _userId = null) {
     logger.warn('Legacy submitTransaction called, routing to specific method');
-    
+
     switch(functionName) {
       case 'CreatePatient':
         return this.createPatient(...args);
@@ -422,9 +422,9 @@ class TransactionService {
   /**
    * Legacy query method - routes to specific queries
    */
-  async queryLedger(functionName, args = [], userId = null) {
+  async queryLedger(functionName, args = [], _userId = null) {
     logger.warn('Legacy queryLedger called, routing to specific method');
-    
+
     switch(functionName) {
       case 'GetPatient':
         return this.getPatient(...args);

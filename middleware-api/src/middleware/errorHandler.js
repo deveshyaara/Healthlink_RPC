@@ -1,5 +1,4 @@
 import logger from '../utils/logger.js';
-import { AppError } from '../utils/errors.js';
 import { createSafeErrorResponse, parseFabricErrorDetails } from '../utils/errorSerializer.js';
 
 /**
@@ -7,10 +6,10 @@ import { createSafeErrorResponse, parseFabricErrorDetails } from '../utils/error
  * Handles circular JSON references and Fabric-specific errors
  * Maps Fabric errors to appropriate HTTP status codes
  */
-const errorHandler = (err, req, res, next) => {
+const errorHandler = (err, req, res, _next) => {
   // Parse Fabric-specific error patterns
   const fabricDetails = parseFabricErrorDetails(err);
-  
+
   // Log error safely (handles circular references)
   logger.error('Error occurred:', {
     message: err.message,
@@ -86,7 +85,7 @@ const errorHandler = (err, req, res, next) => {
   // Create safe error response (handles circular references)
   const isProduction = process.env.NODE_ENV === 'production';
   const safeError = createSafeErrorResponse(err, !isProduction);
-  
+
   const errorResponse = {
     success: false,
     error: {

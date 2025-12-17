@@ -52,12 +52,6 @@ export function PatientStats() {
           { name: 'consents', result: consentsResult },
         ];
 
-        results.forEach(({ name, result }) => {
-          if (result.status === 'rejected') {
-            console.warn(`[PatientStats] Failed to fetch ${name}:`, result.reason);
-          }
-        });
-
         // Update stats
         setStats({
           records: records.length,

@@ -12,7 +12,7 @@ const router = express.Router();
 router.post(
   '/transactions',
   validate(schemas.submitTransaction),
-  transactionController.submitTransaction.bind(transactionController)
+  transactionController.submitTransaction.bind(transactionController),
 );
 
 /**
@@ -23,7 +23,7 @@ router.post(
 router.post(
   '/transactions/private',
   validate(schemas.submitPrivateTransaction),
-  transactionController.submitPrivateTransaction.bind(transactionController)
+  transactionController.submitPrivateTransaction.bind(transactionController),
 );
 
 /**
@@ -34,7 +34,7 @@ router.post(
 router.post(
   '/query',
   validate(schemas.queryLedger),
-  transactionController.queryLedger.bind(transactionController)
+  transactionController.queryLedger.bind(transactionController),
 );
 
 /**
@@ -45,7 +45,7 @@ router.post(
 router.get(
   '/history/:assetId',
   validate(schemas.assetId, 'params'),
-  transactionController.getAssetHistory.bind(transactionController)
+  transactionController.getAssetHistory.bind(transactionController),
 );
 
 /**
@@ -56,7 +56,7 @@ router.get(
 router.get(
   '/assets',
   validate(schemas.pagination, 'query'),
-  transactionController.getAllAssets.bind(transactionController)
+  transactionController.getAllAssets.bind(transactionController),
 );
 
 /**
@@ -67,7 +67,7 @@ router.get(
 router.post(
   '/assets/query',
   validate(schemas.richQuery),
-  transactionController.queryAssets.bind(transactionController)
+  transactionController.queryAssets.bind(transactionController),
 );
 
 /**
@@ -77,7 +77,7 @@ router.post(
  */
 router.post(
   '/assets',
-  transactionController.createAsset.bind(transactionController)
+  transactionController.createAsset.bind(transactionController),
 );
 
 /**
@@ -88,7 +88,7 @@ router.post(
 router.put(
   '/assets/:assetId',
   validate(schemas.assetId, 'params'),
-  transactionController.updateAsset.bind(transactionController)
+  transactionController.updateAsset.bind(transactionController),
 );
 
 /**
@@ -99,7 +99,7 @@ router.put(
 router.delete(
   '/assets/:assetId',
   validate(schemas.assetId, 'params'),
-  transactionController.deleteAsset.bind(transactionController)
+  transactionController.deleteAsset.bind(transactionController),
 );
 
 /**
@@ -110,7 +110,7 @@ router.delete(
 router.get(
   '/jobs/:jobId',
   validate(schemas.jobId, 'params'),
-  transactionController.getJobStatus.bind(transactionController)
+  transactionController.getJobStatus.bind(transactionController),
 );
 
 export default router;
