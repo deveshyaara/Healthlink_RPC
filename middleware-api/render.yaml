@@ -1,0 +1,67 @@
+services:
+  - type: web
+    name: healthlink-middleware-api
+    runtime: node
+    region: oregon
+    plan: free
+    branch: main
+    buildCommand: |
+      npm install
+      python3 -m pip install --upgrade pip
+      python3 -m pip install -r python_agent/requirements.txt
+    startCommand: npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 3001
+      - key: API_VERSION
+        value: v1
+      - key: JWT_SECRET
+        sync: false
+      - key: JWT_EXPIRY
+        value: 24h
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_SERVICE_KEY
+        sync: false
+      - key: DATABASE_URL
+        sync: false
+      - key: DIRECT_URL
+        sync: false
+      - key: ETHEREUM_RPC_URL
+        sync: false
+      - key: CHAIN_ID
+        value: 11155111
+      - key: PRIVATE_KEY
+        sync: false
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: GEMINI_MODEL
+        value: gemini-2.5-flash
+      - key: LLM_TEMPERATURE
+        value: "0.2"
+      - key: CORS_ORIGIN
+        value: https://healthlink-rpc.vercel.app,http://localhost:3000,http://localhost:9002
+      - key: RATE_LIMIT_WINDOW_MS
+        value: "900000"
+      - key: RATE_LIMIT_MAX_REQUESTS
+        value: "100"
+      - key: AUTH_RATE_LIMIT_WINDOW_MS
+        value: "900000"
+      - key: AUTH_RATE_LIMIT_MAX_ATTEMPTS
+        value: "5"
+      - key: ENCRYPTION_KEY
+        sync: false
+      - key: ENCRYPTION_ALGORITHM
+        value: aes-256-gcm
+      - key: CONTRACT_HEALTHLINK
+        value: "0xA94AFCbFF804527315391EA52890c826f897A757"
+      - key: CONTRACT_PATIENT_RECORDS
+        value: "0xC6b6412fcf144Ce107eD79935cdBEfDC5cE1Cc8F"
+      - key: CONTRACT_APPOINTMENTS
+        value: "0x1A3F11F1735bB703587274478EEc323dC180304a"
+      - key: CONTRACT_PRESCRIPTIONS
+        value: "0xBC5BfBF99CE6087034863149B04A2593E562854b"
+      - key: CONTRACT_DOCTOR_CREDENTIALS
+        value: "0x7415A95125b64Ed491088FFE153a8D7773Fb1859"
