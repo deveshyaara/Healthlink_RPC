@@ -41,6 +41,7 @@ def fetch_patient_context(state: AgentState) -> Dict[str, Any]:
     - Integrate with middleware-api endpoints
     """
     user_id = state["user_id"]
+    existing_context = state.get("patient_context", {})
     
     patient_context = {}
     
@@ -51,7 +52,8 @@ def fetch_patient_context(state: AgentState) -> Dict[str, Any]:
         # patient_data = response.json()
         
         # MOCK DATA (temporary)
-        patient_context["name"] = "Patient"
+        # Preserve the user name from the initial state
+        patient_context["name"] = existing_context.get("name", "Patient")
         patient_context["age"] = "N/A"
         patient_context["email"] = "patient@example.com"
         patient_context["medical_history"] = "No data available"
@@ -63,7 +65,7 @@ def fetch_patient_context(state: AgentState) -> Dict[str, Any]:
     except Exception as e:
         # Provide minimal fallback context
         patient_context = {
-            "name": "Patient",
+            "name": existing_context.get("name", "Patient"),
             "age": "Unknown",
             "medical_history": "No data available",
             "error": str(e)
@@ -179,12 +181,13 @@ healthcare_agent = create_healthcare_agent()
 # -----------------
 # 6. HELPER FUNCTION FOR EASY INVOCATION
 # -----------------
-def invoke_agent(user_id: str, message: str, thread_id: str = None) -> Dict[str, Any]:
+def invoke_agent(user_id: str, user_name: str, message: str, thread_id: str = None) -> Dict[str, Any]:
     """
     Helper function to invoke the healthcare agent.
     
     Args:
         user_id: Patient/user identifier
+        user_name: Patient/user display name
         message: User's question/message
         thread_id: Optional thread ID for conversation tracking
         
@@ -199,7 +202,7 @@ def invoke_agent(user_id: str, message: str, thread_id: str = None) -> Dict[str,
         initial_state = {
             "messages": [HumanMessage(content=message)],
             "user_id": user_id,
-            "patient_context": {},
+            "patient_context": {"name": user_name},  # Pre-populate with user name
             "response": ""
         }
         

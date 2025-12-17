@@ -21,6 +21,7 @@ class ChatController {
     try {
       const { message, thread_id } = req.body;
       const userId = req.user?.userId || 'anonymous';
+      const userName = req.user?.name || 'User';
 
       if (!message || message.trim().length === 0) {
         return res.status(400).json({
@@ -36,10 +37,11 @@ class ChatController {
 
       // Path to Python agent entry script
       const pythonScriptPath = path.join(__dirname, '../../python_agent/run_agent.py');
-      // Arguments for Python script
+      // Arguments for Python script - include user name for personalization
       const args = [
         pythonScriptPath,
         userId.toString(),
+        userName,
         message,
       ];
       if (thread_id) {

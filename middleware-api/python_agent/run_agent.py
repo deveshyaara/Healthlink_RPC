@@ -4,10 +4,11 @@ Entry point for running the HealthLink AI agent from Node.js
 This script is invoked by Express via child_process.spawn()
 
 Usage:
-    python run_agent.py <user_id> <message> [thread_id]
+    python run_agent.py <user_id> <user_name> <message> [thread_id]
 
 Input:
     - user_id: Patient/user identifier
+    - user_name: Patient/user display name
     - message: User's question
     - thread_id (optional): Conversation thread ID
 
@@ -22,16 +23,18 @@ from agent_graph import invoke_agent
 def main():
     try:
         # Parse command-line arguments
-        if len(sys.argv) < 3:
-            raise ValueError("Usage: python run_agent.py <user_id> <message> [thread_id]")
+        if len(sys.argv) < 4:
+            raise ValueError("Usage: python run_agent.py <user_id> <user_name> <message> [thread_id]")
         
         user_id = sys.argv[1]
-        message = sys.argv[2]
-        thread_id = sys.argv[3] if len(sys.argv) > 3 else None
+        user_name = sys.argv[2]
+        message = sys.argv[3]
+        thread_id = sys.argv[4] if len(sys.argv) > 4 else None
         
         # Invoke the LangGraph agent
         result = invoke_agent(
             user_id=user_id,
+            user_name=user_name,
             message=message,
             thread_id=thread_id
         )

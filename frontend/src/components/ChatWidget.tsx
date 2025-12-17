@@ -21,7 +21,7 @@ export function ChatWidget() {
   const [isLoading, setIsLoading] = useState(false);
   const [threadId, setThreadId] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
-  const { user, token } = useAuth();
+  const { user, token, isAuthenticated } = useAuth();
 
   // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
@@ -77,6 +77,17 @@ export function ChatWidget() {
       });
 
       if (!response.ok) {
+        if (response.status === 401) {
+          toast.error('Your session has expired. Please log in again.');
+          const assistantMessage: Message = {
+            role: 'assistant',
+            content: '⚠️ Your session has expired. Please log in again to continue using the chat.',
+            timestamp: new Date(),
+          };
+          setMessages((prev) => [...prev, assistantMessage]);
+          setIsLoading(false);
+          return;
+        }
         throw new Error('Failed to get response from AI');
       }
 
@@ -116,6 +127,11 @@ export function ChatWidget() {
   };
 
   if (!isOpen) {
+    // Only show chat button for authenticated users
+    if (!isAuthenticated) {
+      return null;
+    }
+
     return (
       <button
         onClick={() => setIsOpen(true)}
