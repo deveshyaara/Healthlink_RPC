@@ -398,20 +398,28 @@ class DatabaseService {
       throw new Error('Database not connected');
     }
 
-    const { data, error } = await this.supabase
-      .from('healthlink_users')
-      .select('*')
-      .eq('fabric_enrollment_id', fabricId)
-      .single();
+    try {
+      const { data, error } = await this.supabase
+        .from('healthlink_users')
+        .select('*')
+        .eq('fabric_enrollment_id', fabricId)
+        .single();
 
-    if (error) {
-      if (error.code === 'PGRST116') {
-        return null;
+      if (error) {
+        if (error.code === 'PGRST116') {
+          return null;
+        }
+        throw new Error(`Failed to find user: ${error.message}`);
       }
-      throw new Error(`Failed to find user: ${error.message}`);
-    }
 
-    return data;
+      return data;
+    } catch (error) {
+      // Check if the error contains HTML (indicates Supabase is down)
+      if (error.message && error.message.includes('<!DOCTYPE html>')) {
+        throw new Error('Supabase service is currently unavailable (500 error)');
+      }
+      throw error;
+    }
   }
 
   /**

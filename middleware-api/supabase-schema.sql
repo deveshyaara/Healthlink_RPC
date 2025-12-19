@@ -100,8 +100,8 @@ INSERT INTO healthlink_users (
 ) ON CONFLICT (email) DO NOTHING;
 
 -- Create view for safe user data (excludes password_hash)
-CREATE OR REPLACE VIEW users_safe AS
-SELECT 
+CREATE OR REPLACE VIEW healthlink_users_safe AS
+SELECT
   id,
   email,
   role,
@@ -121,35 +121,34 @@ SELECT
   created_at,
   updated_at,
   last_login_at
-FROM users;
+FROM healthlink_users;
 
 -- Row Level Security (RLS) policies
-ALTER TABLE users ENABLE ROW LEVEL SECURITY;
+ALTER TABLE healthlink_users ENABLE ROW LEVEL SECURITY;
 
 -- Policy: Users can read their own data
-CREATE POLICY users_select_own
-  ON users
+CREATE POLICY healthlink_users_select_own
+  ON healthlink_users
   FOR SELECT
   USING (auth.uid()::text = id::text);
 
 -- Policy: Users can update their own profile (but not role or email)
-CREATE POLICY users_update_own
-  ON users
+CREATE POLICY healthlink_users_update_own
+  ON healthlink_users
   FOR UPDATE
   USING (auth.uid()::text = id::text)
   WITH CHECK (auth.uid()::text = id::text);
 
 -- Grant permissions to service role (bypass RLS for backend)
-GRANT ALL ON users TO service_role;
-GRANT ALL ON user_audit_log TO service_role;
-GRANT SELECT ON users_safe TO service_role;
+GRANT ALL ON healthlink_users TO service_role;
+GRANT ALL ON healthlink_user_audit_log TO service_role;
+GRANT SELECT ON healthlink_users_safe TO service_role;
 
 -- Comments for documentation
-COMMENT ON TABLE users IS 'User authentication and profile metadata (OFF-CHAIN ONLY - medical records on Fabric)';
-COMMENT ON COLUMN users.fabric_enrollment_id IS 'Hyperledger Fabric enrollment ID for blockchain identity';
-COMMENT ON COLUMN users.password_hash IS 'Bcrypt hashed password - NEVER store plaintext';
-COMMENT ON TABLE user_audit_log IS 'Audit trail for user authentication events';
-
+COMMENT ON TABLE healthlink_users IS 'User authentication and profile metadata (OFF-CHAIN ONLY - medical records on Fabric)';
+COMMENT ON COLUMN healthlink_users.fabric_enrollment_id IS 'Hyperledger Fabric enrollment ID for blockchain identity';
+COMMENT ON COLUMN healthlink_users.password_hash IS 'Bcrypt hashed password - NEVER store plaintext';
+COMMENT ON TABLE healthlink_user_audit_log IS 'Audit trail for user authentication events';
 -- Success message
 DO $$
 BEGIN
