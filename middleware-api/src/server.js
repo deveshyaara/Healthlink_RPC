@@ -15,6 +15,7 @@ import authRoutes from './routes/auth.routes.js';
 import storageRoutes from './routes/storage.routes.js';
 import chatRoutes from './routes/chat.routes.js';
 import ethereumService from './services/ethereum.service.js';
+import StorageService from './services/storage.service.js';
 
 /**
  * HealthLink Middleware API Server
@@ -218,6 +219,16 @@ const startServer = async () => {
     } catch (error) {
       logger.warn('⚠️  Ethereum service initialization failed:', error.message);
       logger.warn('   Make sure Ethereum RPC URL is correct and network is accessible');
+    }
+
+    // Initialize storage service
+    try {
+      logger.info('💾 Initializing storage service...');
+      StorageService.getInstance().initializeStorage();
+      logger.info('💾 Storage service initialized successfully');
+    } catch (error) {
+      logger.error('❌ Storage service initialization failed:', error);
+      logger.error('   File uploads will not work without proper storage directories');
     }
 
     // Start HTTP server
