@@ -250,6 +250,33 @@ export const medicalRecordsApi = {
 export const recordsApi = medicalRecordsApi;
 
 // ========================================
+// PATIENTS API
+// ========================================
+
+export const patientsApi = {
+  /**
+   * Create new patient
+   * Backend route: POST /api/v1/healthcare/patients
+   * Function: CreatePatient
+   */
+  create: async (patientData: any): Promise<any> => {
+    return fetchApi<any>('/api/v1/healthcare/patients', {
+      method: 'POST',
+      body: JSON.stringify(patientData),
+    });
+  },
+
+  /**
+   * Get patient information
+   * Backend route: GET /api/v1/healthcare/patients/:patientId
+   * Function: GetPatient
+   */
+  get: async (patientId: string): Promise<any> => {
+    return fetchApi<any>(`/api/v1/healthcare/patients/${patientId}`, { method: 'GET' });
+  },
+};
+
+// ========================================
 // APPOINTMENTS API
 // ========================================
 
@@ -265,11 +292,11 @@ export const appointmentsApi = {
 
   /**
    * Create new appointment
-   * Backend route: POST /api/appointments
+   * Backend route: POST /api/v1/healthcare/appointments
    * Function: CreateAppointment
    */
   create: async (appointmentData: any): Promise<any> => {
-    return fetchApi<any>('/api/appointments', {
+    return fetchApi<any>('/api/v1/healthcare/appointments', {
       method: 'POST',
       body: JSON.stringify(appointmentData),
     });
@@ -315,11 +342,11 @@ export const prescriptionsApi = {
 
   /**
    * Create new prescription
-   * Backend route: POST /api/prescriptions
+   * Backend route: POST /api/v1/healthcare/prescriptions
    * Function: CreatePrescription
    */
   create: async (prescriptionData: any): Promise<any> => {
-    return fetchApi<any>('/api/prescriptions', {
+    return fetchApi<any>('/api/v1/healthcare/prescriptions', {
       method: 'POST',
       body: JSON.stringify(prescriptionData),
     });
@@ -363,11 +390,11 @@ export const consentsApi = {
 
   /**
    * Create/grant new consent
-   * Backend route: POST /api/consents
+   * Backend route: POST /api/v1/healthcare/consents
    * Function: CreateConsent
    */
   grant: async (consentData: any): Promise<any> => {
-    return fetchApi<any>('/api/consents', {
+    return fetchApi<any>('/api/v1/healthcare/consents', {
       method: 'POST',
       body: JSON.stringify(consentData),
     });

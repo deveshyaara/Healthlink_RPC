@@ -8,10 +8,10 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { useState, useEffect } from 'react';
-import { Loader2, Pill, Plus, Trash2 } from 'lucide-react';
+import { Loader2, Pill } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
-// Zod validation schema for a single medication
+// Zod validation schema for a single medication (backend expects single medication, not array)
 const medicationSchema = z.object({
   name: z.string().min(2, 'Medication name required').max(100, 'Name too long'),
   dosage: z.string().min(1, 'Dosage required (e.g., 500mg)'),
@@ -21,12 +21,12 @@ const medicationSchema = z.object({
   instructions: z.string().min(3, 'Instructions required').max(500, 'Instructions too long'),
 });
 
-// Zod validation schema for the entire prescription form
+// Zod validation schema for the entire prescription form (single medication)
 const createPrescriptionSchema = z.object({
   patientId: z.string().min(1, 'Please select a patient'),
   diagnosis: z.string().optional(),
   appointmentId: z.string().optional(),
-  medications: z.array(medicationSchema).min(1, 'Add at least one medication'),
+  medication: medicationSchema, // Single medication object, not array
 });
 
 type CreatePrescriptionFormData = z.infer<typeof createPrescriptionSchema>;
@@ -44,7 +44,7 @@ interface CreatePrescriptionFormProps {
  *
  * Form for doctors to create new prescriptions for patients
  * Uses React Hook Form + Zod for type-safe validation
- * Supports multiple medications in a single prescription
+ * Supports a single medication per prescription (matches backend API)
  *
  * @param doctorId - The ID of the doctor creating the prescription
  * @param defaultPatientId - Optional pre-selected patient ID
@@ -56,7 +56,7 @@ export function CreatePrescriptionForm({
   doctorId,
   defaultPatientId,
   onSuccess,
-  onCancel,
+  onCancel: _onCancel,
   onSubmitting,
 }: CreatePrescriptionFormProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -74,19 +74,18 @@ export function CreatePrescriptionForm({
     resolver: zodResolver(createPrescriptionSchema),
     defaultValues: {
       patientId: defaultPatientId || '',
-      medications: [{
+      medication: {
         name: '',
         dosage: '',
         frequency: '',
         duration: '',
         quantity: 1,
         instructions: '',
-      }],
+      },
     },
   });
 
   const patientId = watch('patientId');
-  const medications = watch('medications');
 
   // Fetch doctor's patient list
   useEffect(() => {
@@ -122,41 +121,19 @@ export function CreatePrescriptionForm({
     fetchPatients();
   }, []);
 
-  const addMedication = () => {
-    const currentMedications = medications || [];
-    setValue('medications', [
-      ...currentMedications,
-      {
-        name: '',
-        dosage: '',
-        frequency: '',
-        duration: '',
-        quantity: 1,
-        instructions: '',
-      },
-    ]);
-  };
-
-  const removeMedication = (index: number) => {
-    const currentMedications = medications || [];
-    if (currentMedications.length > 1) {
-      setValue('medications', currentMedications.filter((_, i) => i !== index));
-    }
-  };
-
   const onSubmit = async (data: CreatePrescriptionFormData) => {
     setIsSubmitting(true);
     onSubmitting?.(true);
 
     try {
-      // Create prescription payload
+      // Create prescription payload matching backend expectations
       const prescriptionPayload = {
         prescriptionId: `RX${Date.now()}`,
         patientId: data.patientId,
-        doctorId: doctorId,
-        medications: data.medications,
-        diagnosis: data.diagnosis || undefined,
-        appointmentId: data.appointmentId || undefined,
+        doctorAddress: doctorId, // Backend expects doctorAddress, not doctorId
+        medication: data.medication.name, // Single medication string
+        dosage: data.medication.dosage, // Single dosage string
+        expiryTimestamp: Math.floor(Date.now() / 1000) + (30 * 24 * 60 * 60), // 30 days from now
       };
 
       // Import dynamically to avoid circular dependencies
@@ -166,7 +143,7 @@ export function CreatePrescriptionForm({
       // Import toast dynamically
       const { toast } = await import('sonner');
       toast.success('Prescription Created', {
-        description: `Prescription for ${data.patientId} has been created with ${data.medications.length} medication(s)`,
+        description: `Prescription for ${data.patientId} has been created`,
       });
 
       // Reset form and call success callback
@@ -240,193 +217,145 @@ export function CreatePrescriptionForm({
         />
       </div>
 
-      {/* Medications Section */}
+      {/* Medication Section (Single medication) */}
       <div className="space-y-4">
-        <div className="flex items-center justify-between">
-          <Label className="text-sm font-medium">
-                        Medications <span className="text-red-500">*</span>
-          </Label>
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={addMedication}
-            disabled={isSubmitting}
-          >
-            <Plus className="mr-1 h-3 w-3" />
-                        Add Medication
-          </Button>
-        </div>
+        <Label className="text-sm font-medium">
+          Medication <span className="text-red-500">*</span>
+        </Label>
 
-        {medications?.map((_, index) => (
-          <div key={index} className="p-4 border rounded-lg space-y-4 bg-neutral-50 dark:bg-neutral-900">
-            <div className="flex items-center justify-between">
-              <span className="text-sm font-medium text-government-blue">
-                                Medication {index + 1}
-              </span>
-              {medications.length > 1 && (
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => removeMedication(index)}
-                  disabled={isSubmitting}
-                >
-                  <Trash2 className="h-4 w-4 text-red-500" />
-                </Button>
+        <div className="p-4 border rounded-lg space-y-4 bg-neutral-50 dark:bg-neutral-900">
+          <div className="grid grid-cols-2 gap-4">
+            {/* Medication Name */}
+            <div className="space-y-2">
+              <Label htmlFor="medication.name" className="text-xs">
+                Name <span className="text-red-500">*</span>
+              </Label>
+              <Input
+                id="medication.name"
+                placeholder="e.g., Amoxicillin"
+                {...register('medication.name')}
+                disabled={isSubmitting}
+              />
+              {errors.medication?.name && (
+                <p className="text-xs text-red-500">
+                  {errors.medication.name.message}
+                </p>
               )}
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
-              {/* Medication Name */}
-              <div className="space-y-2">
-                <Label htmlFor={`medications.${index}.name`} className="text-xs">
-                                    Name <span className="text-red-500">*</span>
-                </Label>
-                <Input
-                  id={`medications.${index}.name`}
-                  placeholder="e.g., Amoxicillin"
-                  {...register(`medications.${index}.name`)}
-                  disabled={isSubmitting}
-                />
-                {errors.medications?.[index]?.name && (
-                  <p className="text-xs text-red-500">
-                    {errors.medications[index]?.name?.message}
-                  </p>
-                )}
-              </div>
-
-              {/* Dosage */}
-              <div className="space-y-2">
-                <Label htmlFor={`medications.${index}.dosage`} className="text-xs">
-                                    Dosage <span className="text-red-500">*</span>
-                </Label>
-                <Input
-                  id={`medications.${index}.dosage`}
-                  placeholder="e.g., 500mg"
-                  {...register(`medications.${index}.dosage`)}
-                  disabled={isSubmitting}
-                />
-                {errors.medications?.[index]?.dosage && (
-                  <p className="text-xs text-red-500">
-                    {errors.medications[index]?.dosage?.message}
-                  </p>
-                )}
-              </div>
-
-              {/* Frequency */}
-              <div className="space-y-2">
-                <Label htmlFor={`medications.${index}.frequency`} className="text-xs">
-                                    Frequency <span className="text-red-500">*</span>
-                </Label>
-                <Input
-                  id={`medications.${index}.frequency`}
-                  placeholder="e.g., Twice daily"
-                  {...register(`medications.${index}.frequency`)}
-                  disabled={isSubmitting}
-                />
-                {errors.medications?.[index]?.frequency && (
-                  <p className="text-xs text-red-500">
-                    {errors.medications[index]?.frequency?.message}
-                  </p>
-                )}
-              </div>
-
-              {/* Duration */}
-              <div className="space-y-2">
-                <Label htmlFor={`medications.${index}.duration`} className="text-xs">
-                                    Duration <span className="text-red-500">*</span>
-                </Label>
-                <Input
-                  id={`medications.${index}.duration`}
-                  placeholder="e.g., 7 days"
-                  {...register(`medications.${index}.duration`)}
-                  disabled={isSubmitting}
-                />
-                {errors.medications?.[index]?.duration && (
-                  <p className="text-xs text-red-500">
-                    {errors.medications[index]?.duration?.message}
-                  </p>
-                )}
-              </div>
-
-              {/* Quantity */}
-              <div className="space-y-2">
-                <Label htmlFor={`medications.${index}.quantity`} className="text-xs">
-                                    Quantity <span className="text-red-500">*</span>
-                </Label>
-                <Input
-                  id={`medications.${index}.quantity`}
-                  type="number"
-                  min="1"
-                  placeholder="e.g., 14"
-                  {...register(`medications.${index}.quantity`, { valueAsNumber: true })}
-                  disabled={isSubmitting}
-                />
-                {errors.medications?.[index]?.quantity && (
-                  <p className="text-xs text-red-500">
-                    {errors.medications[index]?.quantity?.message}
-                  </p>
-                )}
-              </div>
-            </div>
-
-            {/* Instructions */}
+            {/* Dosage */}
             <div className="space-y-2">
-              <Label htmlFor={`medications.${index}.instructions`} className="text-xs">
-                                Instructions <span className="text-red-500">*</span>
+              <Label htmlFor="medication.dosage" className="text-xs">
+                Dosage <span className="text-red-500">*</span>
               </Label>
-              <Textarea
-                id={`medications.${index}.instructions`}
-                placeholder="e.g., Take with food. Avoid alcohol."
-                rows={2}
-                {...register(`medications.${index}.instructions`)}
+              <Input
+                id="medication.dosage"
+                placeholder="e.g., 500mg"
+                {...register('medication.dosage')}
                 disabled={isSubmitting}
               />
-              {errors.medications?.[index]?.instructions && (
+              {errors.medication?.dosage && (
                 <p className="text-xs text-red-500">
-                  {errors.medications[index]?.instructions?.message}
+                  {errors.medication.dosage.message}
+                </p>
+              )}
+            </div>
+
+            {/* Frequency */}
+            <div className="space-y-2">
+              <Label htmlFor="medication.frequency" className="text-xs">
+                Frequency <span className="text-red-500">*</span>
+              </Label>
+              <Input
+                id="medication.frequency"
+                placeholder="e.g., twice daily"
+                {...register('medication.frequency')}
+                disabled={isSubmitting}
+              />
+              {errors.medication?.frequency && (
+                <p className="text-xs text-red-500">
+                  {errors.medication.frequency.message}
+                </p>
+              )}
+            </div>
+
+            {/* Duration */}
+            <div className="space-y-2">
+              <Label htmlFor="medication.duration" className="text-xs">
+                Duration <span className="text-red-500">*</span>
+              </Label>
+              <Input
+                id="medication.duration"
+                placeholder="e.g., 7 days"
+                {...register('medication.duration')}
+                disabled={isSubmitting}
+              />
+              {errors.medication?.duration && (
+                <p className="text-xs text-red-500">
+                  {errors.medication.duration.message}
+                </p>
+              )}
+            </div>
+
+            {/* Quantity */}
+            <div className="space-y-2">
+              <Label htmlFor="medication.quantity" className="text-xs">
+                Quantity <span className="text-red-500">*</span>
+              </Label>
+              <Input
+                id="medication.quantity"
+                type="number"
+                placeholder="e.g., 14"
+                {...register('medication.quantity', { valueAsNumber: true })}
+                disabled={isSubmitting}
+              />
+              {errors.medication?.quantity && (
+                <p className="text-xs text-red-500">
+                  {errors.medication.quantity.message}
                 </p>
               )}
             </div>
           </div>
-        ))}
 
-        {errors.medications && typeof errors.medications.message === 'string' && (
-          <p className="text-sm text-red-500">{errors.medications.message}</p>
-        )}
+          {/* Instructions */}
+          <div className="space-y-2">
+            <Label htmlFor="medication.instructions" className="text-xs">
+              Instructions <span className="text-red-500">*</span>
+            </Label>
+            <Textarea
+              id="medication.instructions"
+              placeholder="e.g., Take with food, one tablet every 12 hours"
+              {...register('medication.instructions')}
+              disabled={isSubmitting}
+              rows={3}
+            />
+            {errors.medication?.instructions && (
+              <p className="text-xs text-red-500">
+                {errors.medication.instructions.message}
+              </p>
+            )}
+          </div>
+        </div>
       </div>
 
-      {/* Action Buttons */}
-      <div className="flex items-center justify-end gap-3 pt-4 border-t">
-        {onCancel && (
-          <Button
-            type="button"
-            variant="outline"
-            onClick={onCancel}
-            disabled={isSubmitting}
-          >
-                        Cancel
-          </Button>
+      {/* Submit Button */}
+      <Button
+        type="submit"
+        className="w-full"
+        disabled={isSubmitting}
+      >
+        {isSubmitting ? (
+          <>
+            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            Creating Prescription...
+          </>
+        ) : (
+          <>
+            <Pill className="mr-2 h-4 w-4" />
+            Create Prescription
+          </>
         )}
-        <Button
-          type="submit"
-          disabled={isSubmitting}
-          className="bg-government-blue hover:bg-government-blue/90"
-        >
-          {isSubmitting ? (
-            <>
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                            Creating...
-            </>
-          ) : (
-            <>
-              <Pill className="mr-2 h-4 w-4" />
-                            Create Prescription
-            </>
-          )}
-        </Button>
-      </div>
+      </Button>
     </form>
   );
 }

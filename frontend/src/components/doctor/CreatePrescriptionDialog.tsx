@@ -2,8 +2,8 @@
 /**
  * CreatePrescriptionDialog Component
  *
- * Dialog wrapper for creating prescriptions on the blockchain
- * Integrates with the Prescriptions smart contract
+ * Dialog wrapper for creating prescriptions via backend API
+ * Uses the prescriptions API instead of direct blockchain calls
  *
  * Usage: Import and use in doctor dashboard for quick prescription creation
  */
@@ -11,7 +11,6 @@
 'use client';
 
 import { useState } from 'react';
-import { ethers } from 'ethers';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -28,9 +27,11 @@ import { Textarea } from '@/components/ui/textarea';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Pill, AlertCircle, CheckCircle, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/contexts/auth-context';
 
 export function CreatePrescriptionDialog() {
   const { toast } = useToast();
+  const { user } = useAuth();
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -60,109 +61,31 @@ export function CreatePrescriptionDialog() {
     setError(null);
 
     try {
-      // Step 1: Check MetaMask
-      if (typeof window === 'undefined' || !window.ethereum) {
-        throw new Error('MetaMask not installed. Please install MetaMask to continue.');
-      }
-
-      console.log('🔍 Step 1: MetaMask detected ✅');
-
-      // Step 2: Get provider and signer
-      const provider = new ethers.BrowserProvider(window.ethereum);
-      const signer = await provider.getSigner();
-      const doctorAddress = await signer.getAddress();
-
-      console.log('🔍 Step 2: Signer initialized ✅');
-      console.log(`   Doctor Address: ${doctorAddress}`);
-
-      // Step 3: Load contract ABI
-      const contractResponse = await fetch('/contracts/Prescriptions.json');
-      if (!contractResponse.ok) {
-        throw new Error('Failed to load Prescriptions contract ABI');
-      }
-      const contractData = await contractResponse.json();
-
-      console.log('🔍 Step 3: Contract ABI loaded ✅');
-
-      // Step 4: Get contract address
-      const contractAddress = process.env.NEXT_PUBLIC_CONTRACT_PRESCRIPTIONS;
-      if (!contractAddress) {
-        throw new Error('Prescriptions contract address not configured');
-      }
-
-      console.log('🔍 Step 4: Contract address obtained ✅');
-      console.log(`   Address: ${contractAddress}`);
-
-      // Step 5: Initialize contract with signer
-      const contract = new ethers.Contract(
-        contractAddress,
-        contractData.abi,
-        signer
-      );
-
-      console.log('🔍 Step 5: Contract initialized ✅');
-
-      // Step 6: Validate arguments
+      // Validate required fields
       if (!formData.prescriptionId || !formData.patientId || !formData.medication || !formData.dosage) {
         throw new Error('Please fill in all required fields');
       }
 
-      console.log('🔍 Step 6: Arguments validated ✅');
+      // Generate expiry timestamp (30 days from now)
+      const expiryTimestamp = Math.floor(Date.now() / 1000) + (30 * 24 * 60 * 60);
 
-      // Step 7: Log exact arguments
-      console.log('\n📤 Transaction Arguments:');
-      console.log(`   prescriptionId: "${formData.prescriptionId}"`);
-      console.log(`   patientId: "${formData.patientId}"`);
-      console.log(`   doctorId: "${doctorAddress}"`);
-      console.log(`   medication: "${formData.medication}"`);
-      console.log(`   dosage: "${formData.dosage}"`);
-      console.log(`   instructions: "${formData.instructions}"`);
+      // Create prescription payload matching backend expectations
+      const prescriptionPayload = {
+        prescriptionId: formData.prescriptionId,
+        patientId: formData.patientId,
+        doctorAddress: user?.id || '', // Use authenticated user's ID as doctor address
+        medication: formData.medication,
+        dosage: formData.dosage,
+        expiryTimestamp: expiryTimestamp,
+      };
 
-      // Step 8: Check DOCTOR_ROLE
-      const DOCTOR_ROLE = ethers.keccak256(ethers.toUtf8Bytes('DOCTOR_ROLE'));
+      console.log('Creating prescription:', prescriptionPayload);
 
-      // Load HealthLink contract to check role
-      const healthlinkResponse = await fetch('/contracts/HealthLink.json');
-      const healthlinkData = await healthlinkResponse.json();
-      const healthlinkAddress = process.env.NEXT_PUBLIC_HEALTHLINK_CONTRACT_ADDRESS;
-      const healthlinkContract = new ethers.Contract(
-        healthlinkAddress!,
-        healthlinkData.abi,
-        provider
-      );
+      // Use API client to create prescription
+      const { prescriptionsApi } = await import('@/lib/api-client');
+      const response = await prescriptionsApi.create(prescriptionPayload);
 
-      console.log('\n🔍 Step 7: Checking DOCTOR_ROLE...');
-      const hasRole = await healthlinkContract.hasRole(DOCTOR_ROLE, doctorAddress);
-      console.log(`   Has Role: ${hasRole ? '✅ YES' : '❌ NO'}`);
-
-      if (!hasRole) {
-        throw new Error(
-          `Your wallet (${doctorAddress}) does not have DOCTOR_ROLE. ` +
-          'Please run the grant-roles script to grant permissions.'
-        );
-      }
-
-      // Step 9: Send transaction
-      console.log('\n⏳ Step 8: Sending transaction...');
-
-      const tx = await contract.createPrescription(
-        formData.prescriptionId,
-        formData.patientId,
-        doctorAddress,
-        formData.medication,
-        formData.dosage,
-        formData.instructions
-      );
-
-      console.log(`   📤 Transaction Hash: ${tx.hash}`);
-      console.log('   ⏳ Waiting for confirmation...');
-
-      // Step 10: Wait for confirmation
-      const receipt = await tx.wait();
-
-      console.log('   ✅ Transaction confirmed!');
-      console.log(`   🧱 Block Number: ${receipt.blockNumber}`);
-      console.log(`   ⛽ Gas Used: ${receipt.gasUsed.toString()}`);
+      console.log('Prescription created successfully:', response);
 
       // Success!
       toast({
@@ -175,28 +98,13 @@ export function CreatePrescriptionDialog() {
       setOpen(false);
 
     } catch (err) {
-      console.error('\n❌ Transaction failed:', err);
+      console.error('Failed to create prescription:', err);
 
-      let errorMessage = 'Failed to create prescription';
-
-      if (err instanceof Error) {
-        if (err.message.includes('user rejected')) {
-          errorMessage = 'Transaction was rejected by user';
-        } else if (err.message.includes('insufficient funds')) {
-          errorMessage = 'Insufficient funds for gas fees';
-        } else if (err.message.includes('Reverted') || err.message.includes('revert')) {
-          errorMessage = 'Transaction reverted. You may not have permission to create prescriptions.';
-        } else if (err.message.includes('DOCTOR_ROLE')) {
-          errorMessage = err.message;
-        } else {
-          errorMessage = err.message;
-        }
-      }
-
+      const errorMessage = err instanceof Error ? err.message : 'Failed to create prescription';
       setError(errorMessage);
 
       toast({
-        title: 'Error',
+        title: 'Creation Failed',
         description: errorMessage,
         variant: 'destructive',
       });

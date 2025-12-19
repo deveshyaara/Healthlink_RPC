@@ -3,7 +3,7 @@
  * Doctor Actions Component
  *
  * Fixed implementation for Add Patient and Schedule Appointment functionality
- * Includes proper signer initialization, argument validation, and error handling
+ * Uses backend API instead of direct blockchain calls
  *
  * Usage: Import and use these components in your doctor dashboard
  */
@@ -11,7 +11,6 @@
 'use client';
 
 import { useState } from 'react';
-import { ethers } from 'ethers';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -76,49 +75,7 @@ export function AddPatientDialog() {
     setError(null);
 
     try {
-      // Step 1: Check if MetaMask is installed
-      if (typeof window === 'undefined' || !window.ethereum) {
-        throw new Error('MetaMask not installed. Please install MetaMask to continue.');
-      }
-
-      console.log('🔍 Step 1: MetaMask detected ✅');
-
-      // Step 2: Get provider and signer
-      const provider = new ethers.BrowserProvider(window.ethereum);
-      const signer = await provider.getSigner();
-      const doctorAddress = await signer.getAddress();
-
-      console.log('🔍 Step 2: Signer initialized ✅');
-      console.log(`   Doctor Address: ${doctorAddress}`);
-
-      // Step 3: Load contract ABI
-      const contractResponse = await fetch('/contracts/HealthLink.json');
-      if (!contractResponse.ok) {
-        throw new Error('Failed to load contract ABI');
-      }
-      const contractData = await contractResponse.json();
-
-      console.log('🔍 Step 3: Contract ABI loaded ✅');
-
-      // Step 4: Get contract address
-      const contractAddress = process.env.NEXT_PUBLIC_HEALTHLINK_CONTRACT_ADDRESS;
-      if (!contractAddress) {
-        throw new Error('Contract address not configured');
-      }
-
-      console.log('🔍 Step 4: Contract address obtained ✅');
-      console.log(`   Address: ${contractAddress}`);
-
-      // Step 5: Initialize contract with signer
-      const contract = new ethers.Contract(
-        contractAddress,
-        contractData.abi,
-        signer
-      );
-
-      console.log('🔍 Step 5: Contract initialized ✅');
-
-      // Step 6: Validate arguments
+      // Validate required fields
       if (!formData.patientId || !formData.name || !formData.age) {
         throw new Error('Please fill in all required fields');
       }
@@ -128,51 +85,22 @@ export function AddPatientDialog() {
         throw new Error('Please enter a valid age');
       }
 
-      console.log('🔍 Step 6: Arguments validated ✅');
+      // Create patient payload matching backend expectations
+      const patientPayload = {
+        patientId: formData.patientId,
+        name: formData.name,
+        age: ageNumber,
+        bloodType: formData.bloodType,
+        allergies: formData.allergies || '',
+      };
 
-      // Step 7: Log exact arguments being sent
-      console.log('\n📤 Transaction Arguments:');
-      console.log(`   patientId: "${formData.patientId}" (${typeof formData.patientId})`);
-      console.log(`   name: "${formData.name}" (${typeof formData.name})`);
-      console.log(`   age: ${ageNumber} (${typeof ageNumber})`);
-      console.log(`   bloodType: "${formData.bloodType}" (${typeof formData.bloodType})`);
-      console.log(`   allergies: "${formData.allergies}" (${typeof formData.allergies})`);
+      console.log('Creating patient:', patientPayload);
 
-      // Step 8: Check if doctor has DOCTOR_ROLE
-      const DOCTOR_ROLE = ethers.keccak256(ethers.toUtf8Bytes('DOCTOR_ROLE'));
-      console.log('\n🔍 Step 7: Checking DOCTOR_ROLE...');
-      console.log(`   Role Hash: ${DOCTOR_ROLE}`);
+      // Use API client to create patient
+      const { patientsApi } = await import('@/lib/api-client');
+      const response = await patientsApi.create(patientPayload);
 
-      const hasRole = await contract.hasRole(DOCTOR_ROLE, doctorAddress);
-      console.log(`   Has Role: ${hasRole ? '✅ YES' : '❌ NO'}`);
-
-      if (!hasRole) {
-        throw new Error(
-          `Your wallet (${doctorAddress}) does not have DOCTOR_ROLE. ` +
-          'Please run the grant-roles script to grant permissions.'
-        );
-      }
-
-      // Step 9: Send transaction
-      console.log('\n⏳ Step 8: Sending transaction...');
-
-      const tx = await contract.createPatient(
-        formData.patientId,
-        formData.name,
-        ageNumber,
-        formData.bloodType,
-        formData.allergies
-      );
-
-      console.log(`   📤 Transaction Hash: ${tx.hash}`);
-      console.log('   ⏳ Waiting for confirmation...');
-
-      // Step 10: Wait for transaction confirmation
-      const receipt = await tx.wait();
-
-      console.log('   ✅ Transaction confirmed!');
-      console.log(`   🧱 Block Number: ${receipt.blockNumber}`);
-      console.log(`   ⛽ Gas Used: ${receipt.gasUsed.toString()}`);
+      console.log('Patient created successfully:', response);
 
       // Success!
       toast({
@@ -185,28 +113,9 @@ export function AddPatientDialog() {
       setOpen(false);
 
     } catch (err) {
-      console.error('\n❌ Transaction failed:', err);
+      console.error('Failed to create patient:', err);
 
-      let errorMessage = 'Failed to add patient';
-
-      if (err instanceof Error) {
-        // Check for specific error types
-        if (err.message.includes('user rejected')) {
-          errorMessage = 'Transaction was rejected by user';
-        } else if (err.message.includes('insufficient funds')) {
-          errorMessage = 'Insufficient funds for gas fees';
-        } else if (err.message.includes('Reverted') || err.message.includes('revert')) {
-          errorMessage = 'Transaction reverted. You may not have permission to create patients.';
-        } else if (err.message.includes('DOCTOR_ROLE')) {
-          errorMessage = err.message;
-        } else {
-          errorMessage = err.message;
-        }
-
-        console.error(`   Error Type: ${err.constructor.name}`);
-        console.error(`   Error Message: ${err.message}`);
-      }
-
+      const errorMessage = err instanceof Error ? err.message : 'Failed to add patient';
       setError(errorMessage);
 
       toast({
@@ -235,7 +144,7 @@ export function AddPatientDialog() {
           <DialogHeader>
             <DialogTitle>Add New Patient</DialogTitle>
             <DialogDescription>
-              Create a new patient record on the blockchain
+              Create a new patient record
             </DialogDescription>
           </DialogHeader>
 
@@ -403,56 +312,35 @@ export function ScheduleAppointmentDialog({
     setError(null);
 
     try {
-      // Similar implementation to AddPatient...
-      if (typeof window === 'undefined' || !window.ethereum) {
-        throw new Error('MetaMask not installed');
+      // Validate required fields
+      if (!formData.appointmentId || !formData.patientId || !formData.date || !formData.time) {
+        throw new Error('Please fill in all required fields');
       }
 
-      const provider = new ethers.BrowserProvider(window.ethereum);
-      const signer = await provider.getSigner();
-      const doctorAddress = await signer.getAddress();
+      // Combine date and time into timestamp
+      const dateTimeString = `${formData.date}T${formData.time}`;
+      const timestamp = Math.floor(new Date(dateTimeString).getTime() / 1000);
 
-      const contractResponse = await fetch('/contracts/Appointments.json');
-      if (!contractResponse.ok) {
-        throw new Error('Failed to load contract ABI');
-      }
-      const contractData = await contractResponse.json();
-
-      const contractAddress = process.env.NEXT_PUBLIC_CONTRACT_APPOINTMENTS;
-      if (!contractAddress) {
-        throw new Error('Contract address not configured');
+      if (isNaN(timestamp)) {
+        throw new Error('Please enter a valid date and time');
       }
 
-      const contract = new ethers.Contract(
-        contractAddress,
-        contractData.abi,
-        signer
-      );
+      // Create appointment payload matching backend expectations
+      const appointmentPayload = {
+        appointmentId: formData.appointmentId,
+        patientId: formData.patientId,
+        doctorAddress: '', // Will be set by backend from authenticated user
+        timestamp: timestamp,
+        notes: formData.notes || '',
+      };
 
-      // Log arguments
-      console.log('\n📤 Schedule Appointment Arguments:');
-      console.log(`   appointmentId: "${formData.appointmentId}"`);
-      console.log(`   patientId: "${formData.patientId}"`);
-      console.log(`   doctorId: "${doctorAddress}"`);
-      console.log(`   date: "${formData.date}"`);
-      console.log(`   time: "${formData.time}"`);
-      console.log(`   type: "${formData.type}"`);
-      console.log(`   notes: "${formData.notes}"`);
+      console.log('Scheduling appointment:', appointmentPayload);
 
-      // Send transaction
-      const tx = await contract.scheduleAppointment(
-        formData.appointmentId,
-        formData.patientId,
-        doctorAddress,
-        formData.date,
-        formData.time,
-        formData.type,
-        formData.notes
-      );
+      // Use API client to create appointment
+      const { appointmentsApi } = await import('@/lib/api-client');
+      const response = await appointmentsApi.create(appointmentPayload);
 
-      console.log(`   📤 Transaction Hash: ${tx.hash}`);
-      const receipt = await tx.wait();
-      console.log(`   ✅ Confirmed in block ${receipt.blockNumber}`);
+      console.log('Appointment scheduled successfully:', response);
 
       toast({
         title: 'Appointment Scheduled',
@@ -468,18 +356,11 @@ export function ScheduleAppointmentDialog({
       }
 
     } catch (err) {
-      console.error('❌ Transaction failed:', err);
+      console.error('Failed to schedule appointment:', err);
 
-      let errorMessage = 'Failed to schedule appointment';
-      if (err instanceof Error) {
-        if (err.message.includes('Reverted')) {
-          errorMessage = 'Transaction reverted. Check your permissions.';
-        } else {
-          errorMessage = err.message;
-        }
-      }
-
+      const errorMessage = err instanceof Error ? err.message : 'Failed to schedule appointment';
       setError(errorMessage);
+
       toast({
         title: 'Error',
         description: errorMessage,
@@ -506,7 +387,7 @@ export function ScheduleAppointmentDialog({
           <DialogHeader>
             <DialogTitle>Schedule Appointment</DialogTitle>
             <DialogDescription>
-              Create a new appointment on the blockchain
+              Schedule a new appointment for a patient
             </DialogDescription>
           </DialogHeader>
 
