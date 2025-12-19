@@ -1,3 +1,9 @@
+# Ignore all env files and secret scripts
+.env*
+render-env-setup.sh
+middleware-api/.env*
+middleware-api/render.yaml
+frontend/.env*
 # ============================================================================
 # HealthLink RPC - Git Ignore Configuration
 # ============================================================================

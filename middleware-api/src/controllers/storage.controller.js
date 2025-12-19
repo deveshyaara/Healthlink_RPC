@@ -1,4 +1,4 @@
-import storageService from '../services/storage.service.js';
+import StorageService from '../services/storage.service.js';
 import logger from '../utils/logger.js';
 
 /**
@@ -46,7 +46,7 @@ export const uploadFile = async (req, res) => {
     };
 
     // Upload file using storage service (now takes file path instead of buffer)
-    const result = await storageService.uploadFile(file.path, metadata);
+    const result = await StorageService.getInstance().uploadFile(file.path, metadata);
 
     logger.info(`File uploaded: ${result.hash} (${result.isDuplicate ? 'duplicate' : 'new'})`);
 
@@ -104,7 +104,7 @@ export const getFile = async (req, res) => {
     }
 
     // Get file metadata first
-    const metadata = await storageService.getMetadata(hash);
+    const metadata = await StorageService.getInstance().getMetadata(hash);
 
     if (!metadata) {
       return res.status(404).json({
@@ -125,7 +125,7 @@ export const getFile = async (req, res) => {
     res.setHeader('Cache-Control', 'public, max-age=31536000'); // 1 year (immutable)
 
     // Stream file to response
-    const fileStream = storageService.getFileStream(hash);
+    const fileStream = StorageService.getInstance().getFileStream(hash);
 
     fileStream.on('error', (error) => {
       console.error('❌ Stream error:', error);
@@ -169,7 +169,7 @@ export const getMetadata = async (req, res) => {
   try {
     const { hash } = req.params;
 
-    const metadata = await storageService.getMetadata(hash);
+    const metadata = await StorageService.getInstance().getMetadata(hash);
 
     if (!metadata) {
       return res.status(404).json({
@@ -205,7 +205,7 @@ export const getMetadata = async (req, res) => {
 export const getStats = async (req, res) => {
   try {
     // TODO: Add admin-only middleware check
-    const stats = storageService.getStats();
+    const stats = StorageService.getInstance().getStats();
 
     return res.status(200).json({
       status: 'success',
@@ -235,7 +235,7 @@ export const deleteFile = async (req, res) => {
     // TODO: Add admin-only middleware check
     const { hash } = req.params;
 
-    const deleted = await storageService.deleteFile(hash);
+    const deleted = await StorageService.getInstance().deleteFile(hash);
 
     if (!deleted) {
       return res.status(404).json({

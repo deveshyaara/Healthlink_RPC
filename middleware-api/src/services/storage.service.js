@@ -26,6 +26,15 @@ const __dirname = dirname(__filename);
  * - Key derivation from environment variable
  */
 class StorageService {
+  static instance = null;
+
+  static getInstance() {
+    if (!StorageService.instance) {
+      StorageService.instance = new StorageService();
+    }
+    return StorageService.instance;
+  }
+
   constructor() {
     // Storage directories
     this.uploadsDir = process.env.UPLOADS_DIR
@@ -399,5 +408,5 @@ class StorageService {
   }
 }
 
-// Export singleton instance
-export default new StorageService();
+// Export class with singleton getter
+export default StorageService;
