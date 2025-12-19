@@ -128,36 +128,60 @@ async function fetchApi<T>(
 }
 
 /**
- * Upload file with FormData (special handling needed)
+ * Upload file with FormData (with progress support)
  */
-async function uploadFile(endpoint: string, formData: FormData): Promise<any> {
+async function uploadFile(endpoint: string, formData: FormData, onProgress?: (progress: number) => void): Promise<any> {
   const apiUrl = getApiBaseUrl();
   const url = `${apiUrl}${endpoint}`;
   const token = authUtils.getToken();
 
-  const headers: HeadersInit = {};
-  if (token) {
-    headers['Authorization'] = `Bearer ${token}`;
-  }
-  // Do NOT set Content-Type for FormData - browser will set it with boundary
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
 
-  const config: RequestInit = {
-    method: 'POST',
-    headers,
-    body: formData,
-    credentials: 'include',
-    mode: 'cors',
-  };
+    xhr.open('POST', url);
 
-  const response = await fetch(url, config);
+    // Set headers
+    if (token) {
+      xhr.setRequestHeader('Authorization', `Bearer ${token}`);
+    }
 
-  if (!response.ok) {
-    const errorResponse = await response.json();
-    throw new Error(errorResponse.message || `Upload failed: ${response.statusText}`);
-  }
+    // Handle progress
+    if (onProgress) {
+      xhr.upload.onprogress = (event) => {
+        if (event.lengthComputable) {
+          const progress = (event.loaded / event.total) * 100;
+          onProgress(progress);
+        }
+      };
+    }
 
-  const jsonResponse = await response.json();
-  return jsonResponse.data || jsonResponse;
+    // Handle response
+    xhr.onload = () => {
+      if (xhr.status >= 200 && xhr.status < 300) {
+        try {
+          const jsonResponse = JSON.parse(xhr.responseText);
+          resolve(jsonResponse.data || jsonResponse);
+        } catch (error) {
+          resolve(xhr.responseText);
+        }
+      } else {
+        try {
+          const errorResponse = JSON.parse(xhr.responseText);
+          reject(new Error(errorResponse.message || `Upload failed: ${xhr.statusText}`));
+        } catch (error) {
+          reject(new Error(`Upload failed: ${xhr.statusText}`));
+        }
+      }
+    };
+
+    // Handle errors
+    xhr.onerror = () => {
+      reject(new Error('Network error during upload'));
+    };
+
+    // Send the request
+    xhr.send(formData);
+  });
 }
 
 // ========================================
@@ -425,10 +449,10 @@ export const storageApi = {
    * Backend route: POST /api/storage/upload
    * Returns: { hash: string } - SHA-256 hash of uploaded file
    */
-  upload: async (file: File): Promise<{ hash: string }> => {
+  upload: async (file: File, onProgress?: (progress: number) => void): Promise<{ hash: string }> => {
     const formData = new FormData();
     formData.append('file', file);
-    return uploadFile('/api/storage/upload', formData);
+    return uploadFile('/api/storage/upload', formData, onProgress);
   },
 
   /**

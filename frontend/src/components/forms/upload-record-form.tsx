@@ -73,43 +73,13 @@ export function UploadRecordForm({
     try {
       const file = data.file[0];
 
-      // Step 1: Upload file to backend storage using API client
-      setUploadProgress(20);
-
-      // Import API client dynamically
-      const { storageApi, recordsApi } = await import('@/lib/api-client');
-
       // Upload file and get SHA-256 hash
-      const uploadResult = await storageApi.upload(file);
+      const uploadResult = await storageApi.upload(file, (progress) => {
+        setUploadProgress(progress * 0.8); // File upload is 80% of the process
+      });
       const realHash = uploadResult.hash; // Real SHA-256 hash from backend
 
-      setUploadProgress(60);
-
-      // Parse tags (comma-separated)
-      const tags = data.tags
-        ? data.tags.split(',').map(tag => tag.trim()).filter(Boolean)
-        : [];
-
-      // Step 2: Create blockchain record with real hash
-      const recordPayload = {
-        recordId: `REC${Date.now()}`,
-        patientId: patientId,
-        doctorId: 'unknown', // Will be set by backend based on auth context or set to "self-uploaded"
-        recordType: data.recordType,
-        ipfsHash: realHash, // ✅ Using real SHA-256 hash from storage
-        metadata: {
-          title: data.title,
-          description: data.description,
-          tags: tags,
-          fileName: file.name,
-          fileSize: file.size,
-          fileType: file.type,
-          uploadedAt: new Date().toISOString(),
-          storageHash: realHash, // Store hash in metadata too
-        },
-      };
-
-      setUploadProgress(80);
+      setUploadProgress(85);
 
       const _response = await recordsApi.create(recordPayload);
 

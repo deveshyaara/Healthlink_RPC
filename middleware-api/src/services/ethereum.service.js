@@ -262,6 +262,22 @@ class EthereumService {
     };
   }
 
+  async getConsentsByPatient(patientId) {
+    const contract = this.getContract('HealthLink');
+    const consents = await contract.getConsentsByPatient(patientId);
+    return consents.map(consent => ({
+      consentId: consent.consentId,
+      patientId: consent.patientId,
+      granteeAddress: consent.granteeAddress,
+      scope: consent.scope,
+      purpose: consent.purpose,
+      validUntil: Number(consent.validUntil),
+      status: Number(consent.status),
+      createdAt: Number(consent.createdAt),
+      revokedAt: Number(consent.revokedAt),
+    }));
+  }
+
   // ====== Appointments Contract Methods ======
 
   async createAppointment(appointmentId, patientId, doctorId, appointmentDate, reason, notes) {
@@ -280,6 +296,22 @@ class EthereumService {
   async getAppointmentsByPatient(patientId) {
     const contract = this.getContract('Appointments');
     const appointments = await contract.getAppointmentsByPatient(patientId);
+    return appointments.map(apt => ({
+      appointmentId: apt.appointmentId,
+      patientId: apt.patientId,
+      doctorId: apt.doctorId,
+      appointmentDate: Number(apt.appointmentDate),
+      reason: apt.reason,
+      notes: apt.notes,
+      status: Number(apt.status),
+      createdAt: Number(apt.createdAt),
+      updatedAt: Number(apt.updatedAt),
+    }));
+  }
+
+  async getAppointmentsByDoctor(doctorId) {
+    const contract = this.getContract('Appointments');
+    const appointments = await contract.getAppointmentsByDoctor(doctorId);
     return appointments.map(apt => ({
       appointmentId: apt.appointmentId,
       patientId: apt.patientId,
@@ -318,6 +350,24 @@ class EthereumService {
   async getPrescriptionsByPatient(patientId) {
     const contract = this.getContract('Prescriptions');
     const prescriptions = await contract.getPrescriptionsByPatient(patientId);
+    return prescriptions.map(rx => ({
+      prescriptionId: rx.prescriptionId,
+      patientId: rx.patientId,
+      doctorId: rx.doctorId,
+      medication: rx.medication,
+      dosage: rx.dosage,
+      instructions: rx.instructions,
+      issuedDate: Number(rx.issuedDate),
+      expiryDate: Number(rx.expiryDate),
+      status: Number(rx.status),
+      filledBy: rx.filledBy,
+      filledDate: Number(rx.filledDate),
+    }));
+  }
+
+  async getPrescriptionsByDoctor(doctorId) {
+    const contract = this.getContract('Prescriptions');
+    const prescriptions = await contract.getPrescriptionsByDoctor(doctorId);
     return prescriptions.map(rx => ({
       prescriptionId: rx.prescriptionId,
       patientId: rx.patientId,

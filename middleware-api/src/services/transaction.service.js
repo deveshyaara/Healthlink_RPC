@@ -352,10 +352,147 @@ class TransactionService {
   }
 
   /**
-   * Legacy method - not applicable to Ethereum
+   * Get appointments by patient
+   * @param {string} patientId - Patient ID
+   * @returns {Promise<Object>} Array of appointments
    */
-  async getAssetHistory(assetId, _userId = null) {
-    throw new BlockchainError('getAssetHistory not applicable to Ethereum healthcare contracts');
+  async getAppointmentsByPatient(patientId) {
+    try {
+      await this.initialize();
+      logger.info('Service: Getting appointments by patient', { patientId });
+
+      const result = await ethereumService.getAppointmentsByPatient(patientId);
+
+      return {
+        success: true,
+        data: result,
+        functionName: 'getAppointmentsByPatient',
+        timestamp: new Date().toISOString(),
+      };
+    } catch (error) {
+      logger.error('Service: getAppointmentsByPatient failed:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get prescriptions by patient
+   * @param {string} patientId - Patient ID
+   * @returns {Promise<Object>} Array of prescriptions
+   */
+  async getPrescriptionsByPatient(patientId) {
+    try {
+      await this.initialize();
+      logger.info('Service: Getting prescriptions by patient', { patientId });
+
+      const result = await ethereumService.getPrescriptionsByPatient(patientId);
+
+      return {
+        success: true,
+        data: result,
+        functionName: 'getPrescriptionsByPatient',
+        timestamp: new Date().toISOString(),
+      };
+    } catch (error) {
+      logger.error('Service: getPrescriptionsByPatient failed:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get prescriptions by doctor
+   * @param {string} doctorId - Doctor ID
+   * @returns {Promise<Object>} Array of prescriptions
+   */
+  async getPrescriptionsByDoctor(doctorId) {
+    try {
+      await this.initialize();
+      logger.info('Service: Getting prescriptions by doctor', { doctorId });
+
+      const result = await ethereumService.getPrescriptionsByDoctor(doctorId);
+
+      return {
+        success: true,
+        data: result,
+        functionName: 'getPrescriptionsByDoctor',
+        timestamp: new Date().toISOString(),
+      };
+    } catch (error) {
+      logger.error('Service: getPrescriptionsByDoctor failed:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get appointments by doctor
+   * @param {string} doctorId - Doctor ID
+   * @returns {Promise<Object>} Array of appointments
+   */
+  async getAppointmentsByDoctor(doctorId) {
+    try {
+      await this.initialize();
+      logger.info('Service: Getting appointments by doctor', { doctorId });
+
+      const result = await ethereumService.getAppointmentsByDoctor(doctorId);
+
+      return {
+        success: true,
+        data: result,
+        functionName: 'getAppointmentsByDoctor',
+        timestamp: new Date().toISOString(),
+      };
+    } catch (error) {
+      logger.error('Service: getAppointmentsByDoctor failed:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get consent by ID
+   * @param {string} consentId - Consent ID
+   * @returns {Promise<Object>} Consent data
+   */
+  async getConsent(consentId) {
+    try {
+      await this.initialize();
+      logger.info('Service: Getting consent', { consentId });
+
+      const result = await ethereumService.getConsent(consentId);
+
+      return {
+        success: true,
+        data: result,
+        functionName: 'getConsent',
+        timestamp: new Date().toISOString(),
+      };
+    } catch (error) {
+      logger.error('Service: getConsent failed:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get consents by patient
+   * @param {string} patientId - Patient ID
+   * @returns {Promise<Object>} Array of consents
+   */
+  async getConsentsByPatient(patientId) {
+    try {
+      await this.initialize();
+      logger.info('Service: Getting consents by patient', { patientId });
+
+      const result = await ethereumService.getConsentsByPatient(patientId);
+
+      return {
+        success: true,
+        data: result,
+        functionName: 'getConsentsByPatient',
+        timestamp: new Date().toISOString(),
+      };
+    } catch (error) {
+      logger.error('Service: getConsentsByPatient failed:', error);
+      throw error;
+    }
   }
 
   /**

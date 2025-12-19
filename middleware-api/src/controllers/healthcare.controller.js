@@ -31,6 +31,22 @@ class HealthcareController {
   async getPatient(req, res, next) {
     try {
       const { patientId } = req.params;
+      const userId = req.user.userId || req.user.id;
+      const userRole = req.user.role;
+
+      // Check permissions
+      if (userRole === 'patient' && userId !== patientId) {
+        return res.status(403).json({
+          success: false,
+          error: {
+            type: 'PermissionError',
+            message: 'Patients can only access their own data',
+            statusCode: 403,
+          },
+        });
+      }
+
+      // Doctors and admins can access any patient data (with consent checks for doctors to be implemented later)
 
       const result = await transactionService.getPatient(patientId);
 
@@ -65,10 +81,39 @@ class HealthcareController {
   async getMedicalRecord(req, res, next) {
     try {
       const { recordId } = req.params;
+      const userId = req.user.userId || req.user.id;
+      const userRole = req.user.role;
 
-      const result = await transactionService.getMedicalRecord(recordId);
+      // First get the record to check ownership
+      const record = await transactionService.getMedicalRecord(recordId);
 
-      res.status(200).json(result);
+      if (!record.data || !record.data.exists) {
+        return res.status(404).json({
+          success: false,
+          error: {
+            type: 'NotFoundError',
+            message: 'Medical record not found',
+            statusCode: 404,
+          },
+        });
+      }
+
+      // Check permissions
+      if (userRole === 'patient' && record.data.patientId !== userId) {
+        return res.status(403).json({
+          success: false,
+          error: {
+            type: 'PermissionError',
+            message: 'Patients can only access their own records',
+            statusCode: 403,
+          },
+        });
+      }
+
+      // Doctors need consent to access patient records (to be implemented)
+      // Admins can access any records
+
+      res.status(200).json(record);
     } catch (error) {
       next(error);
     }
@@ -82,6 +127,43 @@ class HealthcareController {
   async getRecordsByPatient(req, res, next) {
     try {
       const { patientId } = req.params;
+      const userId = req.user.userId || req.user.id;
+      const userRole = req.user.role;
+
+      // Check permissions
+      if (userRole === 'patient' && userId !== patientId) {
+        return res.status(403).json({
+          success: false,
+          error: {
+            type: 'PermissionError',
+            message: 'Patients can only access their own records',
+            statusCode: 403,
+          },
+        });
+      }
+
+      // Doctors need consent to access patient records
+      if (userRole === 'doctor') {
+        const consents = await transactionService.getConsentsByPatient(patientId);
+        const hasConsent = consents.data.some((consent) =>
+          consent.granteeAddress === userId && // doctor's wallet address
+          consent.status === 0 && // active status
+          consent.validUntil > Math.floor(Date.now() / 1000) // not expired
+        );
+
+        if (!hasConsent) {
+          return res.status(403).json({
+            success: false,
+            error: {
+              type: 'PermissionError',
+              message: 'Access denied: Patient consent required to view records',
+              statusCode: 403,
+            },
+          });
+        }
+      }
+
+      // Admins can access any records
 
       const result = await transactionService.getRecordsByPatient(patientId);
 
@@ -97,8 +179,8 @@ class HealthcareController {
    */
   async getCurrentUserRecords(req, res, next) {
     try {
-      // Extract userId from authenticated user (JWT userId is fabric_enrollment_id)
       const userId = req.user.userId || req.user.id;
+      const userRole = req.user.role;
 
       if (!userId) {
         return res.status(400).json({
@@ -111,10 +193,37 @@ class HealthcareController {
         });
       }
 
-      logger.info(`Fetching records for user: ${userId}`);
-      const result = await transactionService.getRecordsByPatient(userId);
+      logger.info(`Fetching records for user: ${userId} with role: ${userRole}`);
 
-      res.status(200).json(result);
+      let records = [];
+
+      if (userRole === 'patient') {
+        // Patients can only see their own records
+        records = await transactionService.getRecordsByPatient(userId);
+      } else if (userRole === 'doctor') {
+        // Doctors can see records of patients who have granted consent
+        // For now, return empty array - will implement consent checking later
+        records = [];
+      } else if (userRole === 'admin') {
+        // Admins can see all records (for audit purposes)
+        // This would need a different method to get all records
+        records = [];
+      } else {
+        return res.status(403).json({
+          success: false,
+          error: {
+            type: 'PermissionError',
+            message: 'Invalid user role for accessing medical records',
+            statusCode: 403,
+          },
+        });
+      }
+
+      res.status(200).json({
+        success: true,
+        data: records,
+        count: records.length,
+      });
     } catch (error) {
       logger.error('getCurrentUserRecords error:', error);
       next(error);
@@ -248,13 +357,37 @@ class HealthcareController {
   async getCurrentUserAppointments(req, res, next) {
     try {
       const userId = req.user.userId || req.user.id;
+      const userRole = req.user.role;
+
       if (!userId) {
-        return res.status(400).json({ success: false, error: 'User ID not found' });
+        return res.status(400).json({
+          success: false,
+          error: 'User ID not found'
+        });
       }
 
-      // Return empty array for now - implement based on role
-      logger.info(`Fetching appointments for user: ${userId}`);
-      res.status(200).json([]);
+      logger.info(`Fetching appointments for user: ${userId} with role: ${userRole}`);
+
+      let appointments = [];
+
+      if (userRole === 'patient') {
+        // Patients can only see their own appointments
+        const result = await transactionService.getAppointmentsByPatient(userId);
+        appointments = result.data || [];
+      } else if (userRole === 'doctor') {
+        // Doctors can see appointments where they are the doctor
+        // Note: We need to implement getAppointmentsByDoctor in the service
+        appointments = [];
+      } else if (userRole === 'admin') {
+        // Admins can see all appointments
+        appointments = [];
+      }
+
+      res.status(200).json({
+        success: true,
+        data: appointments,
+        count: appointments.length,
+      });
     } catch (error) {
       next(error);
     }
@@ -310,12 +443,37 @@ class HealthcareController {
   async getCurrentUserPrescriptions(req, res, next) {
     try {
       const userId = req.user.userId || req.user.id;
+      const userRole = req.user.role;
+
       if (!userId) {
-        return res.status(400).json({ success: false, error: 'User ID not found' });
+        return res.status(400).json({
+          success: false,
+          error: 'User ID not found'
+        });
       }
 
-      logger.info(`Fetching prescriptions for user: ${userId}`);
-      res.status(200).json([]);
+      logger.info(`Fetching prescriptions for user: ${userId} with role: ${userRole}`);
+
+      let prescriptions = [];
+
+      if (userRole === 'patient') {
+        // Patients can only see their own prescriptions
+        const result = await transactionService.getPrescriptionsByPatient(userId);
+        prescriptions = result.data || [];
+      } else if (userRole === 'doctor') {
+        // Doctors can see prescriptions they've issued
+        // Note: We need to implement getPrescriptionsByDoctor in the service
+        prescriptions = [];
+      } else if (userRole === 'admin') {
+        // Admins can see all prescriptions
+        prescriptions = [];
+      }
+
+      res.status(200).json({
+        success: true,
+        data: prescriptions,
+        count: prescriptions.length,
+      });
     } catch (error) {
       next(error);
     }
@@ -355,12 +513,34 @@ class HealthcareController {
   async getCurrentUserConsents(req, res, next) {
     try {
       const userId = req.user.userId || req.user.id;
+      const userRole = req.user.role;
+
       if (!userId) {
-        return res.status(400).json({ success: false, error: 'User ID not found' });
+        return res.status(400).json({
+          success: false,
+          error: 'User ID not found'
+        });
       }
 
-      logger.info(`Fetching consents for user: ${userId}`);
-      res.status(200).json([]);
+      logger.info(`Fetching consents for user: ${userId} with role: ${userRole}`);
+
+      let consents = [];
+
+      if (userRole === 'patient') {
+        // Patients can see consents they've granted
+        const result = await transactionService.getConsentsByPatient(userId);
+        consents = result.data || [];
+      } else if (userRole === 'doctor') {
+        // Doctors can see consents granted to them
+        // Note: We need to implement getConsentsByGrantee in the service
+        consents = [];
+      }
+
+      res.status(200).json({
+        success: true,
+        data: consents,
+        count: consents.length,
+      });
     } catch (error) {
       next(error);
     }
@@ -387,6 +567,92 @@ class HealthcareController {
     try {
       const { consentId } = req.params;
       res.status(200).json({ success: true, consentId, status: 'revoked' });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * Get current user's prescriptions (for doctors: prescriptions they've issued)
+   * GET /api/prescriptions
+   */
+  async getCurrentUserPrescriptions(req, res, next) {
+    try {
+      const userId = req.user.userId || req.user.id;
+      const userRole = req.user.role;
+
+      if (!userId) {
+        return res.status(400).json({
+          success: false,
+          error: 'User ID not found'
+        });
+      }
+
+      logger.info(`Fetching prescriptions for user: ${userId} with role: ${userRole}`);
+
+      let prescriptions = [];
+
+      if (userRole === 'patient') {
+        // Patients can see prescriptions issued to them
+        const result = await transactionService.getPrescriptionsByPatient(userId);
+        prescriptions = result.data || [];
+      } else if (userRole === 'doctor') {
+        // Doctors can see prescriptions they've issued
+        const result = await transactionService.getPrescriptionsByDoctor(userId);
+        prescriptions = result.data || [];
+      } else if (userRole === 'admin') {
+        // Admins can see all prescriptions (implementation needed)
+        prescriptions = [];
+      }
+
+      res.status(200).json({
+        success: true,
+        data: prescriptions,
+        count: prescriptions.length,
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * Get current user's appointments (for doctors: appointments they've scheduled)
+   * GET /api/appointments
+   */
+  async getCurrentUserAppointments(req, res, next) {
+    try {
+      const userId = req.user.userId || req.user.id;
+      const userRole = req.user.role;
+
+      if (!userId) {
+        return res.status(400).json({
+          success: false,
+          error: 'User ID not found'
+        });
+      }
+
+      logger.info(`Fetching appointments for user: ${userId} with role: ${userRole}`);
+
+      let appointments = [];
+
+      if (userRole === 'patient') {
+        // Patients can see their appointments
+        const result = await transactionService.getAppointmentsByPatient(userId);
+        appointments = result.data || [];
+      } else if (userRole === 'doctor') {
+        // Doctors can see appointments they've scheduled
+        const result = await transactionService.getAppointmentsByDoctor(userId);
+        appointments = result.data || [];
+      } else if (userRole === 'admin') {
+        // Admins can see all appointments (implementation needed)
+        appointments = [];
+      }
+
+      res.status(200).json({
+        success: true,
+        data: appointments,
+        count: appointments.length,
+      });
     } catch (error) {
       next(error);
     }

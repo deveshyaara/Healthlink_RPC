@@ -1,6 +1,6 @@
 import express from 'express';
 import healthcareController from '../controllers/healthcare.controller.js';
-import { authenticateJWT } from '../middleware/auth.middleware.js';
+import { authenticateJWT, requireDoctor, requirePatient, requireAdmin } from '../middleware/auth.middleware.js';
 
 const router = express.Router();
 
@@ -43,23 +43,23 @@ router.get('/patient/:patientId', authenticateJWT, healthcareController.getRecor
 /**
  * @route   POST /api/v1/healthcare/patients
  * @desc    Create a new patient
- * @access  Public (should be protected in production)
+ * @access  Protected (Doctor or Admin)
  */
-router.post('/patients', healthcareController.createPatient);
+router.post('/patients', authenticateJWT, requireDoctor, healthcareController.createPatient);
 
 /**
  * @route   GET /api/v1/healthcare/patients/:patientId
  * @desc    Get patient information
- * @access  Public (should be protected in production)
+ * @access  Protected (Patient can view own data, Doctor/Admin can view any)
  */
-router.get('/patients/:patientId', healthcareController.getPatient);
+router.get('/patients/:patientId', authenticateJWT, healthcareController.getPatient);
 
 /**
  * @route   GET /api/v1/healthcare/patients/:patientId/records
  * @desc    Get all medical records for a patient
- * @access  Public (should be protected in production)
+ * @access  Protected (Patient can view own records, Doctor with consent, Admin)
  */
-router.get('/patients/:patientId/records', healthcareController.getRecordsByPatient);
+router.get('/patients/:patientId/records', authenticateJWT, healthcareController.getRecordsByPatient);
 
 // ======================
 // Medical Records Routes
@@ -68,16 +68,16 @@ router.get('/patients/:patientId/records', healthcareController.getRecordsByPati
 /**
  * @route   POST /api/v1/healthcare/records
  * @desc    Create a new medical record
- * @access  Public (should be protected in production)
+ * @access  Protected (Doctor or Admin)
  */
-router.post('/records', healthcareController.createMedicalRecord);
+router.post('/records', authenticateJWT, requireDoctor, healthcareController.createMedicalRecord);
 
 /**
  * @route   GET /api/v1/healthcare/records/:recordId
  * @desc    Get a medical record
- * @access  Public (should be protected in production)
+ * @access  Protected (Patient can view own records, Doctor with consent, Admin)
  */
-router.get('/records/:recordId', healthcareController.getMedicalRecord);
+router.get('/records/:recordId', authenticateJWT, healthcareController.getMedicalRecord);
 
 // ======================
 // Consent Routes
@@ -86,9 +86,9 @@ router.get('/records/:recordId', healthcareController.getMedicalRecord);
 /**
  * @route   POST /api/v1/healthcare/consents
  * @desc    Create consent for data access
- * @access  Public (should be protected in production)
+ * @access  Protected (Patient only - only patients can grant consent)
  */
-router.post('/consents', healthcareController.createConsent);
+router.post('/consents', authenticateJWT, requirePatient, healthcareController.createConsent);
 
 /**
  * @route   GET /api/consents
@@ -125,9 +125,9 @@ router.get('/appointments', authenticateJWT, healthcareController.getCurrentUser
 /**
  * @route   POST /api/v1/healthcare/appointments
  * @desc    Create a new appointment
- * @access  Public (should be protected in production)
+ * @access  Protected (Doctor or Admin)
  */
-router.post('/appointments', healthcareController.createAppointment);
+router.post('/appointments', authenticateJWT, requireDoctor, healthcareController.createAppointment);
 
 /**
  * @route   GET /api/appointments/:appointmentId
@@ -164,9 +164,9 @@ router.get('/prescriptions', authenticateJWT, healthcareController.getCurrentUse
 /**
  * @route   POST /api/v1/healthcare/prescriptions
  * @desc    Create a new prescription
- * @access  Public (should be protected in production)
+ * @access  Protected (Doctor only)
  */
-router.post('/prescriptions', healthcareController.createPrescription);
+router.post('/prescriptions', authenticateJWT, requireDoctor, healthcareController.createPrescription);
 
 /**
  * @route   GET /api/prescriptions/:prescriptionId
@@ -189,16 +189,16 @@ router.put('/prescriptions/:prescriptionId', authenticateJWT, healthcareControll
 /**
  * @route   POST /api/v1/healthcare/doctors
  * @desc    Register a new doctor
- * @access  Public (should be protected in production)
+ * @access  Protected (Admin only - doctors should be registered by admins)
  */
-router.post('/doctors', healthcareController.registerDoctor);
+router.post('/doctors', authenticateJWT, requireAdmin, healthcareController.registerDoctor);
 
 /**
  * @route   POST /api/v1/healthcare/doctors/:doctorAddress/verify
  * @desc    Verify a doctor
- * @access  Admin only (should be protected in production)
+ * @access  Admin only
  */
-router.post('/doctors/:doctorAddress/verify', healthcareController.verifyDoctor);
+router.post('/doctors/:doctorAddress/verify', authenticateJWT, requireAdmin, healthcareController.verifyDoctor);
 
 /**
  * @route   GET /api/v1/healthcare/doctors/verified
