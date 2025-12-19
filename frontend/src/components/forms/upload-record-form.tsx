@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '@/components/ui/textarea';
 import { useState } from 'react';
 import { Loader2, Upload, FileText } from 'lucide-react';
+import { storageApi, recordsApi } from '@/lib/api-client';
 
 // Zod validation schema
 const uploadRecordSchema = z.object({
@@ -80,6 +81,19 @@ export function UploadRecordForm({
       const realHash = uploadResult.hash; // Real SHA-256 hash from backend
 
       setUploadProgress(85);
+
+      // Create record payload with patient ID and file hash
+      const recordPayload = {
+        patientId,
+        title: data.title,
+        recordType: data.recordType,
+        description: data.description,
+        tags: data.tags || '',
+        fileHash: realHash,
+        fileName: file.name,
+        fileSize: file.size,
+        mimeType: file.type,
+      };
 
       const _response = await recordsApi.create(recordPayload);
 

@@ -161,14 +161,14 @@ async function uploadFile(endpoint: string, formData: FormData, onProgress?: (pr
         try {
           const jsonResponse = JSON.parse(xhr.responseText);
           resolve(jsonResponse.data || jsonResponse);
-        } catch (error) {
+        } catch (_error) { // eslint-disable-line @typescript-eslint/no-unused-vars
           resolve(xhr.responseText);
         }
       } else {
         try {
           const errorResponse = JSON.parse(xhr.responseText);
           reject(new Error(errorResponse.message || `Upload failed: ${xhr.statusText}`));
-        } catch (error) {
+        } catch (_error) { // eslint-disable-line @typescript-eslint/no-unused-vars
           reject(new Error(`Upload failed: ${xhr.statusText}`));
         }
       }
