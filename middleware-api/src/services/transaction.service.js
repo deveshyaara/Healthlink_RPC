@@ -222,13 +222,13 @@ class TransactionService {
    * @param {string} notes - Appointment notes
    * @returns {Promise<Object>} Transaction result
    */
-  async createAppointment(appointmentId, patientId, doctorAddress, timestamp, notes) {
+  async createAppointment(appointmentId, patientId, doctorAddress, timestamp, reason = '', notes = '') {
     try {
       await this.initialize();
       logger.info('Service: Creating appointment', { appointmentId, patientId });
 
       const result = await ethereumService.createAppointment(
-        appointmentId, patientId, doctorAddress, timestamp, notes,
+        appointmentId, patientId, doctorAddress, timestamp, reason, notes,
       );
 
       return {
@@ -253,13 +253,20 @@ class TransactionService {
    * @param {number} expiryTimestamp - Expiry timestamp
    * @returns {Promise<Object>} Transaction result
    */
-  async createPrescription(prescriptionId, patientId, doctorAddress, medication, dosage, expiryTimestamp) {
+  async createPrescription(prescriptionId, patientId, doctorAddress, medication, dosage, instructions = '', expiryTimestamp = 0) {
     try {
       await this.initialize();
       logger.info('Service: Creating prescription', { prescriptionId, patientId });
+      logger.info('transaction.createPrescription args', { prescriptionId, patientId, doctorAddress, medicationType: typeof medication, medicationSample: (typeof medication === 'string' ? medication.slice(0,200) : JSON.stringify(medication)), dosage, instructions, expiryTimestamp });
+
+      // Ensure expiry is a future timestamp. Default to 30 days from now when not provided.
+      const now = Math.floor(Date.now() / 1000);
+      const defaultExpiry = now + 30 * 24 * 60 * 60; // 30 days
+      const parsedExpiry = expiryTimestamp ? Number(expiryTimestamp) : 0;
+      const expiry = parsedExpiry > now ? parsedExpiry : defaultExpiry;
 
       const result = await ethereumService.createPrescription(
-        prescriptionId, patientId, doctorAddress, medication, dosage, expiryTimestamp,
+        prescriptionId, patientId, doctorAddress, medication, dosage, instructions, expiry,
       );
 
       return {
@@ -371,6 +378,15 @@ class TransactionService {
       };
     } catch (error) {
       logger.error('Service: getAppointmentsByPatient failed:', error);
+      // If contract reports missing data, return empty array instead of 404
+      if (error && (error.message && error.message.includes('does not exist') || error.type === 'NOT_FOUND')) {
+        return {
+          success: true,
+          data: [],
+          functionName: 'getAppointmentsByPatient',
+          timestamp: new Date().toISOString(),
+        };
+      }
       throw error;
     }
   }
@@ -395,6 +411,14 @@ class TransactionService {
       };
     } catch (error) {
       logger.error('Service: getPrescriptionsByPatient failed:', error);
+      if (error && (error.message && error.message.includes('does not exist') || error.type === 'NOT_FOUND')) {
+        return {
+          success: true,
+          data: [],
+          functionName: 'getPrescriptionsByPatient',
+          timestamp: new Date().toISOString(),
+        };
+      }
       throw error;
     }
   }

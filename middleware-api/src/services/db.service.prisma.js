@@ -23,6 +23,7 @@ import { PrismaClient, Prisma } from '@prisma/client';
 import { PrismaPg } from '@prisma/adapter-pg';
 import pg from 'pg';
 import bcrypt from 'bcryptjs';
+import logger from '../utils/logger.js';
 
 /**
  * Prisma Client Singleton with connection management
@@ -74,8 +75,8 @@ class DatabaseService {
       const databaseUrl = process.env.DATABASE_URL;
 
       if (!databaseUrl) {
-        console.warn('⚠️  DATABASE_URL not configured - running in legacy mode');
-        console.warn('   Set DATABASE_URL in .env to enable Prisma database access');
+        logger.warn('⚠️  DATABASE_URL not configured - running in legacy mode');
+        logger.warn('   Set DATABASE_URL in .env to enable Prisma database access');
         this.isConnected = false;
         return false;
       }
@@ -96,11 +97,11 @@ class DatabaseService {
       await this.prisma.$queryRaw`SELECT 1`;
 
       this.isConnected = true;
-      console.log('✅ Prisma Client connected to PostgreSQL successfully');
+      logger.info('✅ Prisma Client connected to PostgreSQL successfully');
       return true;
 
     } catch (error) {
-      console.error('❌ Failed to initialize Prisma Client:', error.message);
+      logger.error('❌ Failed to initialize Prisma Client:', error.message);
       this.isConnected = false;
       return false;
     }
@@ -694,9 +695,9 @@ class DatabaseService {
         }
         this.isConnected = false;
         this.prisma = null;
-        console.log('✅ Prisma Client disconnected successfully');
+        logger.info('✅ Prisma Client disconnected successfully');
       } catch (error) {
-        console.error('❌ Error disconnecting Prisma Client:', error);
+        logger.error('❌ Error disconnecting Prisma Client:', error);
       }
     }
   }

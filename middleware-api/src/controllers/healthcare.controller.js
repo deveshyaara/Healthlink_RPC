@@ -1,5 +1,6 @@
 import transactionService from '../services/transaction.service.js';
 import logger from '../utils/logger.js';
+import { v4 as uuidv4 } from 'uuid';
 
 /**
  * HealthcareController
@@ -148,7 +149,7 @@ class HealthcareController {
         const hasConsent = consents.data.some((consent) =>
           consent.granteeAddress === userId && // doctor's wallet address
           consent.status === 0 && // active status
-          consent.validUntil > Math.floor(Date.now() / 1000) // not expired
+          consent.validUntil > Math.floor(Date.now() / 1000), // not expired
         );
 
         if (!hasConsent) {
@@ -199,7 +200,8 @@ class HealthcareController {
 
       if (userRole === 'patient') {
         // Patients can only see their own records
-        records = await transactionService.getRecordsByPatient(userId);
+        const result = await transactionService.getRecordsByPatient(userId);
+        records = result?.data || [];
       } else if (userRole === 'doctor') {
         // Doctors can see records of patients who have granted consent
         // For now, return empty array - will implement consent checking later
@@ -222,7 +224,7 @@ class HealthcareController {
       res.status(200).json({
         success: true,
         data: records,
-        count: records.length,
+        count: Array.isArray(records) ? records.length : 0,
       });
     } catch (error) {
       logger.error('getCurrentUserRecords error:', error);
@@ -254,10 +256,11 @@ class HealthcareController {
    */
   async createAppointment(req, res, next) {
     try {
-      const { appointmentId, patientId, doctorAddress, timestamp, notes } = req.body;
+      const { appointmentId, patientId, doctorAddress, doctorId, timestamp, reason = '', notes = '' } = req.body;
+      const docAddr = doctorAddress || doctorId || '';
 
       const result = await transactionService.createAppointment(
-        appointmentId, patientId, doctorAddress, timestamp, notes || '',
+        appointmentId, patientId, docAddr, timestamp, reason || '', notes || '',
       );
 
       res.status(201).json(result);
@@ -272,10 +275,42 @@ class HealthcareController {
    */
   async createPrescription(req, res, next) {
     try {
-      const { prescriptionId, patientId, doctorAddress, medication, dosage, expiryTimestamp } = req.body;
+      const user = req.user || {};
+      const {
+        prescriptionId = uuidv4(),
+        patientId,
+        doctorAddress,
+        doctorId,
+        medication,
+        medications,
+        dosage = '',
+        instructions = '',
+        expiryTimestamp = 0,
+      } = req.body;
+
+      const docAddr = doctorAddress || doctorId || user.id || user.userId || '';
+
+      // Normalize medication input: prefer explicit `medication`, then `medications` array
+      let med = medication || '';
+      if (!med && Array.isArray(medications) && medications.length > 0) {
+        med = typeof medications[0] === 'string' ? medications[0] : JSON.stringify(medications[0]);
+      } else if (Array.isArray(medications)) {
+        med = medications.map((m) => (typeof m === 'string' ? m : JSON.stringify(m))).join('|');
+      }
+
+      logger.info('createPrescription payload', {
+        prescriptionId,
+        patientId,
+        doctorAddress: docAddr,
+        medicationType: typeof med,
+        medicationSample: (typeof med === 'string' ? med.slice(0, 200) : JSON.stringify(med)),
+        dosage,
+        instructions,
+        expiryTimestamp,
+      });
 
       const result = await transactionService.createPrescription(
-        prescriptionId, patientId, doctorAddress, medication, dosage, expiryTimestamp,
+        prescriptionId, patientId, docAddr, med, dosage, instructions, expiryTimestamp,
       );
 
       res.status(201).json(result);
@@ -350,62 +385,7 @@ class HealthcareController {
     }
   }
 
-  /**
-   * Get current user appointments
-   * GET /api/appointments
-   */
-  async getCurrentUserAppointments(req, res, next) {
-    try {
-      const userId = req.user.userId || req.user.id;
-      const userRole = req.user.role;
-
-      if (!userId) {
-        return res.status(400).json({
-          success: false,
-          error: 'User ID not found'
-        });
-      }
-
-      logger.info(`Fetching appointments for user: ${userId} with role: ${userRole}`);
-
-      let appointments = [];
-
-      if (userRole === 'patient') {
-        // Patients can only see their own appointments
-        const result = await transactionService.getAppointmentsByPatient(userId);
-        appointments = result.data || [];
-      } else if (userRole === 'doctor') {
-        // Doctors can see appointments where they are the doctor
-        // Note: We need to implement getAppointmentsByDoctor in the service
-        appointments = [];
-      } else if (userRole === 'admin') {
-        // Admins can see all appointments
-        appointments = [];
-      }
-
-      res.status(200).json({
-        success: true,
-        data: appointments,
-        count: appointments.length,
-      });
-    } catch (error) {
-      next(error);
-    }
-  }
-
-  /**
-   * Get specific appointment
-   * GET /api/appointments/:appointmentId
-   */
-  async getAppointment(req, res, next) {
-    try {
-      const { appointmentId } = req.params;
-      // Return empty for now - implement with smart contract call
-      res.status(200).json({ appointmentId, status: 'scheduled' });
-    } catch (error) {
-      next(error);
-    }
-  }
+  // Appointment handlers are defined later with full implementations
 
   /**
    * Update appointment
@@ -436,75 +416,7 @@ class HealthcareController {
     }
   }
 
-  /**
-   * Get current user prescriptions
-   * GET /api/prescriptions
-   */
-  async getCurrentUserPrescriptions(req, res, next) {
-    try {
-      const userId = req.user.userId || req.user.id;
-      const userRole = req.user.role;
-
-      if (!userId) {
-        return res.status(400).json({
-          success: false,
-          error: 'User ID not found'
-        });
-      }
-
-      logger.info(`Fetching prescriptions for user: ${userId} with role: ${userRole}`);
-
-      let prescriptions = [];
-
-      if (userRole === 'patient') {
-        // Patients can only see their own prescriptions
-        const result = await transactionService.getPrescriptionsByPatient(userId);
-        prescriptions = result.data || [];
-      } else if (userRole === 'doctor') {
-        // Doctors can see prescriptions they've issued
-        // Note: We need to implement getPrescriptionsByDoctor in the service
-        prescriptions = [];
-      } else if (userRole === 'admin') {
-        // Admins can see all prescriptions
-        prescriptions = [];
-      }
-
-      res.status(200).json({
-        success: true,
-        data: prescriptions,
-        count: prescriptions.length,
-      });
-    } catch (error) {
-      next(error);
-    }
-  }
-
-  /**
-   * Get specific prescription
-   * GET /api/prescriptions/:prescriptionId
-   */
-  async getPrescription(req, res, next) {
-    try {
-      const { prescriptionId } = req.params;
-      res.status(200).json({ prescriptionId, status: 'active' });
-    } catch (error) {
-      next(error);
-    }
-  }
-
-  /**
-   * Update prescription
-   * PUT /api/prescriptions/:prescriptionId
-   */
-  async updatePrescription(req, res, next) {
-    try {
-      const { prescriptionId } = req.params;
-      const updateData = req.body;
-      res.status(200).json({ success: true, prescriptionId, ...updateData });
-    } catch (error) {
-      next(error);
-    }
-  }
+  // Prescription handlers are defined later with full implementations
 
   /**
    * Get current user consents
@@ -518,7 +430,7 @@ class HealthcareController {
       if (!userId) {
         return res.status(400).json({
           success: false,
-          error: 'User ID not found'
+          error: 'User ID not found',
         });
       }
 
@@ -584,7 +496,7 @@ class HealthcareController {
       if (!userId) {
         return res.status(400).json({
           success: false,
-          error: 'User ID not found'
+          error: 'User ID not found',
         });
       }
 
@@ -627,7 +539,7 @@ class HealthcareController {
       if (!userId) {
         return res.status(400).json({
           success: false,
-          error: 'User ID not found'
+          error: 'User ID not found',
         });
       }
 

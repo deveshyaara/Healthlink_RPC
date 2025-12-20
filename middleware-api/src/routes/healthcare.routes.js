@@ -27,7 +27,8 @@ router.get('/', authenticateJWT, healthcareController.getCurrentUserRecords);
  * @desc    Get a medical record
  * @access  Protected
  */
-router.get('/:recordId', authenticateJWT, healthcareController.getMedicalRecord);
+// NOTE: removed generic '/:recordId' to avoid shadowing specific routes
+// Use '/records/:recordId' under the v1 healthcare namespace instead
 
 /**
  * @route   GET /api/medical-records/patient/:patientId

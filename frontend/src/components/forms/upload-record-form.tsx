@@ -9,6 +9,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { useState } from 'react';
+import { useAuth } from '@/contexts/auth-context';
 import { Loader2, Upload, FileText } from 'lucide-react';
 import { storageApi, recordsApi } from '@/lib/api-client';
 
@@ -53,6 +54,7 @@ export function UploadRecordForm({
 }: UploadRecordFormProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
+  const { user } = useAuth();
 
   const {
     register,
@@ -82,17 +84,25 @@ export function UploadRecordForm({
 
       setUploadProgress(85);
 
-      // Create record payload with patient ID and file hash
-      const recordPayload = {
-        patientId,
+      // Build metadata object and payload matching backend expectations
+      const metadataObj = {
         title: data.title,
-        recordType: data.recordType,
         description: data.description,
-        tags: data.tags || '',
-        fileHash: realHash,
+        tags: data.tags ? data.tags.split(',').map((t) => t.trim()) : [],
         fileName: file.name,
         fileSize: file.size,
-        mimeType: file.type,
+        fileType: file.type,
+        uploadedAt: new Date().toISOString(),
+      };
+
+      const recordPayload = {
+        recordId: (typeof crypto !== 'undefined' && crypto.randomUUID) ? crypto.randomUUID() : `rec-${Date.now()}-${Math.floor(Math.random()*10000)}`,
+        patientId,
+        // `User` type defines `id` only — prefer that instead of non-standard `userId`
+        doctorId: user?.role === 'doctor' ? user.id : '',
+        recordType: data.recordType,
+        ipfsHash: realHash,
+        metadata: JSON.stringify(metadataObj),
       };
 
       const _response = await recordsApi.create(recordPayload);
