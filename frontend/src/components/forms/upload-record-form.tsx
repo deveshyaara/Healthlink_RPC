@@ -67,6 +67,18 @@ export function UploadRecordForm({
     resolver: zodResolver(uploadRecordSchema),
   });
 
+  // Access control: Ensure user has DOCTOR_ROLE
+  if (!user || user.role !== 'doctor') {
+    return (
+      <div className="text-center py-8">
+        <p className="text-red-500 font-medium">Access Denied</p>
+        <p className="text-sm text-muted-foreground mt-2">
+          Only doctors can upload medical records.
+        </p>
+      </div>
+    );
+  }
+
   const recordType = watch('recordType');
 
   const onSubmit = async (data: UploadRecordFormData) => {

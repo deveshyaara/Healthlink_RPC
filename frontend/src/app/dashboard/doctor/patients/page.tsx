@@ -15,7 +15,6 @@ import Link from 'next/link';
 import { RequireDoctor } from '@/components/auth/RequireRole';
 import { ActionModal } from '@/components/ui/action-modal';
 import { UploadRecordForm } from '@/components/forms/upload-record-form';
-import { PatientIdDialog } from '@/components/doctor/PatientIdDialog';
 
 interface Patient {
   patientId: string;
@@ -48,7 +47,6 @@ function DoctorPatientsPageContent() {
   const [showUploadDialog, setShowUploadDialog] = useState(false);
   const [_isSubmittingForm, setIsSubmittingForm] = useState(false);
   const [selectedPatientId, setSelectedPatientId] = useState<string>('');
-  const [showPatientIdDialog, setShowPatientIdDialog] = useState(false);
 
   const fetchPatients = async () => {
     try {
@@ -140,11 +138,6 @@ function DoctorPatientsPageContent() {
         title="My Patients"
         description="Manage and view your patients' health records"
         icon={Users}
-        actionButton={{
-          label: 'Upload New Record',
-          icon: PlusCircle,
-          onClick: () => setShowPatientIdDialog(true),
-        }}
       />
 
       {error && (
@@ -225,12 +218,25 @@ function DoctorPatientsPageContent() {
                       <Badge variant="default">{patient.status || 'Active'}</Badge>
                     </TableCell>
                     <TableCell>
-                      <Link href={`/dashboard/records?patientId=${patient.patientId}`}>
-                        <Button variant="outline" size="sm">
-                          <Eye className="mr-2 h-4 w-4" />
-                          View Records
+                      <div className="flex items-center gap-2">
+                        <Link href={`/dashboard/records?patientId=${patient.patientId}`}>
+                          <Button variant="outline" size="sm">
+                            <Eye className="mr-2 h-4 w-4" />
+                            View Records
+                          </Button>
+                        </Link>
+                        <Button
+                          variant="default"
+                          size="sm"
+                          onClick={() => {
+                            setSelectedPatientId(patient.patientId);
+                            setShowUploadDialog(true);
+                          }}
+                        >
+                          <PlusCircle className="mr-2 h-4 w-4" />
+                          Add Record
                         </Button>
-                      </Link>
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))}
@@ -249,7 +255,7 @@ function DoctorPatientsPageContent() {
           setSelectedPatientId('');
         }}
         title="Upload Medical Record"
-        description="Upload a new medical record for your patient"
+        description={`Upload a new medical record for patient: ${selectedPatientId || 'Unknown'}`}
       >
         {selectedPatientId && (
           <UploadRecordForm
@@ -265,18 +271,6 @@ function DoctorPatientsPageContent() {
           />
         )}
       </ActionModal>
-
-      {/* Patient ID Input Dialog */}
-      <PatientIdDialog
-        open={showPatientIdDialog}
-        onOpenChange={setShowPatientIdDialog}
-        onSubmit={(patientId) => {
-          setSelectedPatientId(patientId);
-          setShowUploadDialog(true);
-        }}
-        title="Upload Medical Record"
-        description="Enter the patient ID for whom you want to upload a medical record"
-      />
     </div>
   );
 }
