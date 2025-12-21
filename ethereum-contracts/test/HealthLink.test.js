@@ -46,30 +46,30 @@ describe("HealthLink Contract", function () {
 
   describe("Patient Management", function () {
     it("Should create a patient", async function () {
-      const patientId = "patient123";
-      const publicData = JSON.stringify({ name: "John Doe", age: 30 });
+      const patientAddress = "0x742d35Cc6634C0532925a3b844Bc454e4438f44e";
+      const publicData = JSON.stringify({ name: "John Doe", age: 30, gender: "Male", ipfsHash: "QmTestHash123" });
 
-      await healthLink.connect(admin).createPatient(patientId, publicData);
+      await healthLink.connect(admin).createPatient(patientAddress, publicData);
 
-      const patient = await healthLink.getPatient(patientId);
-      expect(patient.patientId).to.equal(patientId);
+      const patient = await healthLink.getPatient(patientAddress);
+      expect(patient.patientAddress).to.equal(patientAddress);
       expect(patient.exists).to.be.true;
     });
 
     it("Should not allow duplicate patient creation", async function () {
-      const patientId = "patient123";
-      const publicData = JSON.stringify({ name: "John Doe" });
+      const patientAddress = "0x742d35Cc6634C0532925a3b844Bc454e4438f44e";
+      const publicData = JSON.stringify({ name: "John Doe", age: 30, gender: "Male", ipfsHash: "QmTestHash123" });
 
-      await healthLink.connect(admin).createPatient(patientId, publicData);
+      await healthLink.connect(admin).createPatient(patientAddress, publicData);
 
       await expect(
-        healthLink.connect(admin).createPatient(patientId, publicData)
+        healthLink.connect(admin).createPatient(patientAddress, publicData)
       ).to.be.revertedWith("Patient already exists");
     });
 
     it("Should not allow non-admin to create patient", async function () {
       await expect(
-        healthLink.connect(other).createPatient("patient123", "{}")
+        healthLink.connect(other).createPatient("0x742d35Cc6634C0532925a3b844Bc454e4438f44e", JSON.stringify({ name: "Test", age: 25, gender: "Female", ipfsHash: "QmTest" }))
       ).to.be.reverted;
     });
   });

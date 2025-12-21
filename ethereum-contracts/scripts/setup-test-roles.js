@@ -94,19 +94,19 @@ async function main() {
 
         // Test creating a patient
         console.log("\n🧪 Testing: Creating a test patient...");
-        const testPatientId = "TEST_PATIENT_" + Date.now();
+        const testPatientAddress = "0x742d35Cc6634C0532925a3b844Bc454e4438f44e"; // Mock patient address
         const publicData = JSON.stringify({ 
             name: "Test Patient", 
             age: 30,
-            bloodType: "O+",
-            createdBy: "deployment-script"
+            gender: "Male",
+            ipfsHash: "QmTestSetupHash123"
         });
 
         try {
-            const createTx = await healthLink.createPatient(testPatientId, publicData);
+            const createTx = await healthLink.createPatient(testPatientAddress, publicData);
             await createTx.wait();
             console.log("   ✅ Patient created successfully!");
-            console.log("   Patient ID:", testPatientId);
+            console.log("   Patient Address:", testPatientAddress);
             
             // Verify patient exists
             const patient = await healthLink.getPatient(testPatientId);

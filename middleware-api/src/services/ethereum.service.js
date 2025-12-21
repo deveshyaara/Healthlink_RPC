@@ -281,9 +281,9 @@ class EthereumService {
 
   // ====== HealthLink Contract Methods ======
 
-  async createPatient(patientId, publicData) {
+  async createPatient(patientAddress, name, age, gender, ipfsHash) {
     const contract = this.getContract('HealthLink');
-    const tx = await contract.createPatient(patientId, JSON.stringify(publicData));
+    const tx = await contract.createPatient(patientAddress, name, age, gender, ipfsHash);
     return await this.waitForTransaction(tx);
   }
 

@@ -51,20 +51,20 @@ export function AddPatientDialog() {
   const [error, setError] = useState<string | null>(null);
 
   const [formData, setFormData] = useState({
-    patientId: '',
+    patientAddress: '',
     name: '',
     age: '',
-    bloodType: 'A+',
-    allergies: '',
+    gender: '',
+    ipfsHash: '',
   });
 
   const resetForm = () => {
     setFormData({
-      patientId: '',
+      patientAddress: '',
       name: '',
       age: '',
-      bloodType: 'A+',
-      allergies: '',
+      gender: '',
+      ipfsHash: '',
     });
     setError(null);
   };
@@ -75,9 +75,9 @@ export function AddPatientDialog() {
     setError(null);
 
     try {
-      // Validate required fields
-      if (!formData.patientId || !formData.name || !formData.age) {
-        throw new Error('Please fill in all required fields');
+      // Validate required fields - ensure all 5 fields are not empty/null
+      if (!formData.patientAddress || !formData.name || !formData.age || !formData.gender || !formData.ipfsHash) {
+        throw new Error('All fields are required');
       }
 
       const ageNumber = parseInt(formData.age);
@@ -85,27 +85,27 @@ export function AddPatientDialog() {
         throw new Error('Please enter a valid age');
       }
 
-      // Create patient payload matching backend expectations
-      const patientPayload = {
-        patientId: formData.patientId,
+      // Construct the payload object with keys matching backend requirements exactly
+      const payload = {
+        patientAddress: formData.patientAddress,
         name: formData.name,
-        age: ageNumber,
-        bloodType: formData.bloodType,
-        allergies: formData.allergies || '',
+        age: ageNumber, // Ensure age is sent as a Number
+        gender: formData.gender,
+        ipfsHash: formData.ipfsHash,
       };
 
-      console.log('Creating patient:', patientPayload);
+      console.log('Creating patient:', payload);
 
       // Use API client to create patient
       const { patientsApi } = await import('@/lib/api-client');
-      const response = await patientsApi.create(patientPayload);
+      const response = await patientsApi.create(payload);
 
       console.log('Patient created successfully:', response);
 
       // Success!
       toast({
         title: 'Patient Created',
-        description: `Patient ${formData.name} (ID: ${formData.patientId}) has been added successfully.`,
+        description: `Patient ${formData.name} has been added successfully.`,
       });
 
       // Reset form and close dialog
@@ -158,12 +158,12 @@ export function AddPatientDialog() {
 
           <div className="grid gap-4 py-4">
             <div className="grid gap-2">
-              <Label htmlFor="patientId">Patient ID *</Label>
+              <Label htmlFor="patientAddress">Patient Address *</Label>
               <Input
-                id="patientId"
-                placeholder="PATIENT_001"
-                value={formData.patientId}
-                onChange={(e) => setFormData({ ...formData, patientId: e.target.value })}
+                id="patientAddress"
+                placeholder="0x1234...abcd"
+                value={formData.patientAddress}
+                onChange={(e) => setFormData({ ...formData, patientAddress: e.target.value })}
                 required
                 disabled={loading}
               />
@@ -197,35 +197,31 @@ export function AddPatientDialog() {
             </div>
 
             <div className="grid gap-2">
-              <Label htmlFor="bloodType">Blood Type *</Label>
+              <Label htmlFor="gender">Gender *</Label>
               <Select
-                value={formData.bloodType}
-                onValueChange={(value) => setFormData({ ...formData, bloodType: value })}
+                value={formData.gender}
+                onValueChange={(value) => setFormData({ ...formData, gender: value })}
                 disabled={loading}
               >
                 <SelectTrigger>
-                  <SelectValue placeholder="Select blood type" />
+                  <SelectValue placeholder="Select gender" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="A+">A+</SelectItem>
-                  <SelectItem value="A-">A-</SelectItem>
-                  <SelectItem value="B+">B+</SelectItem>
-                  <SelectItem value="B-">B-</SelectItem>
-                  <SelectItem value="AB+">AB+</SelectItem>
-                  <SelectItem value="AB-">AB-</SelectItem>
-                  <SelectItem value="O+">O+</SelectItem>
-                  <SelectItem value="O-">O-</SelectItem>
+                  <SelectItem value="Male">Male</SelectItem>
+                  <SelectItem value="Female">Female</SelectItem>
+                  <SelectItem value="Other">Other</SelectItem>
                 </SelectContent>
               </Select>
             </div>
 
             <div className="grid gap-2">
-              <Label htmlFor="allergies">Allergies</Label>
-              <Textarea
-                id="allergies"
-                placeholder="Enter known allergies (optional)"
-                value={formData.allergies}
-                onChange={(e) => setFormData({ ...formData, allergies: e.target.value })}
+              <Label htmlFor="ipfsHash">IPFS Hash *</Label>
+              <Input
+                id="ipfsHash"
+                placeholder="Qm..."
+                value={formData.ipfsHash}
+                onChange={(e) => setFormData({ ...formData, ipfsHash: e.target.value })}
+                required
                 disabled={loading}
               />
             </div>

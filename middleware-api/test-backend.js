@@ -19,13 +19,13 @@ async function testBackend() {
 
     // Test contract interaction
     console.log('3️⃣ Testing contract interaction...');
-    const testPatientId = 'TEST-' + Date.now();
+    const testPatientAddress = '0x' + '1'.repeat(40); // Mock wallet address
     const receipt = await ethereumService.createPatient(
-      testPatientId,
+      testPatientAddress,
       'Test Patient',
       30,
-      'O+',
-      'None'
+      'Male',
+      'QmTestHash123'
     );
     console.log('✅ Test patient created:', receipt.hash);
 
