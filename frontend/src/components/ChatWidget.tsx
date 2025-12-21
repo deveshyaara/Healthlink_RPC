@@ -1,235 +1,106 @@
-'use client';
+"use client";
+import React, { useEffect, useRef, useState } from "react";
 
-import { useState, useRef, useEffect } from 'react';
-import { MessageCircle, X, Send, Loader2 } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Textarea } from '@/components/ui/textarea';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { useAuth } from '@/contexts/auth-context';
-import { toast } from 'sonner';
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || "";
+const CHAT_ENDPOINT = API_BASE ? `${API_BASE}/api/chat` : "/api/chat";
 
-interface Message {
-  role: 'user' | 'assistant';
-  content: string;
-  timestamp: Date;
-}
+type Message = { id: string; role: "user" | "bot"; text: string };
 
-export function ChatWidget() {
-  const [isOpen, setIsOpen] = useState(false);
+export function ChatWidget(): JSX.Element {
+  const [open, setOpen] = useState(false);
+  const [input, setInput] = useState("");
   const [messages, setMessages] = useState<Message[]>([]);
-  const [input, setInput] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
-  const [threadId, setThreadId] = useState<string | null>(null);
-  const scrollRef = useRef<HTMLDivElement>(null);
-  const { user, token, isAuthenticated } = useAuth();
+  const [loading, setLoading] = useState(false);
+  const listRef = useRef<HTMLDivElement | null>(null);
 
-  // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
-    if (scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
-    }
-  }, [messages]);
+    if (open) listRef.current?.scrollTo({ top: 99999 });
+  }, [open, messages]);
 
-  // Initialize with welcome message
-  useEffect(() => {
-    if (isOpen && messages.length === 0) {
-      setMessages([
-        {
-          role: 'assistant',
-          content: 'Hello! I&apos;m your HealthLink AI assistant. I can help answer questions about your health, medications, and medical history. How can I assist you today?',
-          timestamp: new Date(),
-        },
-      ]);
-    }
-  }, [isOpen, messages.length]);
-
-  const sendMessage = async () => {
-    if (!input.trim() || isLoading) {
-      return;
-    }
-
-    if (!user || !token) {
-      toast.error('Please log in to use the chat');
-      return;
-    }
-
-    const userMessage: Message = {
-      role: 'user',
-      content: input,
-      timestamp: new Date(),
-    };
-
-    setMessages((prev) => [...prev, userMessage]);
-    setInput('');
-    setIsLoading(true);
+  async function sendMessage() {
+    if (!input.trim()) return;
+    const userMsg: Message = { id: String(Date.now()), role: "user", text: input.trim() };
+    setMessages((m) => [...m, userMsg]);
+    setInput("");
+    setLoading(true);
 
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/chat`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          message: input,
-          thread_id: threadId,
-        }),
+      const res = await fetch(CHAT_ENDPOINT, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ prompt: userMsg.text }),
       });
-
-      if (!response.ok) {
-        if (response.status === 401) {
-          toast.error('Your session has expired. Please log in again.');
-          const assistantMessage: Message = {
-            role: 'assistant',
-            content: '⚠️ Your session has expired. Please log in again to continue using the chat.',
-            timestamp: new Date(),
-          };
-          setMessages((prev) => [...prev, assistantMessage]);
-          setIsLoading(false);
-          return;
-        }
-        throw new Error('Failed to get response from AI');
-      }
-
-      const data = await response.json();
-
-      if (data.status === 'success' && data.data) {
-        const assistantMessage: Message = {
-          role: 'assistant',
-          content: data.data.response,
-          timestamp: new Date(),
-        };
-
-        setMessages((prev) => [...prev, assistantMessage]);
-        setThreadId(data.data.thread_id);
-      } else {
-        throw new Error('Invalid response format');
-      }
-    } catch {
-      toast.error('Failed to send message. Please try again.');
-
-      const assistantMessage: Message = {
-        role: 'assistant',
-        content: 'I&apos;m sorry, I&apos;m having trouble connecting right now. Please try again in a moment.',
-        timestamp: new Date(),
-      };
-      setMessages((prev) => [...prev, assistantMessage]);
+      const json = await res.json();
+      const botText = json?.reply || json?.message || "(no reply)";
+      const botMsg: Message = { id: String(Date.now() + 1), role: "bot", text: botText };
+      setMessages((m) => [...m, botMsg]);
+    } catch (err) {
+      const errMsg: Message = { id: String(Date.now() + 2), role: "bot", text: "Error: could not reach chat backend." };
+      setMessages((m) => [...m, errMsg]);
     } finally {
-      setIsLoading(false);
+      setLoading(false);
     }
-  };
+  }
 
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
+  function onKey(e: React.KeyboardEvent<HTMLInputElement>) {
+    if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
       sendMessage();
     }
-  };
-
-  if (!isOpen) {
-    // Only show chat button for authenticated users
-    if (!isAuthenticated) {
-      return null;
-    }
-
-    return (
-      <button
-        onClick={() => setIsOpen(true)}
-        className="fixed bottom-6 right-6 z-50 flex h-14 w-14 items-center justify-center rounded-full bg-blue-600 text-white shadow-lg transition-all hover:bg-blue-700 hover:shadow-xl"
-        aria-label="Open chat"
-      >
-        <MessageCircle className="h-6 w-6" />
-      </button>
-    );
   }
 
   return (
-    <div className="fixed bottom-6 right-6 z-50 flex h-[600px] w-[400px] flex-col rounded-lg border bg-white shadow-2xl">
-      {/* Header */}
-      <div className="flex items-center justify-between rounded-t-lg bg-blue-600 p-4 text-white">
-        <div className="flex items-center gap-2">
-          <MessageCircle className="h-5 w-5" />
-          <h3 className="font-semibold">HealthLink AI Assistant</h3>
-        </div>
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => setIsOpen(false)}
-          className="h-8 w-8 p-0 text-white hover:bg-blue-700"
-        >
-          <X className="h-4 w-4" />
-        </Button>
-      </div>
+    <div>
+      {/* Floating Button */}
+      <button
+        aria-label="Open chat"
+        onClick={() => setOpen((s) => !s)}
+        className="fixed bottom-4 right-4 z-50 bg-indigo-600 text-white w-14 h-14 rounded-full flex items-center justify-center shadow-lg hover:bg-indigo-700"
+      >
+        💬
+      </button>
 
-      {/* Messages */}
-      <ScrollArea className="flex-1 p-4" ref={scrollRef}>
-        <div className="space-y-4">
-          {messages.map((message, index) => (
-            <div
-              key={index}
-              className={`flex ${
-                message.role === 'user' ? 'justify-end' : 'justify-start'
-              }`}
-            >
-              <div
-                className={`max-w-[80%] rounded-lg px-4 py-2 ${
-                  message.role === 'user'
-                    ? 'bg-blue-600 text-white'
-                    : 'bg-gray-100 text-gray-900'
-                }`}
+      {open && (
+        <div className="fixed bottom-20 right-4 z-50 w-72 bg-white rounded-lg shadow-lg overflow-hidden">
+          <div className="px-4 py-2 border-b">
+            <div className="text-xs text-yellow-800 font-semibold">⚠️ AI Advice Only. Consult a Doctor.</div>
+          </div>
+
+          <div ref={listRef} className="h-64 overflow-y-auto p-3 space-y-3 bg-gray-50">
+            {messages.length === 0 && <div className="text-sm text-gray-500">Say hi — ask about symptoms, medications, or appointments.</div>}
+            {messages.map((m) => (
+              <div key={m.id} className={`flex ${m.role === "user" ? "justify-end" : "justify-start"}`}>
+                <div className={`${m.role === "user" ? "bg-indigo-600 text-white" : "bg-white text-gray-800 border"} max-w-[80%] px-3 py-2 rounded-lg`}>{m.text}</div>
+              </div>
+            ))}
+            {loading && <div className="text-sm text-gray-500">Typing...</div>}
+          </div>
+
+          <div className="p-2 border-t bg-white">
+            <div className="flex gap-2">
+              <input
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                onKeyDown={onKey}
+                placeholder="Ask the health assistant..."
+                className="flex-1 rounded-md border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              />
+              <button
+                onClick={sendMessage}
+                disabled={loading}
+                className="px-3 py-2 bg-indigo-600 text-white rounded-md disabled:opacity-60"
               >
-                <p className="whitespace-pre-wrap text-sm">{message.content}</p>
-                <p
-                  className={`mt-1 text-xs ${
-                    message.role === 'user' ? 'text-blue-100' : 'text-gray-500'
-                  }`}
-                >
-                  {message.timestamp.toLocaleTimeString([], {
-                    hour: '2-digit',
-                    minute: '2-digit',
-                  })}
-                </p>
-              </div>
+                Send
+              </button>
             </div>
-          ))}
-          {isLoading && (
-            <div className="flex justify-start">
-              <div className="flex items-center gap-2 rounded-lg bg-gray-100 px-4 py-2">
-                <Loader2 className="h-4 w-4 animate-spin text-gray-600" />
-                <p className="text-sm text-gray-600">Thinking...</p>
-              </div>
-            </div>
-          )}
+            <p className="mt-2 text-xs text-gray-500">
+              This AI provides general health information. For medical emergencies, contact your healthcare provider.
+            </p>
+          </div>
         </div>
-      </ScrollArea>
-
-      {/* Input */}
-      <div className="border-t p-4">
-        <div className="flex gap-2">
-          <Textarea
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={handleKeyDown}
-            placeholder="Ask me anything about your health..."
-            className="min-h-[60px] flex-1 resize-none"
-            disabled={isLoading}
-          />
-          <Button
-            onClick={sendMessage}
-            disabled={!input.trim() || isLoading}
-            className="h-[60px] w-[60px] bg-blue-600 hover:bg-blue-700"
-          >
-            {isLoading ? (
-              <Loader2 className="h-5 w-5 animate-spin" />
-            ) : (
-              <Send className="h-5 w-5" />
-            )}
-          </Button>
-        </div>
-        <p className="mt-2 text-xs text-gray-500">
-          This AI provides general health information. For medical emergencies, contact your healthcare provider.
-        </p>
-      </div>
+      )}
     </div>
   );
 }
+
+export default ChatWidget;

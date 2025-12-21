@@ -137,13 +137,14 @@ export function useHealthcare() {
     patientId: string,
     doctorAddress: string,
     timestamp: number,
+    reason: string,
     notes: string
   ) => {
     setIsLoading(true);
     setError(null);
     try {
       const receipt = await ethereumService.createAppointment(
-        appointmentId, patientId, doctorAddress, timestamp, notes
+        appointmentId, patientId, doctorAddress, timestamp, reason, notes
       );
       return receipt;
     } catch (err: unknown) {

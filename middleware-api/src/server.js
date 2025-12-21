@@ -12,7 +12,7 @@ import healthcareRoutes from './routes/healthcare.routes.js';
 import healthcareController from './controllers/healthcare.controller.js';
 import { authenticateJWT, requireDoctor } from './middleware/auth.middleware.js';
 import transactionRoutes from './routes/transaction.routes.js';
-import walletRoutes from './routes/wallet.routes.js';
+// import walletRoutes from './routes/wallet.routes.js';
 import authRoutes from './routes/auth.routes.js';
 import storageRoutes from './routes/storage.routes.js';
 import chatRoutes from './routes/chat.routes.js';
@@ -154,7 +154,7 @@ app.use('/api/patients', healthcareRoutes);
 app.use(`/api/${API_VERSION}`, transactionRoutes);
 
 // Mount wallet routes
-app.use(`/api/${API_VERSION}/wallet`, walletRoutes);
+// app.use(`/api/${API_VERSION}/wallet`, walletRoutes);
 
 // API documentation endpoint
 app.get(`/api/${API_VERSION}`, (req, res) => {

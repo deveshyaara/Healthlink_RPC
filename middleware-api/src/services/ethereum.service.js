@@ -17,6 +17,12 @@ class EthereumService {
     this.signer = null;
     this.contracts = {};
     this.initialized = false;
+    // In-memory fallback stores when contracts are not deployed locally
+    this._stores = {
+      records: new Map(), // recordId -> record
+      prescriptions: new Map(), // prescriptionId -> prescription
+      appointments: new Map(), // appointmentId -> appointment
+    };
   }
 
   /**
@@ -62,25 +68,39 @@ class EthereumService {
   async loadContracts() {
     try {
       // Load deployment addresses
-      const deploymentPath = path.join(__dirname, '..', '..', 'contracts', 'deployment-addresses.json');
+      const deploymentPath = path.join(__dirname, '..', '..', '..', 'ethereum-contracts', 'deployment-addresses.json');
       const deploymentData = JSON.parse(fs.readFileSync(deploymentPath, 'utf8'));
 
       // Load contract ABIs
-      const artifactsPath = path.join(__dirname, '..', '..', 'contracts', 'artifacts', 'contracts');
+      const artifactsPath = path.join(__dirname, '..', '..', '..', 'ethereum-contracts', 'artifacts', 'contracts');
 
       const contractNames = ['HealthLink', 'PatientRecords', 'Appointments', 'Prescriptions', 'DoctorCredentials'];
 
       for (const name of contractNames) {
         const abiPath = path.join(artifactsPath, `${name}.sol`, `${name}.json`);
+        if (!fs.existsSync(abiPath)) {
+          logger.warn('Artifact not found for %s at %s - skipping', name, abiPath);
+          continue;
+        }
+
         const artifact = JSON.parse(fs.readFileSync(abiPath, 'utf8'));
 
-        const contractAddress = deploymentData.contracts[name];
+        const contractAddress = deploymentData?.contracts?.[name];
 
-        this.contracts[name] = new ethers.Contract(
-          contractAddress,
-          artifact.abi,
-          this.signer,
-        );
+        if (!contractAddress) {
+          logger.warn('No deployment address for %s found in deployment-addresses.json - skipping', name);
+          continue;
+        }
+
+        try {
+          this.contracts[name] = new ethers.Contract(
+            contractAddress,
+            artifact.abi,
+            this.signer,
+          );
+        } catch (err) {
+          logger.error('Failed to instantiate contract %s at %s: %o', name, contractAddress, err);
+        }
       }
 
       logger.info('✅ Contracts loaded: %o', Object.keys(this.contracts));
@@ -96,9 +116,6 @@ class EthereumService {
   getContract(name) {
     if (!this.initialized) {
       throw new Error('Ethereum Service not initialized');
-    }
-    if (!this.contracts[name]) {
-      throw new Error(`Contract ${name} not found`);
     }
     return this.contracts[name];
   }
@@ -155,45 +172,98 @@ class EthereumService {
 
   async createMedicalRecord(recordId, patientId, doctorId, recordType, ipfsHash, metadata) {
     const contract = this.getContract('PatientRecords');
-    const tx = await contract.createRecord(
+    if (contract) {
+      const tx = await contract.createRecord(
+        recordId,
+        patientId,
+        doctorId,
+        recordType,
+        ipfsHash,
+        JSON.stringify(metadata),
+      );
+      return await this.waitForTransaction(tx);
+    }
+
+    // Fallback: store in-memory for local dev if contract isn't deployed
+    const now = Date.now();
+    const record = {
       recordId,
       patientId,
       doctorId,
       recordType,
       ipfsHash,
-      JSON.stringify(metadata),
-    );
-    return await this.waitForTransaction(tx);
+      metadata: typeof metadata === 'string' ? JSON.parse(metadata || '{}') : metadata || {},
+      createdAt: now,
+      updatedAt: now,
+      exists: true,
+    };
+    this._stores.records.set(recordId, record);
+    return { transactionHash: `local-${recordId}-${now}`, blockNumber: 0, gasUsed: '0', status: 'success' };
   }
 
   async getMedicalRecord(recordId) {
     const contract = this.getContract('PatientRecords');
-    const record = await contract.getRecord(recordId);
+    if (contract) {
+      const record = await contract.getRecord(recordId);
+      return {
+        recordId: record.recordId,
+        patientId: record.patientId,
+        doctorId: record.doctorId,
+        recordType: record.recordType,
+        ipfsHash: record.ipfsHash,
+        metadata: record.metadata ? JSON.parse(record.metadata) : {},
+        createdAt: Number(record.createdAt),
+        updatedAt: Number(record.updatedAt),
+        exists: record.exists,
+      };
+    }
+
+    const rec = this._stores.records.get(recordId);
+    if (!rec) {return { exists: false };}
     return {
-      recordId: record.recordId,
-      patientId: record.patientId,
-      doctorId: record.doctorId,
-      recordType: record.recordType,
-      ipfsHash: record.ipfsHash,
-      metadata: record.metadata ? JSON.parse(record.metadata) : {},
-      createdAt: Number(record.createdAt),
-      updatedAt: Number(record.updatedAt),
-      exists: record.exists,
+      recordId: rec.recordId,
+      patientId: rec.patientId,
+      doctorId: rec.doctorId,
+      recordType: rec.recordType,
+      ipfsHash: rec.ipfsHash,
+      metadata: rec.metadata || {},
+      createdAt: Number(rec.createdAt),
+      updatedAt: Number(rec.updatedAt),
+      exists: true,
     };
   }
 
   async getRecordsByPatient(patientId) {
     const contract = this.getContract('PatientRecords');
-    const records = await contract.getRecordsByPatient(patientId);
-    return records.map(record => ({
-      recordId: record.recordId,
-      patientId: record.patientId,
-      doctorId: record.doctorId,
-      recordType: record.recordType,
-      ipfsHash: record.ipfsHash,
-      metadata: record.metadata ? JSON.parse(record.metadata) : {},
-      createdAt: Number(record.createdAt),
-      updatedAt: Number(record.updatedAt),
+    if (contract) {
+      try {
+        const records = await contract.getRecordsByPatient(patientId);
+        return records.map(record => ({
+          recordId: record.recordId,
+          patientId: record.patientId,
+          doctorId: record.doctorId,
+          recordType: record.recordType,
+          ipfsHash: record.ipfsHash,
+          metadata: record.metadata ? JSON.parse(record.metadata) : {},
+          createdAt: Number(record.createdAt),
+          updatedAt: Number(record.updatedAt),
+        }));
+      } catch (error) {
+        logger.warn('Contract call failed for getRecordsByPatient, falling back to in-memory:', error.message);
+      }
+    }
+
+    // Fallback to in-memory store
+    const all = Array.from(this._stores.records.values()).filter(r => r.patientId === patientId);
+    return all.map(r => ({
+      recordId: r.recordId,
+      patientId: r.patientId,
+      doctorId: r.doctorId,
+      recordType: r.recordType,
+      ipfsHash: r.ipfsHash,
+      metadata: r.metadata || {},
+      createdAt: Number(r.createdAt),
+      updatedAt: Number(r.updatedAt),
     }));
   }
 
@@ -283,21 +353,58 @@ class EthereumService {
 
   async createAppointment(appointmentId, patientId, doctorId, appointmentDate, reason, notes) {
     const contract = this.getContract('Appointments');
-    const tx = await contract.createAppointment(
+    if (contract) {
+      const tx = await contract.createAppointment(
+        appointmentId,
+        patientId,
+        doctorId,
+        appointmentDate,
+        reason,
+        notes,
+      );
+      return await this.waitForTransaction(tx);
+    }
+
+    // Fallback: in-memory appointment
+    const now = Date.now();
+    const apt = {
       appointmentId,
       patientId,
       doctorId,
-      appointmentDate,
+      appointmentDate: Number(appointmentDate),
       reason,
       notes,
-    );
-    return await this.waitForTransaction(tx);
+      status: 0,
+      createdAt: now,
+      updatedAt: now,
+    };
+    this._stores.appointments.set(appointmentId, apt);
+    return { transactionHash: `local-apt-${appointmentId}-${now}`, blockNumber: 0, gasUsed: '0', status: 'success' };
   }
 
   async getAppointmentsByPatient(patientId) {
     const contract = this.getContract('Appointments');
-    const appointments = await contract.getAppointmentsByPatient(patientId);
-    return appointments.map(apt => ({
+    if (contract) {
+      try {
+        const appointments = await contract.getAppointmentsByPatient(patientId);
+        return appointments.map(apt => ({
+          appointmentId: apt.appointmentId,
+          patientId: apt.patientId,
+          doctorId: apt.doctorId,
+          appointmentDate: Number(apt.appointmentDate),
+          reason: apt.reason,
+          notes: apt.notes,
+          status: Number(apt.status),
+          createdAt: Number(apt.createdAt),
+          updatedAt: Number(apt.updatedAt),
+        }));
+      } catch (error) {
+        logger.warn('Contract call failed for getAppointmentsByPatient, falling back to in-memory:', error.message);
+      }
+    }
+
+    const all = Array.from(this._stores.appointments.values()).filter(a => a.patientId === patientId);
+    return all.map(apt => ({
       appointmentId: apt.appointmentId,
       patientId: apt.patientId,
       doctorId: apt.doctorId,
@@ -312,8 +419,27 @@ class EthereumService {
 
   async getAppointmentsByDoctor(doctorId) {
     const contract = this.getContract('Appointments');
-    const appointments = await contract.getAppointmentsByDoctor(doctorId);
-    return appointments.map(apt => ({
+    if (contract) {
+      try {
+        const appointments = await contract.getAppointmentsByDoctor(doctorId);
+        return appointments.map(apt => ({
+          appointmentId: apt.appointmentId,
+          patientId: apt.patientId,
+          doctorId: apt.doctorId,
+          appointmentDate: Number(apt.appointmentDate),
+          reason: apt.reason,
+          notes: apt.notes,
+          status: Number(apt.status),
+          createdAt: Number(apt.createdAt),
+          updatedAt: Number(apt.updatedAt),
+        }));
+      } catch (error) {
+        logger.warn('Contract call failed for getAppointmentsByDoctor, falling back to in-memory:', error.message);
+      }
+    }
+
+    const all = Array.from(this._stores.appointments.values()).filter(a => a.doctorId === doctorId);
+    return all.map(apt => ({
       appointmentId: apt.appointmentId,
       patientId: apt.patientId,
       doctorId: apt.doctorId,
@@ -326,10 +452,52 @@ class EthereumService {
     }));
   }
 
+  async getAppointment(appointmentId) {
+    const contract = this.getContract('Appointments');
+    if (contract) {
+      const apt = await contract.getAppointment(appointmentId);
+      if (!apt) {return null;}
+      return {
+        appointmentId: apt.appointmentId,
+        patientId: apt.patientId,
+        doctorId: apt.doctorId,
+        appointmentDate: Number(apt.appointmentDate),
+        reason: apt.reason,
+        notes: apt.notes,
+        status: Number(apt.status),
+        createdAt: Number(apt.createdAt),
+        updatedAt: Number(apt.updatedAt),
+      };
+    }
+
+    const apt = this._stores.appointments.get(appointmentId);
+    if (!apt) {return null;}
+    return {
+      appointmentId: apt.appointmentId,
+      patientId: apt.patientId,
+      doctorId: apt.doctorId,
+      appointmentDate: Number(apt.appointmentDate),
+      reason: apt.reason,
+      notes: apt.notes,
+      status: Number(apt.status),
+      createdAt: Number(apt.createdAt),
+      updatedAt: Number(apt.updatedAt),
+    };
+  }
+
   async updateAppointmentStatus(appointmentId, status) {
     const contract = this.getContract('Appointments');
-    const tx = await contract.updateAppointmentStatus(appointmentId, status);
-    return await this.waitForTransaction(tx);
+    if (contract) {
+      const tx = await contract.updateAppointmentStatus(appointmentId, status);
+      return await this.waitForTransaction(tx);
+    }
+
+    const apt = this._stores.appointments.get(appointmentId);
+    if (!apt) {throw new Error('Appointment not found');}
+    apt.status = status;
+    apt.updatedAt = Date.now();
+    this._stores.appointments.set(appointmentId, apt);
+    return { transactionHash: `local-update-apt-${appointmentId}-${apt.updatedAt}`, blockNumber: 0, gasUsed: '0', status: 'success' };
   }
 
   // ====== Prescriptions Contract Methods ======
@@ -354,17 +522,37 @@ class EthereumService {
     const expiryArg = expiryDate ? Number(expiryDate) : 0;
 
     try {
-      logger.info('Calling contract.createPrescription', { prescriptionId, patientId, doctorId });
-      const tx = await contract.createPrescription(
+      if (contract) {
+        logger.info('Calling contract.createPrescription', { prescriptionId, patientId, doctorId });
+        const tx = await contract.createPrescription(
+          prescriptionId,
+          patientId,
+          doctorId,
+          medArg,
+          dosageArg,
+          instructionsArg,
+          expiryArg,
+        );
+        return await this.waitForTransaction(tx);
+      }
+
+      // Fallback: store in-memory
+      const now = Date.now();
+      const pres = {
         prescriptionId,
         patientId,
         doctorId,
-        medArg,
-        dosageArg,
-        instructionsArg,
-        expiryArg,
-      );
-      return await this.waitForTransaction(tx);
+        medication: medArg,
+        dosage: dosageArg,
+        instructions: instructionsArg,
+        issuedDate: now,
+        expiryDate: expiryArg,
+        status: 0,
+        createdAt: now,
+        updatedAt: now,
+      };
+      this._stores.prescriptions.set(prescriptionId, pres);
+      return { transactionHash: `local-pres-${prescriptionId}-${now}`, blockNumber: 0, gasUsed: '0', status: 'success' };
     } catch (err) {
       logger.error('createPrescription contract call failed', {
         prescriptionId, patientId, doctorId, medArgSample: (medArg || '').slice(0,200), dosageArg, instructionsArg, expiryArg, err: err.message,
@@ -375,38 +563,113 @@ class EthereumService {
 
   async getPrescriptionsByPatient(patientId) {
     const contract = this.getContract('Prescriptions');
-    const prescriptions = await contract.getPrescriptionsByPatient(patientId);
-    return prescriptions.map(rx => ({
-      prescriptionId: rx.prescriptionId,
-      patientId: rx.patientId,
-      doctorId: rx.doctorId,
-      medication: rx.medication,
-      dosage: rx.dosage,
-      instructions: rx.instructions,
-      issuedDate: Number(rx.issuedDate),
-      expiryDate: Number(rx.expiryDate),
-      status: Number(rx.status),
-      filledBy: rx.filledBy,
-      filledDate: Number(rx.filledDate),
+    if (contract) {
+      try {
+        const prescriptions = await contract.getPrescriptionsByPatient(patientId);
+        return prescriptions.map(rx => ({
+          prescriptionId: rx.prescriptionId,
+          patientId: rx.patientId,
+          doctorId: rx.doctorId,
+          medication: rx.medication,
+          dosage: rx.dosage,
+          instructions: rx.instructions,
+          issuedDate: Number(rx.issuedDate),
+          expiryDate: Number(rx.expiryDate),
+          status: Number(rx.status),
+          filledBy: rx.filledBy,
+          filledDate: Number(rx.filledDate),
+        }));
+      } catch (error) {
+        logger.warn('Contract call failed for getPrescriptionsByPatient, falling back to in-memory:', error.message);
+      }
+    }
+
+    const all = Array.from(this._stores.prescriptions.values()).filter(p => p.patientId === patientId);
+    return all.map(p => ({
+      prescriptionId: p.prescriptionId,
+      patientId: p.patientId,
+      doctorId: p.doctorId,
+      medication: p.medication,
+      dosage: p.dosage,
+      instructions: p.instructions,
+      issuedDate: Number(p.issuedDate),
+      expiryDate: Number(p.expiryDate),
+      status: Number(p.status),
+      filledBy: p.filledBy,
+      filledDate: Number(p.filledDate || 0),
     }));
   }
 
   async getPrescriptionsByDoctor(doctorId) {
     const contract = this.getContract('Prescriptions');
-    const prescriptions = await contract.getPrescriptionsByDoctor(doctorId);
-    return prescriptions.map(rx => ({
-      prescriptionId: rx.prescriptionId,
-      patientId: rx.patientId,
-      doctorId: rx.doctorId,
-      medication: rx.medication,
-      dosage: rx.dosage,
-      instructions: rx.instructions,
-      issuedDate: Number(rx.issuedDate),
-      expiryDate: Number(rx.expiryDate),
-      status: Number(rx.status),
-      filledBy: rx.filledBy,
-      filledDate: Number(rx.filledDate),
+    if (contract) {
+      try {
+        const prescriptions = await contract.getPrescriptionsByDoctor(doctorId);
+        return prescriptions.map(rx => ({
+          prescriptionId: rx.prescriptionId,
+          patientId: rx.patientId,
+          doctorId: rx.doctorId,
+          medication: rx.medication,
+          dosage: rx.dosage,
+          instructions: rx.instructions,
+          issuedDate: Number(rx.issuedDate),
+          expiryDate: Number(rx.expiryDate),
+          status: Number(rx.status),
+          filledBy: rx.filledBy,
+          filledDate: Number(rx.filledDate),
+        }));
+      } catch (error) {
+        logger.warn('Contract call failed for getPrescriptionsByDoctor, falling back to in-memory:', error.message);
+      }
+    }
+
+    const all = Array.from(this._stores.prescriptions.values()).filter(p => p.doctorId === doctorId);
+    return all.map(p => ({
+      prescriptionId: p.prescriptionId,
+      patientId: p.patientId,
+      doctorId: p.doctorId,
+      medication: p.medication,
+      dosage: p.dosage,
+      instructions: p.instructions,
+      issuedDate: Number(p.issuedDate),
+      expiryDate: Number(p.expiryDate),
+      status: Number(p.status),
+      filledBy: p.filledBy,
+      filledDate: Number(p.filledDate || 0),
     }));
+  }
+
+  async getPrescription(prescriptionId) {
+    const contract = this.getContract('Prescriptions');
+    if (contract) {
+      const rx = await contract.getPrescription(prescriptionId);
+      if (!rx) {return null;}
+      return {
+        prescriptionId: rx.prescriptionId,
+        patientId: rx.patientId,
+        doctorId: rx.doctorId,
+        medication: rx.medication,
+        dosage: rx.dosage,
+        instructions: rx.instructions,
+        issuedDate: Number(rx.issuedDate),
+        expiryDate: Number(rx.expiryDate),
+        status: Number(rx.status),
+      };
+    }
+
+    const p = this._stores.prescriptions.get(prescriptionId);
+    if (!p) {return null;}
+    return {
+      prescriptionId: p.prescriptionId,
+      patientId: p.patientId,
+      doctorId: p.doctorId,
+      medication: p.medication,
+      dosage: p.dosage,
+      instructions: p.instructions,
+      issuedDate: Number(p.issuedDate),
+      expiryDate: Number(p.expiryDate),
+      status: Number(p.status),
+    };
   }
 
   // ====== Doctor Credentials Contract Methods ======
