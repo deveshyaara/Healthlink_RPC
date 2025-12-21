@@ -3,6 +3,7 @@ import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { dirname } from 'path';
+import logger from '../utils/logger.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -78,7 +79,7 @@ class StorageService {
     dirs.forEach(dir => {
       if (!fs.existsSync(dir)) {
         fs.mkdirSync(dir, { recursive: true, mode: 0o700 }); // Read/write/execute for owner only
-        console.log(`✅ Created secure directory: ${dir}`);
+        logger.info(`✅ Created secure directory: ${dir}`);
       }
     });
   }
@@ -116,7 +117,7 @@ class StorageService {
       // Step 2: Check for deduplication
       let isDuplicate = false;
       if (fs.existsSync(finalPath)) {
-        console.log(`⚡ File already exists (deduplicated): ${hash}`);
+        logger.info(`⚡ File already exists (deduplicated): ${hash}`);
         isDuplicate = true;
 
         // Delete temp file
@@ -127,7 +128,7 @@ class StorageService {
 
         // Delete temp file after encryption
         fs.unlinkSync(tempFilePath);
-        console.log(`✅ File encrypted and uploaded: ${hash}`);
+        logger.info(`✅ File encrypted and uploaded: ${hash}`);
       }
 
       // Step 4: Get file stats
@@ -158,7 +159,7 @@ class StorageService {
       if (fs.existsSync(tempFilePath)) {
         fs.unlinkSync(tempFilePath);
       }
-      console.error('❌ Upload failed:', error);
+      logger.error('❌ Upload failed:', error);
       throw new Error(`File upload failed: ${error.message}`);
     }
   }
@@ -246,7 +247,7 @@ class StorageService {
         size: buffer.length,
       };
     } catch (error) {
-      console.error('❌ Get file failed:', error);
+      logger.error('❌ Get file failed:', error);
       throw new Error(`File retrieval failed: ${error.message}`);
     }
   }
@@ -343,7 +344,7 @@ class StorageService {
       const metadataContent = fs.readFileSync(metadataPath, 'utf-8');
       return JSON.parse(metadataContent);
     } catch (error) {
-      console.error('❌ Get metadata failed:', error);
+      logger.error('❌ Get metadata failed:', error);
       return null;
     }
   }
@@ -373,7 +374,7 @@ class StorageService {
 
       return deleted;
     } catch (error) {
-      console.error('❌ Delete failed:', error);
+      logger.error('❌ Delete failed:', error);
       throw new Error(`File deletion failed: ${error.message}`);
     }
   }
@@ -402,7 +403,7 @@ class StorageService {
         uploadsPath: this.uploadsDir,
       };
     } catch (error) {
-      console.error('❌ Get stats failed:', error);
+      logger.error('❌ Get stats failed:', error);
       return { totalFiles: 0, totalSize: 0 };
     }
   }

@@ -4,6 +4,7 @@
  */
 
 import authService from '../services/auth.service.js';
+import logger from '../utils/logger.js';
 
 class AuthController {
   /**
@@ -51,7 +52,7 @@ class AuthController {
         },
       });
     } catch (error) {
-      console.error('Login error:', error);
+      logger.error('Login error:', error);
 
       if (error.message === 'Invalid credentials' || error.message === 'Account is inactive') {
         return res.status(401).json({
@@ -173,7 +174,7 @@ class AuthController {
         },
       });
     } catch (error) {
-      console.error('Registration error:', error);
+      logger.error('Registration error:', error);
 
       if (error.message === 'User already exists') {
         return res.status(409).json({
@@ -218,7 +219,7 @@ class AuthController {
         },
       });
     } catch (error) {
-      console.error('Logout error:', error);
+      logger.error('Logout error:', error);
 
       return res.status(500).json({
         status: 'error',
@@ -268,7 +269,7 @@ class AuthController {
         },
       });
     } catch (error) {
-      console.error('Get profile error:', error);
+      logger.error('Get profile error:', error);
 
       return res.status(500).json({
         status: 'error',
@@ -305,7 +306,7 @@ class AuthController {
         },
       });
     } catch (error) {
-      console.error('Token refresh error:', error);
+      logger.error('Token refresh error:', error);
 
       return res.status(401).json({
         status: 'error',
@@ -363,7 +364,7 @@ class AuthController {
         },
       });
     } catch (error) {
-      console.error('Change password error:', error);
+      logger.error('Change password error:', error);
 
       if (error.message === 'Invalid current password') {
         return res.status(400).json({

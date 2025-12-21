@@ -67,7 +67,7 @@ export const uploadFile = async (req, res) => {
       },
     });
   } catch (error) {
-    console.error('❌ Upload file error:', error);
+    logger.error('❌ Upload file error:', error);
     return res.status(500).json({
       status: 'error',
       statusCode: 500,
@@ -128,7 +128,7 @@ export const getFile = async (req, res) => {
     const fileStream = StorageService.getInstance().getFileStream(hash);
 
     fileStream.on('error', (error) => {
-      console.error('❌ Stream error:', error);
+      logger.error('❌ Stream error:', error);
       if (!res.headersSent) {
         res.status(500).json({
           status: 'error',
@@ -145,7 +145,7 @@ export const getFile = async (req, res) => {
     fileStream.pipe(res);
 
   } catch (error) {
-    console.error('❌ Get file error:', error);
+    logger.error('❌ Get file error:', error);
 
     if (!res.headersSent) {
       return res.status(500).json({
@@ -185,7 +185,7 @@ export const getMetadata = async (req, res) => {
       data: metadata,
     });
   } catch (error) {
-    console.error('❌ Get metadata error:', error);
+    logger.error('❌ Get metadata error:', error);
     return res.status(500).json({
       status: 'error',
       statusCode: 500,
@@ -213,7 +213,7 @@ export const getStats = async (req, res) => {
       data: stats,
     });
   } catch (error) {
-    console.error('❌ Get stats error:', error);
+    logger.error('❌ Get stats error:', error);
     return res.status(500).json({
       status: 'error',
       statusCode: 500,
@@ -252,7 +252,7 @@ export const deleteFile = async (req, res) => {
       data: { hash },
     });
   } catch (error) {
-    console.error('❌ Delete file error:', error);
+    logger.error('❌ Delete file error:', error);
     return res.status(500).json({
       status: 'error',
       statusCode: 500,

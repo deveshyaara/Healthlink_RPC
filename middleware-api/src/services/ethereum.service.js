@@ -2,6 +2,7 @@ import { ethers } from 'ethers';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import logger from '../utils/logger.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -44,13 +45,13 @@ class EthereumService {
       await this.loadContracts();
 
       this.initialized = true;
-      console.log('✅ Ethereum Service initialized successfully');
-      console.log('Connected to:', await this.provider.getNetwork());
-      console.log('Signer address:', await this.signer.getAddress());
+      logger.info('✅ Ethereum Service initialized successfully');
+      logger.info('Connected to: %o', await this.provider.getNetwork());
+      logger.info('Signer address: %s', await this.signer.getAddress());
 
       return true;
     } catch (error) {
-      console.error('Failed to initialize Ethereum Service:', error);
+      logger.error('Failed to initialize Ethereum Service:', error);
       throw error;
     }
   }
@@ -82,9 +83,9 @@ class EthereumService {
         );
       }
 
-      console.log('✅ Contracts loaded:', Object.keys(this.contracts));
+      logger.info('✅ Contracts loaded: %o', Object.keys(this.contracts));
     } catch (error) {
-      console.error('Failed to load contracts:', error);
+      logger.error('Failed to load contracts:', error);
       throw error;
     }
   }
@@ -335,16 +336,41 @@ class EthereumService {
 
   async createPrescription(prescriptionId, patientId, doctorId, medication, dosage, instructions, expiryDate) {
     const contract = this.getContract('Prescriptions');
-    const tx = await contract.createPrescription(
+    // Log types to help diagnose ABI param errors
+    logger.info('EthereumService.createPrescription args:', {
       prescriptionId,
       patientId,
       doctorId,
-      medication,
+      medicationType: typeof medication,
+      medicationSample: (typeof medication === 'string' ? medication.slice(0, 200) : JSON.stringify(medication)),
       dosage,
       instructions,
       expiryDate,
-    );
-    return await this.waitForTransaction(tx);
+    });
+    // Coerce arguments to primitive types expected by the ABI
+    const medArg = (typeof medication === 'string') ? medication : JSON.stringify(medication);
+    const dosageArg = dosage || '';
+    const instructionsArg = instructions || '';
+    const expiryArg = expiryDate ? Number(expiryDate) : 0;
+
+    try {
+      logger.info('Calling contract.createPrescription', { prescriptionId, patientId, doctorId });
+      const tx = await contract.createPrescription(
+        prescriptionId,
+        patientId,
+        doctorId,
+        medArg,
+        dosageArg,
+        instructionsArg,
+        expiryArg,
+      );
+      return await this.waitForTransaction(tx);
+    } catch (err) {
+      logger.error('createPrescription contract call failed', {
+        prescriptionId, patientId, doctorId, medArgSample: (medArg || '').slice(0,200), dosageArg, instructionsArg, expiryArg, err: err.message,
+      });
+      throw err;
+    }
   }
 
   async getPrescriptionsByPatient(patientId) {

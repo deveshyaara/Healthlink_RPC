@@ -11,6 +11,7 @@
 
 import { createClient } from '@supabase/supabase-js';
 import bcrypt from 'bcryptjs';
+import logger from '../utils/logger.js';
 
 class DatabaseService {
   constructor() {
@@ -52,8 +53,8 @@ class DatabaseService {
       const supabaseServiceKey = process.env.SUPABASE_SERVICE_KEY;
 
       if (!supabaseUrl || !supabaseServiceKey) {
-        console.warn('⚠️  Supabase credentials not configured - running in legacy mode');
-        console.warn('   Set SUPABASE_URL and SUPABASE_SERVICE_KEY in .env to enable user management');
+        logger.warn('⚠️  Supabase credentials not configured - running in legacy mode');
+        logger.warn('   Set SUPABASE_URL and SUPABASE_SERVICE_KEY in .env to enable user management');
         this.isConnected = false;
         return false;
       }
@@ -70,17 +71,17 @@ class DatabaseService {
       const { error } = await this.supabase.from('healthlink_users').select('count', { count: 'exact', head: true });
 
       if (error) {
-        console.error('❌ Supabase connection failed:', error.message);
+        logger.error('❌ Supabase connection failed:', error.message);
         this.isConnected = false;
         return false;
       }
 
       this.isConnected = true;
-      console.log('✅ Supabase database connected successfully');
+      logger.info('✅ Supabase database connected successfully');
       return true;
 
     } catch (error) {
-      console.error('❌ Failed to initialize Supabase:', error.message);
+      logger.error('❌ Failed to initialize Supabase:', error.message);
       this.isConnected = false;
       return false;
     }
@@ -565,7 +566,7 @@ class DatabaseService {
           user_agent: metadata.userAgent || null,
         });
     } catch (error) {
-      console.error('Failed to log audit event:', error);
+      logger.error('Failed to log audit event:', error);
       // Don't throw - audit logging should not break main flow
     }
   }

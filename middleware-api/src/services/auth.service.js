@@ -9,14 +9,15 @@
 
 import jwt from 'jsonwebtoken';
 import dbService from './db.service.js';
+import logger from '../utils/logger.js';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'healthlink-secret-key-change-in-production';
 const JWT_EXPIRY = process.env.JWT_EXPIRY || '24h';
 
 // Security check: Warn if using default JWT secret in production
 if (process.env.NODE_ENV === 'production' && JWT_SECRET === 'healthlink-secret-key-change-in-production') {
-  console.error('\n⚠️  CRITICAL SECURITY WARNING: Using default JWT_SECRET in production!');
-  console.error('Set a secure JWT_SECRET environment variable immediately.\n');
+  logger.error('\n⚠️  CRITICAL SECURITY WARNING: Using default JWT_SECRET in production!');
+  logger.error('Set a secure JWT_SECRET environment variable immediately.\n');
   throw new Error('JWT_SECRET must be set in production environment');
 }
 
@@ -40,15 +41,15 @@ class AuthService {
       this.useSupabase = await dbService.initialize();
 
       if (this.useSupabase) {
-        console.log('✅ Auth service using Supabase database');
+        logger.info('✅ Auth service using Supabase database');
         return;
       }
     } catch (error) {
-      console.log('⚠️  Supabase not available - using Ethereum-only mode');
+      logger.warn('⚠️  Supabase not available - using Ethereum-only mode');
     }
 
     // Supabase is optional for Ethereum - authentication via wallet signatures
-    console.log('ℹ️  Running in Ethereum-only mode (wallet-based authentication)');
+    logger.info('ℹ️  Running in Ethereum-only mode (wallet-based authentication)');
     this.useSupabase = false;
   }
 
@@ -106,7 +107,7 @@ class AuthService {
         name: dbUser.full_name,
       };
     } catch (error) {
-      console.error('Supabase registration failed:', error);
+      logger.error('Supabase registration failed:', error);
       throw error;
     }
   }
@@ -171,7 +172,7 @@ class AuthService {
         name: user.full_name,
       };
     } catch (error) {
-      console.error('Supabase authentication failed:', error);
+      logger.error('Supabase authentication failed:', error);
       throw error;
     }
   }
@@ -193,7 +194,7 @@ class AuthService {
   async getUserById(userId) {
     if (!this.useSupabase || !dbService.isReady()) {
       // Return minimal user object when Supabase is not available
-      console.warn('⚠️  Supabase not available, returning minimal user object');
+      logger.warn('⚠️  Supabase not available, returning minimal user object');
       return {
         userId: userId,
         email: `${userId}@healthlink.local`,
@@ -228,11 +229,11 @@ class AuthService {
         emailVerified: user.email_verified,
       };
     } catch (error) {
-      console.error('Failed to fetch user from Supabase:', error.message);
-      
+      logger.error('Failed to fetch user from Supabase:', error.message);
+
       // Check if it's an HTML error response (indicates Supabase is down)
       if (error.message && error.message.includes('<!DOCTYPE html>')) {
-        console.warn('⚠️  Supabase returned HTML error, falling back to minimal user object');
+        logger.warn('⚠️  Supabase returned HTML error, falling back to minimal user object');
         return {
           userId: userId,
           email: `${userId}@healthlink.local`,
@@ -246,7 +247,7 @@ class AuthService {
           emailVerified: true,
         };
       }
-      
+
       throw error;
     }
   }
@@ -450,7 +451,7 @@ class AuthService {
 
       return true;
     } catch (error) {
-      console.error('Supabase password change failed:', error);
+      logger.error('Supabase password change failed:', error);
       throw error;
     }
   }

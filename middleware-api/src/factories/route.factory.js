@@ -269,18 +269,18 @@ export function createDynamicRouter(routesConfig) {
         roles: config.roles || [],
       });
     } else {
-      console.warn(`Unsupported HTTP method: ${config.method} for path ${path}`);
+      logger.warn(`Unsupported HTTP method: ${config.method} for path ${path}`);
     }
   }
 
   // Log registered routes (dev mode)
   if (process.env.NODE_ENV !== 'production') {
-    console.log('\n=== Dynamic Routes Registered ===');
+    logger.info('\n=== Dynamic Routes Registered ===');
     registeredRoutes.forEach(route => {
       const authInfo = route.auth ? `🔒 ${route.roles.join(', ') || 'authenticated'}` : '🌐 public';
-      console.log(`${route.method.padEnd(6)} ${route.path.padEnd(40)} → ${route.chaincode}.${route.function} (${authInfo})`);
+      logger.info(`${route.method.padEnd(6)} ${route.path.padEnd(40)} → ${route.chaincode}.${route.function} (${authInfo})`);
     });
-    console.log('=================================\n');
+    logger.info('=================================\n');
   }
 
   return router;
@@ -330,7 +330,7 @@ export function createGenericChaincodeRouter() {
         data: typeof result === 'string' ? JSON.parse(result) : result,
       });
     } catch (error) {
-      console.error('Generic chaincode invocation error:', error);
+      logger.error('Generic chaincode invocation error:', error);
       return res.status(500).json({
         status: 'error',
         statusCode: 500,
@@ -380,7 +380,7 @@ export function createGenericChaincodeRouter() {
         data: typeof result === 'string' ? JSON.parse(result) : result,
       });
     } catch (error) {
-      console.error('Generic chaincode query error:', error);
+      logger.error('Generic chaincode query error:', error);
       return res.status(500).json({
         status: 'error',
         statusCode: 500,

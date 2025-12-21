@@ -9,6 +9,8 @@ import logger from './utils/logger.js';
 import { validateEnvironment } from './utils/validateEnv.js';
 import errorHandler from './middleware/errorHandler.js';
 import healthcareRoutes from './routes/healthcare.routes.js';
+import healthcareController from './controllers/healthcare.controller.js';
+import { authenticateJWT, requireDoctor } from './middleware/auth.middleware.js';
 import transactionRoutes from './routes/transaction.routes.js';
 import walletRoutes from './routes/wallet.routes.js';
 import authRoutes from './routes/auth.routes.js';
@@ -133,10 +135,14 @@ app.use(`/api/${API_VERSION}/healthcare`, healthcareRoutes);
 app.use('/api/medical-records', healthcareRoutes);
 
 // Mount appointments routes (aliased for frontend compatibility)
-app.use('/api/appointments', healthcareRoutes);
+// Explicit alias routes so `/api/appointments` maps to the correct handlers
+app.get('/api/appointments', authenticateJWT, healthcareController.getCurrentUserAppointments);
+app.post('/api/appointments', authenticateJWT, requireDoctor, healthcareController.createAppointment);
 
 // Mount prescriptions routes (aliased for frontend compatibility)
-app.use('/api/prescriptions', healthcareRoutes);
+// Explicit alias routes so `/api/prescriptions` maps to the correct handlers
+app.get('/api/prescriptions', authenticateJWT, healthcareController.getCurrentUserPrescriptions);
+app.post('/api/prescriptions', authenticateJWT, requireDoctor, healthcareController.createPrescription);
 
 // Mount consents routes (aliased for frontend compatibility)
 app.use('/api/consents', healthcareRoutes);

@@ -4,6 +4,7 @@
  */
 
 import authService from '../services/auth.service.js';
+import logger from '../utils/logger.js';
 
 /**
  * Authenticate JWT token and load Fabric identity
@@ -48,8 +49,8 @@ export const authenticateJWT = async (req, res, next) => {
     try {
       user = await authService.getUserById(decoded.userId);
     } catch (error) {
-      console.warn('⚠️  Supabase user lookup failed, using JWT data as fallback:', error.message);
-      
+      logger.warn('⚠️  Supabase user lookup failed, using JWT data as fallback: %s', error.message);
+
       // Fallback: Create minimal user object from JWT data
       // This allows the API to work even when Supabase is down
       user = {
@@ -103,7 +104,7 @@ export const authenticateJWT = async (req, res, next) => {
 
       next();
     } catch (error) {
-      console.error('Failed to load Fabric identity:', error);
+      logger.error('Failed to load Fabric identity:', error);
       return res.status(500).json({
         status: 'error',
         statusCode: 500,
@@ -115,7 +116,7 @@ export const authenticateJWT = async (req, res, next) => {
       });
     }
   } catch (error) {
-    console.error('Authentication middleware error:', error);
+    logger.error('Authentication middleware error:', error);
     return res.status(500).json({
       status: 'error',
       statusCode: 500,

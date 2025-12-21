@@ -311,7 +311,7 @@ export const appointmentsApi = {
    * Function: GetAppointmentsByPatient or GetAppointmentsByDoctor (role-based)
    */
   getAll: async (): Promise<any[]> => {
-    return fetchApi<any[]>('/api/appointments', { method: 'GET' }, true);
+    return fetchApi<any[]>('/api/v1/healthcare/appointments', { method: 'GET' }, true);
   },
 
   /**
@@ -332,7 +332,7 @@ export const appointmentsApi = {
    * Function: UpdateAppointment
    */
   update: async (id: string, updateData: any): Promise<any> => {
-    return fetchApi<any>(`/api/appointments/${id}`, {
+    return fetchApi<any>(`/api/v1/healthcare/appointments/${id}`, {
       method: 'PUT',
       body: JSON.stringify(updateData),
     });
@@ -344,7 +344,7 @@ export const appointmentsApi = {
    * Function: CancelAppointment
    */
   cancel: async (id: string): Promise<any> => {
-    return fetchApi<any>(`/api/appointments/${id}/cancel`, {
+    return fetchApi<any>(`/api/v1/healthcare/appointments/${id}/cancel`, {
       method: 'POST',
     });
   },
@@ -361,7 +361,7 @@ export const prescriptionsApi = {
    * Function: GetPrescriptionsByPatient or GetPrescriptionsByDoctor
    */
   getAll: async (): Promise<any[]> => {
-    return fetchApi<any[]>('/api/prescriptions', { method: 'GET' }, true);
+    return fetchApi<any[]>('/api/v1/healthcare/prescriptions', { method: 'GET' }, true);
   },
 
   /**
@@ -382,7 +382,7 @@ export const prescriptionsApi = {
    * Function: UpdatePrescription
    */
   update: async (id: string, updateData: any): Promise<any> => {
-    return fetchApi<any>(`/api/prescriptions/${id}`, {
+    return fetchApi<any>(`/api/v1/healthcare/prescriptions/${id}`, {
       method: 'PUT',
       body: JSON.stringify(updateData),
     });
@@ -400,7 +400,7 @@ export const consentsApi = {
    * Function: GetConsentsByPatient
    */
   getAll: async (): Promise<any[]> => {
-    return fetchApi<any[]>('/api/consents', { method: 'GET' }, true);
+    return fetchApi<any[]>('/api/v1/healthcare/consents', { method: 'GET' }, true);
   },
 
   /**
@@ -409,7 +409,7 @@ export const consentsApi = {
    * Function: GetConsent
    */
   getById: async (consentId: string): Promise<any> => {
-    return fetchApi<any>(`/api/consents/${consentId}`, { method: 'GET' });
+    return fetchApi<any>(`/api/v1/healthcare/consents/${consentId}`, { method: 'GET' });
   },
 
   /**
@@ -430,7 +430,7 @@ export const consentsApi = {
    * Function: RevokeConsent
    */
   revoke: async (consentId: string): Promise<any> => {
-    return fetchApi<any>(`/api/consents/${consentId}/revoke`, {
+    return fetchApi<any>(`/api/v1/healthcare/consents/${consentId}/revoke`, {
       method: 'PATCH',
     });
   },
