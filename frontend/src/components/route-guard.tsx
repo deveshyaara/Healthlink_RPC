@@ -23,6 +23,7 @@ export function RouteGuard({ children }: RouteGuardProps) {
   const { user, loading } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
+  const path = pathname ?? '/';
 
   useEffect(() => {
     // Wait for auth to load
@@ -42,13 +43,13 @@ export function RouteGuard({ children }: RouteGuardProps) {
     }
 
     // Check if user has access to current route
-    const hasAccess = canAccessRoute(user.role, pathname);
+    const hasAccess = canAccessRoute(user.role, path);
 
     if (!hasAccess) {
       // Don't redirect, show 403 page instead (better UX)
       // User might have bookmarked the URL or clicked a shared link
     }
-  }, [user, loading, pathname, router]);
+  }, [user, loading, path, router]);
 
   // Show loading state
   if (loading) {
@@ -70,7 +71,7 @@ export function RouteGuard({ children }: RouteGuardProps) {
   }
 
   // Check access
-  const hasAccess = canAccessRoute(user.role, pathname);
+  const hasAccess = canAccessRoute(user.role, path);
 
   // Show 403 Forbidden page
   if (!hasAccess) {

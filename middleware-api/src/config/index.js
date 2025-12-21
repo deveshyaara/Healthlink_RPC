@@ -2,7 +2,6 @@ import dotenv from 'dotenv';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import fabricConfig from './fabric-config.js';
-import logger from '../utils/logger.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -93,7 +92,10 @@ const config = {
       if (isAllowedString || isCodespaces) {
         callback(null, true);
       } else {
-        logger.warn(`[CORS] Blocked origin: ${origin}`);
+        // Avoid importing logger here to prevent circular dependency during startup
+        /* eslint-disable no-console */
+        console.warn(`[CORS] Blocked origin: ${origin}`);
+        /* eslint-enable no-console */
         callback(new Error(`Origin ${origin} not allowed by CORS`));
       }
     },

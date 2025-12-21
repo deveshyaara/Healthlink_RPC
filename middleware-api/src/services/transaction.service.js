@@ -219,6 +219,7 @@ class TransactionService {
    * @param {string} patientId - Patient ID
    * @param {string} doctorAddress - Doctor's Ethereum address
    * @param {number} timestamp - Appointment timestamp
+   * @param {string} reason - Appointment reason
    * @param {string} notes - Appointment notes
    * @returns {Promise<Object>} Transaction result
    */
@@ -471,6 +472,25 @@ class TransactionService {
     }
   }
 
+  async getAppointment(appointmentId) {
+    try {
+      await this.initialize();
+      logger.info('Service: Getting appointment', { appointmentId });
+
+      const result = await ethereumService.getAppointment(appointmentId);
+
+      return {
+        success: true,
+        data: result,
+        functionName: 'getAppointment',
+        timestamp: new Date().toISOString(),
+      };
+    } catch (error) {
+      logger.error('Service: getAppointment failed:', error);
+      throw error;
+    }
+  }
+
   /**
    * Get consent by ID
    * @param {string} consentId - Consent ID
@@ -491,6 +511,50 @@ class TransactionService {
       };
     } catch (error) {
       logger.error('Service: getConsent failed:', error);
+      throw error;
+    }
+  }
+
+  async getPrescription(prescriptionId) {
+    try {
+      await this.initialize();
+      logger.info('Service: Getting prescription', { prescriptionId });
+
+      const result = await ethereumService.getPrescription(prescriptionId);
+
+      return {
+        success: true,
+        data: result,
+        functionName: 'getPrescription',
+        timestamp: new Date().toISOString(),
+      };
+    } catch (error) {
+      logger.error('Service: getPrescription failed:', error);
+      throw error;
+    }
+  }
+
+  async updatePrescription(prescriptionId, updateData) {
+    try {
+      await this.initialize();
+      logger.info('Service: Updating prescription', { prescriptionId, updateData });
+
+      // Placeholder implementation: in future this should call a contract method
+      // For now, simulate update and return updated object
+      const result = {
+        prescriptionId,
+        ...updateData,
+        updatedAt: Date.now(),
+      };
+
+      return {
+        success: true,
+        data: result,
+        functionName: 'updatePrescription',
+        timestamp: new Date().toISOString(),
+      };
+    } catch (error) {
+      logger.error('Service: updatePrescription failed:', error);
       throw error;
     }
   }

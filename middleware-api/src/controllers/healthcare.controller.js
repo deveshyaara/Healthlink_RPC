@@ -270,6 +270,63 @@ class HealthcareController {
   }
 
   /**
+   * Get a specific appointment
+   * GET /api/appointments/:appointmentId
+   */
+  async getAppointment(req, res, next) {
+    try {
+      const { appointmentId } = req.params;
+
+      const result = await transactionService.getAppointment(appointmentId);
+
+      if (!result || !result.data) {
+        return res.status(404).json({ success: false, error: 'Appointment not found' });
+      }
+
+      res.status(200).json(result);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * Get a specific prescription
+   * GET /api/prescriptions/:prescriptionId
+   */
+  async getPrescription(req, res, next) {
+    try {
+      const { prescriptionId } = req.params;
+
+      const result = await transactionService.getPrescription(prescriptionId);
+
+      if (!result || !result.data) {
+        return res.status(404).json({ success: false, error: 'Prescription not found' });
+      }
+
+      res.status(200).json(result);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * Update a prescription
+   * PUT /api/prescriptions/:prescriptionId
+   */
+  async updatePrescription(req, res, next) {
+    try {
+      const { prescriptionId } = req.params;
+      const updateData = req.body || {};
+
+      const result = await transactionService.updatePrescription(prescriptionId, updateData);
+
+      res.status(200).json(result);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
    * Create a prescription
    * POST /api/v1/prescriptions
    */

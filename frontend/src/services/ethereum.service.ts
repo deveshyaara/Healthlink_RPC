@@ -364,6 +364,7 @@ class EthereumService {
     patientId: string,
     doctorAddress: string,
     timestamp: number,
+    reason: string,
     notes: string
   ): Promise<ethers.TransactionReceipt> {
     if (!this.contracts.appointments) {
@@ -375,6 +376,7 @@ class EthereumService {
       patientId,
       doctorAddress,
       timestamp,
+      reason,
       notes
     );
     return await tx.wait();

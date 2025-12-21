@@ -11,7 +11,7 @@ async function main() {
   // Deploy HealthLink Contract
   console.log("📄 Deploying HealthLink contract...");
   const HealthLink = await ethers.getContractFactory("HealthLink");
-  const healthLink = await HealthLink.deploy();
+  const healthLink = await HealthLink.deploy(deployer.address);
   await healthLink.waitForDeployment();
   const healthLinkAddress = await healthLink.getAddress();
   console.log("✅ HealthLink deployed to:", healthLinkAddress);
@@ -52,10 +52,11 @@ async function main() {
   if (admin && doctor && patient) {
     console.log("\n🔐 Setting up roles...");
     
-    // HealthLink roles
-    await healthLink.grantAdminRole(admin.address);
-    await healthLink.grantDoctorRole(doctor.address);
-    await healthLink.grantPatientRole(patient.address);
+    // HealthLink roles (use AccessControl grantRole for constants)
+    const HL_ADMIN = await healthLink.DEFAULT_ADMIN_ROLE();
+    const HL_DOCTOR = await healthLink.DOCTOR_ROLE();
+    await healthLink.grantRole(HL_ADMIN, admin.address);
+    await healthLink.grantRole(HL_DOCTOR, doctor.address);
     console.log("✅ HealthLink roles granted");
 
     // PatientRecords roles

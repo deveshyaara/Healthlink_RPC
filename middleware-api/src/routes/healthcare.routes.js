@@ -4,6 +4,22 @@ import { authenticateJWT, requireDoctor, requirePatient, requireAdmin } from '..
 
 const router = express.Router();
 
+// Sanity checks: ensure controller methods exist to avoid obscure Express errors
+const expectedHandlers = [
+  'createMedicalRecord', 'getCurrentUserRecords', 'getRecordsByPatient',
+  'createPatient', 'getPatient', 'getMedicalRecord',
+  'createConsent', 'getCurrentUserConsents', 'getConsent', 'revokeConsent',
+  'getCurrentUserAppointments', 'createAppointment', 'getAppointment', 'updateAppointment', 'cancelAppointment',
+  'getCurrentUserPrescriptions', 'createPrescription', 'getPrescription', 'updatePrescription',
+  'registerDoctor', 'verifyDoctor', 'getVerifiedDoctors', 'getAuditRecords',
+];
+
+expectedHandlers.forEach((h) => {
+  if (typeof healthcareController[h] !== 'function') {
+    throw new Error(`healthcare.controller missing required handler: ${h}`);
+  }
+});
+
 // ======================
 // Medical Records Routes (Root level for /api/medical-records)
 // ======================
