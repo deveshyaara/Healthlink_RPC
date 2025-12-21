@@ -27,19 +27,20 @@ class TransactionService {
 
   /**
    * Create a new patient record
-   * @param {string} patientId - Patient ID
-   * @param {string} name - Patient name
-   * @param {number} age - Patient age
-   * @param {string} bloodType - Blood type
-   * @param {string} allergies - Allergies
+   * @param {string} patientAddress - Patient's wallet address
+   * @param {string} name - Patient's full name
+   * @param {number} age - Patient's age
+   * @param {string} gender - Patient's gender
+   * @param {string} ipfsHash - IPFS hash for medical history
    * @returns {Promise<Object>} Transaction result
    */
-  async createPatient(patientId, name, age, bloodType, allergies) {
+  async createPatient(patientAddress, name, age, gender, ipfsHash) {
     try {
       await this.initialize();
-      logger.info('Service: Creating patient', { patientId, name });
+      logger.info('Service: Creating patient', { patientAddress, name });
 
-      const result = await ethereumService.createPatient(patientId, name, age, bloodType, allergies);
+      const publicData = { name, age, gender, ipfsHash };
+      const result = await ethereumService.createPatient(patientAddress, publicData);
 
       return {
         success: true,

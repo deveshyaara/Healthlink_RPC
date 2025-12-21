@@ -13,10 +13,21 @@ class HealthcareController {
    */
   async createPatient(req, res, next) {
     try {
-      const { patientId, name, age, bloodType, allergies } = req.body;
+      const { patientAddress, name, age, gender, ipfsHash } = req.body;
+
+      // Validate required fields
+      if (!patientAddress || !name || age === undefined || !gender || !ipfsHash) {
+        return res.status(400).json({ error: 'Missing required fields: patientAddress, name, age, gender, ipfsHash' });
+      }
+
+      // Parse age to number
+      const parsedAge = parseInt(age, 10);
+      if (isNaN(parsedAge)) {
+        return res.status(400).json({ error: 'Age must be a valid number' });
+      }
 
       const result = await transactionService.createPatient(
-        patientId, name, age, bloodType, allergies || '',
+        patientAddress, name, parsedAge, gender, ipfsHash,
       );
 
       res.status(201).json(result);
