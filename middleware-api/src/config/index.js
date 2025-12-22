@@ -13,7 +13,7 @@ dotenv.config({ path: path.resolve(__dirname, '../../', envFile) });
 /**
  * Configuration object for the entire application
  * Centralizes all configuration values from environment variables
- * Uses fabric-config.js for all Fabric-specific settings
+ * Now uses Ethereum instead of Fabric
  */
 const config = {
   // Server configuration
@@ -103,11 +103,12 @@ const config = {
   },
 };
 
-// Validate required configuration
+// Validate required configuration (Ethereum-focused)
 const requiredConfig = [
-  'fabric.channelName',
-  'fabric.chaincodeName',
-  'fabric.mspId',
+  // Removed fabric requirements since we migrated to Ethereum
+  // 'fabric.channelName',
+  // 'fabric.chaincodeName',
+  // 'fabric.mspId',
 ];
 
 requiredConfig.forEach((key) => {
