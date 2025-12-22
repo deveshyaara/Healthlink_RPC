@@ -5,10 +5,7 @@ services:
     region: oregon
     plan: free
     branch: main
-    buildCommand: |
-      npm install
-      python3 -m pip install --upgrade pip
-      python3 -m pip install -r python_agent/requirements.txt
+    buildCommand: npm install
     startCommand: npm start
     envVars:
       - key: NODE_ENV
