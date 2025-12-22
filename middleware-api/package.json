@@ -1,7 +1,7 @@
 {
   "name": "healthlink-middleware-api",
   "version": "1.0.0",
-  "description": "Production-ready Middleware API for Hyperledger Fabric",
+  "description": "Production-ready Middleware API for Ethereum Blockchain",
   "main": "src/server.js",
   "type": "module",
   "scripts": {
@@ -11,11 +11,12 @@
     "lint": "eslint src/**/*.js"
   },
   "keywords": [
-    "hyperledger",
-    "fabric",
+    "ethereum",
     "blockchain",
     "middleware",
-    "api"
+    "api",
+    "healthcare",
+    "smart-contracts"
   ],
   "author": "HealthLink Team",
   "license": "MIT",

@@ -1,57 +1,39 @@
-import { Wallets } from 'fabric-network';
-import FabricCAServices from 'fabric-ca-client';
+import { ethers } from 'ethers';
 import fs from 'fs';
 import path from 'path';
+import crypto from 'crypto';
 import config from '../config/index.js';
-import fabricConfig from '../config/fabric-config.js';
 import logger from '../utils/logger.js';
 import { BlockchainError } from '../utils/errors.js';
 
 /**
- * WalletService
- * Manages user identities and wallet operations
+ * WalletService for Ethereum
+ * Manages user Ethereum wallets and private keys
  */
 class WalletService {
   constructor() {
-    this.wallet = null;
-    this.caClient = null;
+    this.wallets = new Map(); // userId -> wallet data
+    this.walletPath = null;
   }
 
   /**
-   * Initialize wallet and CA client
+   * Initialize wallet service
    */
   async initialize() {
     try {
       // Resolve wallet path to absolute path
-      const walletPath = path.resolve(config.wallet.path);
+      this.walletPath = path.resolve('./wallets');
 
       // Ensure wallet directory exists
-      if (!fs.existsSync(walletPath)) {
-        fs.mkdirSync(walletPath, { recursive: true });
-        logger.info(`Created wallet directory at: ${walletPath}`);
+      if (!fs.existsSync(this.walletPath)) {
+        fs.mkdirSync(this.walletPath, { recursive: true });
+        logger.info(`Created wallet directory at: ${this.walletPath}`);
       }
 
-      // Create wallet instance
-      this.wallet = await Wallets.newFileSystemWallet(walletPath);
-      logger.info(`Wallet initialized at: ${walletPath}`);
+      // Load existing wallets
+      await this.loadWallets();
 
-      // Initialize CA client with absolute path
-      const connectionProfilePath = path.resolve(config.fabric.connectionProfilePath);
-      const connectionProfile = JSON.parse(
-        fs.readFileSync(connectionProfilePath, 'utf8'),
-      );
-
-      const caInfo = connectionProfile.certificateAuthorities[
-        Object.keys(connectionProfile.certificateAuthorities)[0]
-      ];
-      const caTLSCACerts = caInfo.tlsCACerts.pem;
-      this.caClient = new FabricCAServices(
-        caInfo.url,
-        { trustedRoots: caTLSCACerts, verify: false },
-        caInfo.caName,
-      );
-
-      logger.info('CA Client initialized');
+      logger.info('Ethereum Wallet Service initialized successfully');
       return this;
     } catch (error) {
       logger.error('Failed to initialize wallet service:', error);
@@ -60,162 +42,192 @@ class WalletService {
   }
 
   /**
-   * Enroll admin user
+   * Load existing wallets from disk
    */
-  async enrollAdmin() {
+  async loadWallets() {
     try {
-      const adminId = config.wallet.adminUserId;
+      const walletFiles = fs.readdirSync(this.walletPath).filter(file => file.endsWith('.json'));
 
-      // Check if admin already enrolled
-      const identity = await this.wallet.get(adminId);
-      if (identity) {
-        logger.info('Admin identity already exists in wallet');
-        return { message: 'Admin already enrolled', userId: adminId };
+      for (const file of walletFiles) {
+        const userId = file.replace('.json', '');
+        const walletData = JSON.parse(fs.readFileSync(path.join(this.walletPath, file), 'utf8'));
+        this.wallets.set(userId, walletData);
       }
 
-      // Enroll the admin user
-      const enrollment = await this.caClient.enroll({
-        enrollmentID: 'admin',
-        enrollmentSecret: 'adminpw',
-      });
-
-      const x509Identity = {
-        credentials: {
-          certificate: enrollment.certificate,
-          privateKey: enrollment.key.toBytes(),
-        },
-        mspId: fabricConfig.getDefaultMspId(),
-        type: 'X.509',
-      };
-
-      await this.wallet.put(adminId, x509Identity);
-      logger.info('Admin enrolled successfully');
-
-      return { message: 'Admin enrolled successfully', userId: adminId };
+      logger.info(`Loaded ${this.wallets.size} existing wallets`);
     } catch (error) {
-      logger.error('Failed to enroll admin:', error);
-      throw new BlockchainError('Admin enrollment failed', error);
+      logger.warn('Failed to load existing wallets:', error.message);
     }
   }
 
   /**
-   * Register and enroll a new user
-   * @param {string} userId - User ID to register
-   * @param {string} role - User role (default: 'client')
-   * @param {string} affiliation - User affiliation
+   * Save wallet to disk
    */
-  async registerUser(userId, role = 'client', affiliation = 'org1.department1') {
+  async saveWallet(userId, walletData) {
+    const filePath = path.join(this.walletPath, `${userId}.json`);
+    fs.writeFileSync(filePath, JSON.stringify(walletData, null, 2));
+  }
+
+  /**
+   * Create admin wallet (for system operations)
+   */
+  async enrollAdmin() {
+    try {
+      const adminId = 'admin';
+
+      // Check if admin already exists
+      if (this.wallets.has(adminId)) {
+        logger.info('Admin wallet already exists');
+        return { message: 'Admin already exists', userId: adminId };
+      }
+
+      // Create new admin wallet
+      const wallet = ethers.Wallet.createRandom();
+
+      const walletData = {
+        address: wallet.address,
+        privateKey: wallet.privateKey,
+        role: 'admin',
+        createdAt: new Date().toISOString(),
+      };
+
+      this.wallets.set(adminId, walletData);
+      await this.saveWallet(adminId, walletData);
+
+      logger.info('Admin wallet created successfully');
+
+      return { message: 'Admin wallet created successfully', userId: adminId, address: wallet.address };
+    } catch (error) {
+      logger.error('Failed to create admin wallet:', error);
+      throw new BlockchainError('Admin wallet creation failed', error);
+    }
+  }
+
+  /**
+   * Create a new user wallet
+   * @param {string} userId - User ID to register
+   * @param {string} role - User role (default: 'patient')
+   */
+  async registerUser(userId, role = 'patient') {
     try {
       // Check if user already exists
-      const userIdentity = await this.wallet.get(userId);
-      if (userIdentity) {
+      if (this.wallets.has(userId)) {
         logger.info(`User ${userId} already exists in wallet`);
         return { message: 'User already registered', userId };
       }
 
-      // Get admin identity with proper error handling
-      const adminId = config.wallet.adminUserId;
-      const adminIdentity = await this.wallet.get(adminId);
-      if (!adminIdentity) {
-        const error = new BlockchainError('Admin identity not found. Please enroll admin first.');
-        error.type = 'IDENTITY_NOT_FOUND';
-        error.statusCode = 404;
-        throw error;
-      }
+      // Create new user wallet
+      const wallet = ethers.Wallet.createRandom();
 
-      // Build a user object for authenticating with the CA
-      const provider = this.wallet.getProviderRegistry().getProvider(adminIdentity.type);
-      const adminUser = await provider.getUserContext(adminIdentity, adminId);
-
-      // Register the user
-      const secret = await this.caClient.register(
-        {
-          affiliation,
-          enrollmentID: userId,
-          role,
-          attrs: [{ name: 'role', value: role, ecert: true }],
-        },
-        adminUser,
-      );
-
-      // Enroll the user
-      const enrollment = await this.caClient.enroll({
-        enrollmentID: userId,
-        enrollmentSecret: secret,
-      });
-
-      const x509Identity = {
-        credentials: {
-          certificate: enrollment.certificate,
-          privateKey: enrollment.key.toBytes(),
-        },
-        mspId: fabricConfig.getDefaultMspId(),
-        type: 'X.509',
+      const walletData = {
+        address: wallet.address,
+        privateKey: wallet.privateKey,
+        role: role,
+        createdAt: new Date().toISOString(),
       };
 
-      await this.wallet.put(userId, x509Identity);
-      logger.info(`User ${userId} registered and enrolled successfully`);
+      this.wallets.set(userId, walletData);
+      await this.saveWallet(userId, walletData);
+
+      logger.info(`User ${userId} wallet created successfully`);
 
       return {
-        message: 'User registered successfully',
+        message: 'User wallet created successfully',
         userId,
+        address: wallet.address,
         role,
       };
     } catch (error) {
-      logger.error(`Failed to register user ${userId}:`, error);
-      throw new BlockchainError(`User registration failed for ${userId}`, error);
+      logger.error(`Failed to create user wallet ${userId}:`, error);
+      throw new BlockchainError(`User wallet creation failed for ${userId}`, error);
     }
   }
 
   /**
-   * Get user identity from wallet
+   * Get user wallet information
    * @param {string} userId - User ID
    */
   async getIdentity(userId) {
     try {
-      const identity = await this.wallet.get(userId);
-      if (!identity) {
+      const walletData = this.wallets.get(userId);
+      if (!walletData) {
         return null;
       }
+
+      // Return wallet info without private key
       return {
         userId,
-        mspId: identity.mspId,
-        type: identity.type,
+        address: walletData.address,
+        role: walletData.role,
+        createdAt: walletData.createdAt,
       };
     } catch (error) {
-      logger.error(`Failed to get identity for ${userId}:`, error);
-      throw new BlockchainError(`Failed to retrieve identity for ${userId}`, error);
+      logger.error(`Failed to get wallet for ${userId}:`, error);
+      throw new BlockchainError(`Failed to retrieve wallet for ${userId}`, error);
     }
   }
 
   /**
-   * List all identities in wallet
+   * Get user's private key (use with caution!)
+   * @param {string} userId - User ID
+   */
+  async getPrivateKey(userId) {
+    try {
+      const walletData = this.wallets.get(userId);
+      if (!walletData) {
+        throw new BlockchainError(`Wallet not found for user ${userId}`);
+      }
+      return walletData.privateKey;
+    } catch (error) {
+      logger.error(`Failed to get private key for ${userId}:`, error);
+      throw new BlockchainError(`Failed to retrieve private key for ${userId}`, error);
+    }
+  }
+
+  /**
+   * List all wallets
    */
   async listIdentities() {
     try {
-      const identities = await this.wallet.list();
-      return identities.map((id) => ({
-        label: id.label,
-        // Don't expose sensitive credential data
-      }));
+      const identities = [];
+      for (const [userId, walletData] of this.wallets) {
+        identities.push({
+          userId,
+          address: walletData.address,
+          role: walletData.role,
+          createdAt: walletData.createdAt,
+        });
+      }
+      return identities;
     } catch (error) {
-      logger.error('Failed to list identities:', error);
-      throw new BlockchainError('Failed to list identities', error);
+      logger.error('Failed to list wallets:', error);
+      throw new BlockchainError('Failed to list wallets', error);
     }
   }
 
   /**
-   * Remove user identity from wallet
+   * Remove user wallet
    * @param {string} userId - User ID
    */
   async removeIdentity(userId) {
     try {
-      await this.wallet.remove(userId);
-      logger.info(`Identity ${userId} removed from wallet`);
-      return { message: `Identity ${userId} removed successfully` };
+      if (!this.wallets.has(userId)) {
+        throw new BlockchainError(`Wallet not found for user ${userId}`);
+      }
+
+      this.wallets.delete(userId);
+
+      // Remove from disk
+      const filePath = path.join(this.walletPath, `${userId}.json`);
+      if (fs.existsSync(filePath)) {
+        fs.unlinkSync(filePath);
+      }
+
+      logger.info(`Wallet ${userId} removed successfully`);
+      return { message: `Wallet ${userId} removed successfully` };
     } catch (error) {
-      logger.error(`Failed to remove identity ${userId}:`, error);
-      throw new BlockchainError(`Failed to remove identity ${userId}`, error);
+      logger.error(`Failed to remove wallet ${userId}:`, error);
+      throw new BlockchainError(`Failed to remove wallet ${userId}`, error);
     }
   }
 }
