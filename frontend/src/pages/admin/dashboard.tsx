@@ -1,16 +1,16 @@
-"use client";
-import React, { useEffect, useState } from "react";
-import AdminAppointmentForm from "../../components/AdminAppointmentForm";
-import UserManager from "../../components/UserManager";
+'use client';
+import React, { useEffect, useState } from 'react';
+import AdminAppointmentForm from '../../components/AdminAppointmentForm';
+import UserManager from '../../components/UserManager';
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || "";
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || '';
 
 export default function AdminDashboard(): JSX.Element {
   const [patients, setPatients] = useState<Array<{ address: string; label?: string }>>([]);
   const [doctors, setDoctors] = useState<Array<{ address: string; label?: string }>>([]);
-  const [loading, setLoading] = useState(false);
-  const endpointPatients = API_BASE ? `${API_BASE}/api/v1/wallet/identities` : "/api/v1/wallet/identities";
-  const endpointDoctors = API_BASE ? `${API_BASE}/api/v1/healthcare/doctors/verified` : "/api/v1/healthcare/doctors/verified";
+  const [_loading, setLoading] = useState(false);
+  const endpointPatients = API_BASE ? `${API_BASE}/api/v1/wallet/identities` : '/api/v1/wallet/identities';
+  const endpointDoctors = API_BASE ? `${API_BASE}/api/v1/healthcare/doctors/verified` : '/api/v1/healthcare/doctors/verified';
 
   useEffect(() => {
     let mounted = true;
@@ -20,19 +20,19 @@ export default function AdminDashboard(): JSX.Element {
         const [pRes, dRes] = await Promise.all([fetch(endpointPatients), fetch(endpointDoctors)]);
         if (pRes.ok) {
           const pJson = await pRes.json();
-          if (mounted) setPatients((pJson || []).map((x: any) => ({ address: x.address || x.wallet || x.id, label: x.name || x.address || x.email })));
+          if (mounted) {setPatients((pJson || []).map((x: any) => ({ address: x.address || x.wallet || x.id, label: x.name || x.address || x.email })));}
         }
         if (dRes.ok) {
           const dJson = await dRes.json();
-          if (mounted) setDoctors((dJson || []).map((x: any) => ({ address: x.address || x.wallet || x.id, label: x.name || x.address || x.email })));
+          if (mounted) {setDoctors((dJson || []).map((x: any) => ({ address: x.address || x.wallet || x.id, label: x.name || x.address || x.email })));}
         }
-      } catch (e) {
+      } catch {
         // ignore - show empty lists
       } finally {
-        if (mounted) setLoading(false);
+        if (mounted) {setLoading(false);}
       }
     })();
-    return () => { mounted = false };
+    return () => { mounted = false; };
   }, [endpointPatients, endpointDoctors]);
 
   return (
@@ -50,14 +50,14 @@ export default function AdminDashboard(): JSX.Element {
             onSubmit={async (e) => {
               e.preventDefault();
               const form = new FormData(e.currentTarget as HTMLFormElement);
-              const patientAddress = String(form.get("patient") || "");
-              const doctorAddress = String(form.get("doctor") || "");
-              const time = String(form.get("time") || "");
-              const details = String(form.get("details") || "");
-              if (!patientAddress || !doctorAddress || !time) return;
+              const patientAddress = String(form.get('patient') || '');
+              const doctorAddress = String(form.get('doctor') || '');
+              const time = String(form.get('time') || '');
+              const details = String(form.get('details') || '');
+              if (!patientAddress || !doctorAddress || !time) {return;}
               const unix = Math.floor(new Date(time).getTime() / 1000);
-              const endpoint = API_BASE ? `${API_BASE}/api/v1/healthcare/appointments` : "/api/v1/healthcare/appointments";
-              await fetch(endpoint, { method: "POST", headers: { "Content-Type": "application/json" }, credentials: "include", body: JSON.stringify({ appointmentId: `appt-${Date.now()}`, patientId: patientAddress, doctorAddress, timestamp: unix, reason: details, notes: '' }) });
+              const endpoint = API_BASE ? `${API_BASE}/api/v1/healthcare/appointments` : '/api/v1/healthcare/appointments';
+              await fetch(endpoint, { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify({ appointmentId: `appt-${Date.now()}`, patientId: patientAddress, doctorAddress, timestamp: unix, reason: details, notes: '' }) });
             }}
             className="space-y-3"
           >
@@ -103,19 +103,19 @@ export default function AdminDashboard(): JSX.Element {
             onSubmit={async (e) => {
               e.preventDefault();
               const form = new FormData(e.currentTarget as HTMLFormElement);
-              const patientAddress = String(form.get("patient") || "");
-              const doctorAddress = String(form.get("doctor") || "");
-              const file = form.get("file") as File | null;
-              if (!patientAddress || !doctorAddress || !file) return;
+              const patientAddress = String(form.get('patient') || '');
+              const doctorAddress = String(form.get('doctor') || '');
+              const file = form.get('file') as File | null;
+              if (!patientAddress || !doctorAddress || !file) {return;}
               // upload file to /api/storage or existing storage endpoint
-              const uploadEndpoint = API_BASE ? `${API_BASE}/api/storage/upload` : "/api/storage/upload";
+              const uploadEndpoint = API_BASE ? `${API_BASE}/api/storage/upload` : '/api/storage/upload';
               const fd = new FormData();
-              fd.append("file", file);
-              const upRes = await fetch(uploadEndpoint, { method: "POST", body: fd });
+              fd.append('file', file);
+              const upRes = await fetch(uploadEndpoint, { method: 'POST', body: fd });
               const upJson = await upRes.json();
-              const ipfsHash = upJson?.hash || upJson?.id || "";
-              const recordEndpoint = API_BASE ? `${API_BASE}/api/v1/healthcare/records` : "/api/v1/healthcare/records";
-              await fetch(recordEndpoint, { method: "POST", headers: { "Content-Type": "application/json" }, credentials: "include", body: JSON.stringify({ patientAddress, ipfsHash, fileName: file.name, doctorAddress }) });
+              const ipfsHash = upJson?.hash || upJson?.id || '';
+              const recordEndpoint = API_BASE ? `${API_BASE}/api/v1/healthcare/records` : '/api/v1/healthcare/records';
+              await fetch(recordEndpoint, { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify({ patientAddress, ipfsHash, fileName: file.name, doctorAddress }) });
             }}
             className="space-y-3"
           >

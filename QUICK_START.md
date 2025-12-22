@@ -134,11 +134,11 @@ SUPABASE_SERVICE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
 // Example API call
 POST http://localhost:3001/api/v1/healthcare/patients
 {
-  "patientId": "P001",
+  "patientAddress": "0x1234567890abcdef...",
   "name": "John Doe",
   "age": 30,
-  "bloodType": "O+",
-  "allergies": "None"
+  "gender": "Male",
+  "ipfsHash": "QmTestHash123"
 }
 ```
 

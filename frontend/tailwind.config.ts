@@ -1,4 +1,5 @@
-import type {Config} from 'tailwindcss';
+import type { Config } from 'tailwindcss';
+import tailwindcssAnimate from 'tailwindcss-animate';
 
 export default {
   darkMode: ['class'],
@@ -10,9 +11,9 @@ export default {
   theme: {
     container: {
       center: true,
-      padding: "2rem",
+      padding: '2rem',
       screens: {
-        "2xl": "1400px",
+        '2xl': '1400px',
       },
     },
     extend: {
@@ -28,13 +29,13 @@ export default {
         'government-saffron': '#FF9800',
         'government-green': '#4CAF50',
         'government-navy': '#003366',
-        
+
         // Semantic Colors
         'success': '#4CAF50',
         'warning': '#FFC107',
         'danger': '#F44336',
         'info': '#2196F3',
-        
+
         background: 'hsl(var(--background))',
         foreground: 'hsl(var(--foreground))',
         card: {
@@ -115,5 +116,5 @@ export default {
       },
     },
   },
-  plugins: [require('tailwindcss-animate')],
+  plugins: [tailwindcssAnimate],
 } satisfies Config;

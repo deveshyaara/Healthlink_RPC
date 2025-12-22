@@ -6,16 +6,16 @@ export function useHealthcare() {
   const [error, setError] = useState<string | null>(null);
 
   const createPatient = useCallback(async (
-    patientId: string,
+    patientAddress: string,
     name: string,
     age: number,
-    bloodType: string,
-    allergies: string
+    gender: string,
+    ipfsHash: string
   ) => {
     setIsLoading(true);
     setError(null);
     try {
-      const receipt = await ethereumService.createPatient(patientId, name, age, bloodType, allergies);
+      const receipt = await ethereumService.createPatient(patientAddress, name, age, gender, ipfsHash);
       return receipt;
     } catch (err: unknown) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to create patient';
@@ -26,11 +26,11 @@ export function useHealthcare() {
     }
   }, []);
 
-  const getPatient = useCallback(async (patientId: string): Promise<Patient> => {
+  const getPatient = useCallback(async (patientAddress: string): Promise<Patient> => {
     setIsLoading(true);
     setError(null);
     try {
-      const patient = await ethereumService.getPatient(patientId);
+      const patient = await ethereumService.getPatient(patientAddress);
       return patient;
     } catch (err: unknown) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to get patient';

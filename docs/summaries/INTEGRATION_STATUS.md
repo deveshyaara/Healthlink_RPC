@@ -222,9 +222,9 @@ curl -X POST http://localhost:3000/api/v1/transactions/private \
     "contractName": "healthlink",
     "functionName": "CreatePatient",
     "transientData": {
-      "patientDetails": "{\"name\":\"Jane Doe\",\"dob\":\"1985-06-15\",\"bloodType\":\"A+\"}"
+      "patientDetails": "{\"name\":\"Jane Doe\",\"age\":38,\"gender\":\"Female\",\"ipfsHash\":\"QmTestHash456\"}"
     },
-    "args": ["patient002"],
+    "args": ["0x742d35Cc6634C0532925a3b844Bc454e4438f44f"],
     "userId": "doctor1"
   }'
 

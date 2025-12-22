@@ -141,11 +141,11 @@ export default function PatientForm() {
     
     try {
       const receipt = await createPatient(
-        'PAT001',
+        '0x742d35Cc6634C0532925a3b844Bc454e4438f44e',
         'John Doe',
         35,
-        'O+',
-        'None'
+        'Male',
+        'QmTestHash123'
       );
       
       console.log('Patient created!', receipt);
@@ -183,11 +183,11 @@ const address = await ethereumService.connectWallet();
 
 // Create patient
 const receipt = await ethereumService.createPatient(
-  'PAT001',
+  '0x742d35Cc6634C0532925a3b844Bc454e4438f44e',
   'John Doe',
   35,
-  'O+',
-  'None'
+  'Male',
+  'QmTestHash123'
 );
 
 // Get patient
@@ -212,15 +212,15 @@ curl http://localhost:3001/api/v1
 curl -X POST http://localhost:3001/api/v1/healthcare/patients `
   -H "Content-Type: application/json" `
   -d '{
-    "patientId": "PAT001",
+    "patientAddress": "0x742d35Cc6634C0532925a3b844Bc454e4438f44e",
     "name": "John Doe",
     "age": 35,
-    "bloodType": "O+",
-    "allergies": "None"
+    "gender": "Male",
+    "ipfsHash": "QmTestHash123"
   }'
 
 # Get patient
-curl http://localhost:3001/api/v1/healthcare/patients/PAT001
+curl http://localhost:3001/api/v1/healthcare/patients/0x742d35Cc6634C0532925a3b844Bc454e4438f44e
 ```
 
 ---
@@ -252,7 +252,7 @@ curl http://localhost:3001/api/v1/healthcare/patients/PAT001
 ## 🔗 Contract Methods Available
 
 ### HealthLink Contract
-- createPatient(patientId, name, age, bloodType, allergies)
+- createPatient(patientAddress, name, age, gender, ipfsHash)
 - getPatient(patientId)
 - createConsent(consentId, patientId, doctorAddress, validityDays)
 - revokeConsent(consentId)

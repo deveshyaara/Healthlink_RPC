@@ -13,11 +13,11 @@ export interface EthereumConfig {
 }
 
 export interface Patient {
-  patientId: string;
+  patientAddress: string;
   name: string;
   age: number;
-  bloodType: string;
-  allergies: string;
+  gender: string;
+  ipfsHash: string;
   exists: boolean;
 }
 
@@ -219,22 +219,22 @@ class EthereumService {
    * Create a new patient
    */
   async createPatient(
-    patientId: string,
+    patientAddress: string,
     name: string,
     age: number,
-    bloodType: string,
-    allergies: string
+    gender: string,
+    ipfsHash: string
   ): Promise<ethers.TransactionReceipt> {
     if (!this.contracts.healthLink) {
       throw new Error('Contracts not initialized');
     }
 
     const tx = await this.contracts.healthLink.createPatient(
-      patientId,
+      patientAddress,
       name,
       age,
-      bloodType,
-      allergies
+      gender,
+      ipfsHash
     );
     return await tx.wait();
   }
@@ -242,18 +242,18 @@ class EthereumService {
   /**
    * Get patient information
    */
-  async getPatient(patientId: string): Promise<Patient> {
+  async getPatient(patientAddress: string): Promise<Patient> {
     if (!this.contracts.healthLink) {
       throw new Error('Contracts not initialized');
     }
 
-    const patient = await this.contracts.healthLink.getPatient(patientId);
+    const patient = await this.contracts.healthLink.getPatient(patientAddress);
     return {
-      patientId: patient.patientId,
+      patientAddress: patient.patientAddress,
       name: patient.name,
       age: Number(patient.age),
-      bloodType: patient.bloodType,
-      allergies: patient.allergies,
+      gender: patient.gender,
+      ipfsHash: patient.ipfsHash,
       exists: patient.exists,
     };
   }

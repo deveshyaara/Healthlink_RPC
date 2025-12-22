@@ -1,4 +1,4 @@
-import type { NextConfig } from "next";
+import type { NextConfig } from 'next';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
@@ -8,30 +8,30 @@ const nextConfig: NextConfig = {
   reactStrictMode: true,
   output: 'standalone',
   outputFileTracingRoot: __dirname,
-  
+
   // Production-ready TypeScript configuration
   typescript: {
     ignoreBuildErrors: false, // Enforce TypeScript in production
   },
-  
+
   eslint: {
     ignoreDuringBuilds: true, // Ignore ESLint during production builds to avoid style-only failures
   },
-  
+
   // Experimental features
   experimental: {
     serverActions: {
       bodySizeLimit: '2mb',
     },
   },
-  
+
   // Webpack configuration
   webpack: (config: any) => {
     config.resolve = config.resolve || {};
     config.resolve.fallback = config.resolve.fallback || {};
     return config;
   },
-  
+
   // Image optimization
   images: {
     domains: ['localhost'],
@@ -46,7 +46,7 @@ const nextConfig: NextConfig = {
       },
     ],
   },
-  
+
   // Security headers
   async headers() {
     return [
@@ -81,7 +81,7 @@ const nextConfig: NextConfig = {
       },
     ];
   },
-  
+
   // Environment variables
   env: {
     NEXT_PUBLIC_APP_VERSION: '2.0.0',

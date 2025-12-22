@@ -223,11 +223,11 @@
 2. **Test the functionality:**
    - Click "Add Patient" button
    - Fill in the form:
-     - Patient ID: `TEST_PATIENT_001`
+     - Patient Address: `0x742d35Cc6634C0532925a3b844Bc454e4438f44e`
      - Name: `John Doe`
      - Age: `35`
-     - Blood Type: `A+`
-     - Allergies: `None`
+     - Gender: `Male`
+     - IPFS Hash: `QmTestHash123`
    - Click "Create Patient"
 
 3. **Expected behavior:**
@@ -248,11 +248,11 @@
      🔍 Step 6: Arguments validated ✅
 
      📤 Transaction Arguments:
-        patientId: "TEST_PATIENT_001" (string)
+        patientAddress: "0x742d35Cc6634C0532925a3b844Bc454e4438f44e" (string)
         name: "John Doe" (string)
         age: 35 (number)
-        bloodType: "A+" (string)
-        allergies: "None" (string)
+        gender: "Male" (string)
+        ipfsHash: "QmTestHash123" (string)
 
      🔍 Step 7: Checking DOCTOR_ROLE...
         Role Hash: 0x71f3d55856e4058ed06ee057d79ada615f65cdf5f9ee88181b914225088f834f

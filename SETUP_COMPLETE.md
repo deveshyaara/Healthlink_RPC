@@ -181,11 +181,11 @@ curl http://localhost:3001/api/v1
 
 # Create patient
 $body = @{
-  patientId = "PAT001"
+  patientAddress = "0x742d35Cc6634C0532925a3b844Bc454e4438f44e"
   name = "John Doe"
   age = 35
-  bloodType = "O+"
-  allergies = "None"
+  gender = "Male"
+  ipfsHash = "QmTestHash123"
 } | ConvertTo-Json
 
 Invoke-RestMethod -Uri "http://localhost:3001/api/v1/healthcare/patients" `
