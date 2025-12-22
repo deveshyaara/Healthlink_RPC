@@ -196,4 +196,5 @@ export const getChatControllerInstance = () => {
   return chatControllerInstance;
 };
 
-export default ChatController;
+// Export singleton instance as default
+export default getChatControllerInstance();
