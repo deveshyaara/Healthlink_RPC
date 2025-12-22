@@ -1,4 +1,5 @@
 import "@nomicfoundation/hardhat-toolbox";
+import "@nomicfoundation/hardhat-verify";
 import dotenv from "dotenv";
 
 dotenv.config();
@@ -29,7 +30,26 @@ export default {
     sepolia: {
       url: process.env.SEPOLIA_RPC_URL || "",
       accounts: process.env.PRIVATE_KEY ? [process.env.PRIVATE_KEY] : [],
-      chainId: 11155111
+      chainId: 11155111,
+      gasPrice: 20000000000, // 20 gwei
+    },
+    mainnet: {
+      url: process.env.MAINNET_RPC_URL || "",
+      accounts: process.env.PRIVATE_KEY ? [process.env.PRIVATE_KEY] : [],
+      chainId: 1,
+      gasPrice: 20000000000, // 20 gwei
+    },
+    polygon: {
+      url: process.env.POLYGON_RPC_URL || "",
+      accounts: process.env.PRIVATE_KEY ? [process.env.PRIVATE_KEY] : [],
+      chainId: 137,
+      gasPrice: 40000000000, // 40 gwei
+    },
+    polygonMumbai: {
+      url: process.env.POLYGON_MUMBAI_RPC_URL || "",
+      accounts: process.env.PRIVATE_KEY ? [process.env.PRIVATE_KEY] : [],
+      chainId: 80001,
+      gasPrice: 20000000000, // 20 gwei
     }
   },
   paths: {
@@ -43,5 +63,11 @@ export default {
     currency: "USD",
     outputFile: "gas-report.txt",
     noColors: true
+  },
+  etherscan: {
+    apiKey: process.env.ETHERSCAN_API_KEY
+  },
+  sourcify: {
+    enabled: true
   }
 };

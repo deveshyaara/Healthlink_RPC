@@ -2,6 +2,8 @@
 import React, { useEffect, useState } from 'react';
 import AdminAppointmentForm from '../../components/AdminAppointmentForm';
 import UserManager from '../../components/UserManager';
+import DoctorVerification from '../../components/DoctorVerification';
+import { appointmentsApi, storageApi, medicalRecordsApi, walletApi, doctorsApi } from '../../lib/api-client';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || '';
 
@@ -9,22 +11,28 @@ export default function AdminDashboard(): JSX.Element {
   const [patients, setPatients] = useState<Array<{ address: string; label?: string }>>([]);
   const [doctors, setDoctors] = useState<Array<{ address: string; label?: string }>>([]);
   const [_loading, setLoading] = useState(false);
-  const endpointPatients = API_BASE ? `${API_BASE}/api/v1/wallet/identities` : '/api/v1/wallet/identities';
-  const endpointDoctors = API_BASE ? `${API_BASE}/api/v1/healthcare/doctors/verified` : '/api/v1/healthcare/doctors/verified';
+  const _endpointPatients = API_BASE ? `${API_BASE}/api/v1/wallet/identities` : '/api/v1/wallet/identities';
+  const _endpointDoctors = API_BASE ? `${API_BASE}/api/v1/healthcare/doctors/verified` : '/api/v1/healthcare/doctors/verified';
 
   useEffect(() => {
     let mounted = true;
     (async () => {
       setLoading(true);
       try {
-        const [pRes, dRes] = await Promise.all([fetch(endpointPatients), fetch(endpointDoctors)]);
-        if (pRes.ok) {
-          const pJson = await pRes.json();
-          if (mounted) {setPatients((pJson || []).map((x: any) => ({ address: x.address || x.wallet || x.id, label: x.name || x.address || x.email })));}
-        }
-        if (dRes.ok) {
-          const dJson = await dRes.json();
-          if (mounted) {setDoctors((dJson || []).map((x: any) => ({ address: x.address || x.wallet || x.id, label: x.name || x.address || x.email })));}
+        const [pRes, dRes] = await Promise.all([
+          walletApi.getIdentities({ page: 1, pageSize: 100 }),
+          doctorsApi.getVerified()
+        ]);
+        if (mounted) {
+          const identities = pRes?.identities || pRes || [];
+          setPatients(identities.map((x: any) => ({
+            address: x.address || x.wallet || x.id,
+            label: x.name || x.address || x.email
+          })));
+          setDoctors((dRes || []).map((x: any) => ({
+            address: x.address || x.wallet || x.id,
+            label: x.name || x.address || x.email
+          })));
         }
       } catch {
         // ignore - show empty lists
@@ -33,7 +41,7 @@ export default function AdminDashboard(): JSX.Element {
       }
     })();
     return () => { mounted = false; };
-  }, [endpointPatients, endpointDoctors]);
+  }, []);
 
   return (
     <div className="p-6 space-y-6">
@@ -42,6 +50,9 @@ export default function AdminDashboard(): JSX.Element {
       <section className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div className="md:col-span-2">
           <UserManager />
+        </div>
+        <div className="md:col-span-2">
+          <DoctorVerification />
         </div>
         <div className="bg-white rounded shadow p-4">
           <h3 className="font-medium mb-3">Proxy — Book Appointment</h3>
@@ -56,8 +67,7 @@ export default function AdminDashboard(): JSX.Element {
               const details = String(form.get('details') || '');
               if (!patientAddress || !doctorAddress || !time) {return;}
               const unix = Math.floor(new Date(time).getTime() / 1000);
-              const endpoint = API_BASE ? `${API_BASE}/api/v1/healthcare/appointments` : '/api/v1/healthcare/appointments';
-              await fetch(endpoint, { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify({ appointmentId: `appt-${Date.now()}`, patientId: patientAddress, doctorAddress, timestamp: unix, reason: details, notes: '' }) });
+              await appointmentsApi.create({ appointmentId: `appt-${Date.now()}`, patientId: patientAddress, doctorAddress, timestamp: unix, reason: details, notes: '' });
             }}
             className="space-y-3"
           >
@@ -107,15 +117,10 @@ export default function AdminDashboard(): JSX.Element {
               const doctorAddress = String(form.get('doctor') || '');
               const file = form.get('file') as File | null;
               if (!patientAddress || !doctorAddress || !file) {return;}
-              // upload file to /api/storage or existing storage endpoint
-              const uploadEndpoint = API_BASE ? `${API_BASE}/api/storage/upload` : '/api/storage/upload';
-              const fd = new FormData();
-              fd.append('file', file);
-              const upRes = await fetch(uploadEndpoint, { method: 'POST', body: fd });
-              const upJson = await upRes.json();
-              const ipfsHash = upJson?.hash || upJson?.id || '';
-              const recordEndpoint = API_BASE ? `${API_BASE}/api/v1/healthcare/records` : '/api/v1/healthcare/records';
-              await fetch(recordEndpoint, { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify({ patientAddress, ipfsHash, fileName: file.name, doctorAddress }) });
+              // upload file to storage
+              const uploadResult = await storageApi.upload(file);
+              const ipfsHash = uploadResult?.hash || '';
+              await medicalRecordsApi.create({ patientAddress, ipfsHash, fileName: file.name, doctorAddress });
             }}
             className="space-y-3"
           >

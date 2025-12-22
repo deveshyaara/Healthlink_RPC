@@ -12,8 +12,9 @@ import healthcareRoutes from './routes/healthcare.routes.js';
 import healthcareController from './controllers/healthcare.controller.js';
 import { authenticateJWT, requireDoctor } from './middleware/auth.middleware.js';
 import transactionRoutes from './routes/transaction.routes.js';
-// import walletRoutes from './routes/wallet.routes.js';
+import walletRoutes from './routes/wallet.routes.js';
 import authRoutes from './routes/auth.routes.js';
+import userRoutes from './routes/user.routes.js';
 import storageRoutes from './routes/storage.routes.js';
 import chatRoutes from './routes/chat.routes.js';
 import ethereumService from './services/ethereum.service.js';
@@ -150,11 +151,14 @@ app.use('/api/consents', healthcareRoutes);
 // Mount patients routes (aliased for frontend compatibility)
 app.use('/api/patients', healthcareRoutes);
 
+// Mount user management routes
+app.use('/api/users', userRoutes);
+
 // Mount legacy transaction routes (for backward compatibility)
 app.use(`/api/${API_VERSION}`, transactionRoutes);
 
 // Mount wallet routes
-// app.use(`/api/${API_VERSION}/wallet`, walletRoutes);
+app.use(`/api/${API_VERSION}/wallet`, walletRoutes);
 
 // API documentation endpoint
 app.get(`/api/${API_VERSION}`, (req, res) => {

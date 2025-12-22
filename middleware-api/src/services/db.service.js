@@ -634,3 +634,14 @@ class DatabaseService {
 // Export singleton instance
 const dbService = new DatabaseService();
 export default dbService;
+
+/**
+ * Get Supabase client instance
+ * Used by controllers that need direct Supabase access
+ */
+export function getSupabaseClient() {
+  if (!dbService.supabase) {
+    throw new Error('Database service not initialized. Call dbService.initialize() first.');
+  }
+  return dbService.supabase;
+}

@@ -10,19 +10,17 @@ describe("HealthLink Contract", function () {
     [owner, admin, doctor, patient, other] = await ethers.getSigners();
     
     const HealthLink = await ethers.getContractFactory("HealthLink");
-    healthLink = await HealthLink.deploy();
+    healthLink = await HealthLink.deploy(owner.address);
     await healthLink.waitForDeployment();
 
     // Grant roles
-    await healthLink.grantAdminRole(admin.address);
-    await healthLink.grantDoctorRole(doctor.address);
-    await healthLink.grantPatientRole(patient.address);
+    await healthLink.addDoctor(doctor.address);
   });
 
   describe("Deployment", function () {
     it("Should set the deployer as admin", async function () {
-      const ADMIN_ROLE = await healthLink.ADMIN_ROLE();
-      expect(await healthLink.hasRole(ADMIN_ROLE, owner.address)).to.be.true;
+      const DEFAULT_ADMIN_ROLE = await healthLink.DEFAULT_ADMIN_ROLE();
+      expect(await healthLink.hasRole(DEFAULT_ADMIN_ROLE, owner.address)).to.be.true;
     });
   });
 
@@ -32,170 +30,88 @@ describe("HealthLink Contract", function () {
       expect(await healthLink.hasRole(DOCTOR_ROLE, doctor.address)).to.be.true;
     });
 
-    it("Should grant patient role", async function () {
-      const PATIENT_ROLE = await healthLink.PATIENT_ROLE();
-      expect(await healthLink.hasRole(PATIENT_ROLE, patient.address)).to.be.true;
-    });
-
-    it("Should not allow non-admin to grant roles", async function () {
+    it("Should not allow non-admin to add doctors", async function () {
       await expect(
-        healthLink.connect(other).grantDoctorRole(other.address)
+        healthLink.connect(other).addDoctor(other.address)
       ).to.be.reverted;
     });
   });
 
-  describe("Patient Management", function () {
-    it("Should create a patient", async function () {
-      const patientAddress = "0x742d35Cc6634C0532925a3b844Bc454e4438f44e";
-      const publicData = JSON.stringify({ name: "John Doe", age: 30, gender: "Male", ipfsHash: "QmTestHash123" });
+  describe("Record Management", function () {
+    it("Should allow admin to upload record on behalf of doctor", async function () {
+      await expect(
+        healthLink.uploadRecord(patient.address, "QmTestHash", "test.pdf", doctor.address)
+      ).to.emit(healthLink, "RecordUploaded");
 
-      await healthLink.connect(admin).createPatient(patientAddress, publicData);
-
-      const patient = await healthLink.getPatient(patientAddress);
-      expect(patient.patientAddress).to.equal(patientAddress);
-      expect(patient.exists).to.be.true;
+      const records = await healthLink.getRecordsForPatient(patient.address);
+      expect(records.length).to.equal(1);
+      expect(records[0].ipfsHash).to.equal("QmTestHash");
+      expect(records[0].fileName).to.equal("test.pdf");
+      expect(records[0].patient).to.equal(patient.address);
+      expect(records[0].doctor).to.equal(doctor.address);
+      expect(records[0].uploadedBy).to.equal(owner.address);
     });
 
-    it("Should not allow duplicate patient creation", async function () {
-      const patientAddress = "0x742d35Cc6634C0532925a3b844Bc454e4438f44e";
-      const publicData = JSON.stringify({ name: "John Doe", age: 30, gender: "Male", ipfsHash: "QmTestHash123" });
-
-      await healthLink.connect(admin).createPatient(patientAddress, publicData);
-
+    it("Should allow doctor to upload record for themselves", async function () {
       await expect(
-        healthLink.connect(admin).createPatient(patientAddress, publicData)
-      ).to.be.revertedWith("Patient already exists");
+        healthLink.connect(doctor).uploadRecord(patient.address, "QmDocHash", "doc-record.pdf", doctor.address)
+      ).to.emit(healthLink, "RecordUploaded");
+
+      const records = await healthLink.getRecordsForPatient(patient.address);
+      expect(records.length).to.equal(1);
+      expect(records[0].uploadedBy).to.equal(doctor.address);
     });
 
-    it("Should not allow non-admin to create patient", async function () {
+    it("Should not allow doctor to upload for other doctors", async function () {
       await expect(
-        healthLink.connect(other).createPatient("0x742d35Cc6634C0532925a3b844Bc454e4438f44e", JSON.stringify({ name: "Test", age: 25, gender: "Female", ipfsHash: "QmTest" }))
-      ).to.be.reverted;
+        healthLink.connect(doctor).uploadRecord(patient.address, "QmTest", "test.pdf", other.address)
+      ).to.be.revertedWith("HealthLink: doctor must be msg.sender");
+    });
+
+    it("Should not allow non-authorized users to upload records", async function () {
+      await expect(
+        healthLink.connect(other).uploadRecord(patient.address, "QmTest", "test.pdf", doctor.address)
+      ).to.be.revertedWith("HealthLink: only doctor or admin");
     });
   });
 
-  describe("Record Hash Management", function () {
-    beforeEach(async function () {
-      const patientId = "patient123";
-      const publicData = JSON.stringify({ name: "John Doe" });
-      await healthLink.connect(admin).createPatient(patientId, publicData);
-    });
-
-    it("Should add record hash as admin", async function () {
-      const patientId = "patient123";
-      const recordId = "record456";
-      const recordHash = "QmHash123...";
-
-      await healthLink.connect(admin).addRecordHash(patientId, recordId, recordHash);
-
-      const retrievedHash = await healthLink.getRecordHash(patientId, recordId);
-      expect(retrievedHash).to.equal(recordHash);
-    });
-
-    it("Should add record hash as doctor", async function () {
-      const patientId = "patient123";
-      const recordId = "record456";
-      const recordHash = "QmHash123...";
-
-      await healthLink.connect(doctor).addRecordHash(patientId, recordId, recordHash);
-
-      const retrievedHash = await healthLink.getRecordHash(patientId, recordId);
-      expect(retrievedHash).to.equal(recordHash);
-    });
-
-    it("Should not allow non-authorized to add record hash", async function () {
+  describe("Appointment Management", function () {
+    it("Should allow admin to create appointment", async function () {
+      const appointmentTime = Math.floor(Date.now() / 1000) + 3600; // 1 hour from now
+      
       await expect(
-        healthLink.connect(other).addRecordHash("patient123", "record456", "hash")
-      ).to.be.reverted;
-    });
-  });
+        healthLink.createAppointment(patient.address, doctor.address, appointmentTime, "Checkup appointment")
+      ).to.emit(healthLink, "AppointmentCreated");
 
-  describe("Consent Management", function () {
-    beforeEach(async function () {
-      const patientId = "patient123";
-      const publicData = JSON.stringify({ name: "John Doe" });
-      await healthLink.connect(admin).createPatient(patientId, publicData);
-    });
-
-    it("Should create consent", async function () {
-      const consentId = "consent789";
-      const patientId = "patient123";
-      const granteeAddress = doctor.address;
-      const scope = "medical_records";
-      const purpose = "treatment";
-      const validUntil = Math.floor(Date.now() / 1000) + 86400 * 30; // 30 days
-
-      await healthLink.connect(patient).createConsent(
-        consentId,
-        patientId,
-        granteeAddress,
-        scope,
-        purpose,
-        validUntil
-      );
-
-      const consent = await healthLink.getConsent(consentId);
-      expect(consent.consentId).to.equal(consentId);
-      expect(consent.patientId).to.equal(patientId);
-      expect(consent.granteeAddress).to.equal(granteeAddress);
+      const doctorAppointments = await healthLink.getAppointmentsForDoctor(doctor.address);
+      const patientAppointments = await healthLink.getAppointmentsForPatient(patient.address);
+      
+      expect(doctorAppointments.length).to.equal(1);
+      expect(patientAppointments.length).to.equal(1);
+      expect(doctorAppointments[0].patient).to.equal(patient.address);
+      expect(doctorAppointments[0].doctor).to.equal(doctor.address);
+      expect(doctorAppointments[0].details).to.equal("Checkup appointment");
+      expect(doctorAppointments[0].isActive).to.be.true;
     });
 
-    it("Should revoke consent", async function () {
-      const consentId = "consent789";
-      const validUntil = Math.floor(Date.now() / 1000) + 86400 * 30;
+    it("Should allow doctor to create appointment", async function () {
+      const appointmentTime = Math.floor(Date.now() / 1000) + 7200; // 2 hours from now
+      
+      await expect(
+        healthLink.connect(doctor).createAppointment(patient.address, doctor.address, appointmentTime, "Follow-up visit")
+      ).to.emit(healthLink, "AppointmentCreated");
 
-      await healthLink.connect(patient).createConsent(
-        consentId,
-        "patient123",
-        doctor.address,
-        "records",
-        "treatment",
-        validUntil
-      );
-
-      await healthLink.connect(patient).revokeConsent(consentId);
-
-      const consent = await healthLink.getConsent(consentId);
-      expect(consent.status).to.equal(1); // ConsentStatus.Revoked
+      const appointments = await healthLink.getAppointmentsForDoctor(doctor.address);
+      expect(appointments.length).to.equal(1);
+      expect(appointments[0].scheduledBy).to.equal(doctor.address);
     });
 
-    it("Should get consents by patient", async function () {
-      const patientId = "patient123";
-      const validUntil = Math.floor(Date.now() / 1000) + 86400 * 30;
-
-      await healthLink.connect(patient).createConsent(
-        "consent1",
-        patientId,
-        doctor.address,
-        "records",
-        "treatment",
-        validUntil
-      );
-
-      await healthLink.connect(patient).createConsent(
-        "consent2",
-        patientId,
-        admin.address,
-        "records",
-        "research",
-        validUntil
-      );
-
-      const consents = await healthLink.getConsentsByPatient(patientId);
-      expect(consents.length).to.equal(2);
-    });
-  });
-
-  describe("Audit Trail", function () {
-    it("Should create audit records", async function () {
-      const patientId = "patient123";
-      const publicData = JSON.stringify({ name: "John Doe" });
-
-      await healthLink.connect(admin).createPatient(patientId, publicData);
-
-      const auditRecords = await healthLink.getAuditRecords(10);
-      expect(auditRecords.length).to.be.greaterThan(0);
-      expect(auditRecords[0].action).to.equal("CreatePatient");
+    it("Should not allow non-authorized users to create appointments", async function () {
+      const appointmentTime = Math.floor(Date.now() / 1000) + 3600;
+      
+      await expect(
+        healthLink.connect(other).createAppointment(patient.address, doctor.address, appointmentTime, "Unauthorized")
+      ).to.be.revertedWith("HealthLink: only doctor or admin");
     });
   });
 });

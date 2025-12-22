@@ -1,7 +1,6 @@
 'use client';
 import React, { useState } from 'react';
-
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || '';
+import { appointmentsApi } from '../lib/api-client';
 
 export default function AdminAppointmentForm(): JSX.Element {
   const [patientAddress, setPatientAddress] = useState('');
@@ -10,8 +9,6 @@ export default function AdminAppointmentForm(): JSX.Element {
   const [details, setDetails] = useState('');
   const [loading, setLoading] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
-
-  const endpoint = API_BASE ? `${API_BASE}/api/v1/healthcare/appointments` : '/api/v1/healthcare/appointments';
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -33,13 +30,7 @@ export default function AdminAppointmentForm(): JSX.Element {
 
     try {
       setLoading(true);
-      const res = await fetch(endpoint, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      });
-      const json = await res.json();
-      if (!res.ok) {throw new Error(json?.message || 'Failed');}
+      await appointmentsApi.create(payload);
       setNotice('Appointment scheduled');
       setPatientAddress('');
       setDoctorAddress('');

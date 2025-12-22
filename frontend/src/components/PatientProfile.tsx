@@ -65,7 +65,7 @@ export function PatientProfile() {
         title: 'Copied!',
         description: `${label} copied to clipboard`,
       });
-    } catch (err) {
+    } catch {
       toast({
         title: 'Copy failed',
         description: 'Unable to copy to clipboard',
@@ -110,7 +110,7 @@ export function PatientProfile() {
               {error || 'Patient record not found on blockchain'}
             </p>
             <p className="text-sm text-muted-foreground">
-              Contact your doctor to create your patient record if you haven't been registered yet.
+              Contact your doctor to create your patient record if you haven&apos;t been registered yet.
             </p>
           </div>
         </CardContent>
