@@ -1,7 +1,7 @@
-"use client";
-import { useEffect, useState } from "react";
+'use client';
+import { useEffect, useState } from 'react';
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || "";
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || '';
 
 export type CurrentUser = {
   address?: string;
@@ -19,19 +19,19 @@ export default function useCurrentUser() {
     (async () => {
       setLoading(true);
       try {
-        const endpoint = API_BASE ? `${API_BASE}/api/auth/me` : "/api/auth/me";
-        const res = await fetch(endpoint, { credentials: "include" });
-        if (!mounted) return;
+        const endpoint = API_BASE ? `${API_BASE}/api/auth/me` : '/api/auth/me';
+        const res = await fetch(endpoint, { credentials: 'include' });
+        if (!mounted) {return;}
         if (!res.ok) { setUser(null); return; }
         const json = await res.json();
         setUser({ address: json.address || json.wallet || json.id, role: json.role, name: json.name, email: json.email });
-      } catch (err) {
+      } catch {
         setUser(null);
       } finally {
-        if (mounted) setLoading(false);
+        if (mounted) {setLoading(false);}
       }
     })();
-    return () => { mounted = false };
+    return () => { mounted = false; };
   }, []);
 
   return { user, loading } as { user: CurrentUser | null; loading: boolean };

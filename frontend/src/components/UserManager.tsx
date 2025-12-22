@@ -1,54 +1,54 @@
-"use client";
-import React, { useEffect, useState } from "react";
+'use client';
+import React, { useCallback, useEffect, useState } from 'react';
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || "";
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || '';
 
 export default function UserManager(): JSX.Element {
-  const [roleFilter, setRoleFilter] = useState<"all" | "doctor" | "patient">("all");
-  const [search, setSearch] = useState("");
+  const [roleFilter, setRoleFilter] = useState<'all' | 'doctor' | 'patient'>('all');
+  const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
   const [pageSize] = useState(10);
   const [users, setUsers] = useState<any[]>([]);
-  const [total, setTotal] = useState(0);
+  const [_total, setTotal] = useState(0);
   const [loading, setLoading] = useState(false);
-  const [inviteEmail, setInviteEmail] = useState("");
-  const [inviteRole, setInviteRole] = useState<"doctor" | "patient">("patient");
-  const endpoint = (r: string | null, s: string, p: number) => {
+  const [inviteEmail, setInviteEmail] = useState('');
+  const [inviteRole, setInviteRole] = useState<'doctor' | 'patient'>('patient');
+  const endpoint = useCallback((r: string | null, s: string, p: number) => {
     // Use wallet identities endpoint and verified doctors endpoint for lists
-    if (r === 'doctor') return API_BASE ? `${API_BASE}/api/v1/healthcare/doctors/verified` : `/api/v1/healthcare/doctors/verified`;
+    if (r === 'doctor') {return API_BASE ? `${API_BASE}/api/v1/healthcare/doctors/verified` : '/api/v1/healthcare/doctors/verified';}
     // For patients and all, use wallet identities and filter client-side
     return API_BASE ? `${API_BASE}/api/v1/wallet/identities?page=${p}&pageSize=${pageSize}&search=${encodeURIComponent(s)}` : `/api/v1/wallet/identities?page=${p}&pageSize=${pageSize}&search=${encodeURIComponent(s)}`;
-  };
+  }, [pageSize]);
 
   useEffect(() => {
     let mounted = true;
     (async () => {
       setLoading(true);
       try {
-        const res = await fetch(endpoint(roleFilter === "all" ? null : roleFilter, search, page));
+        const res = await fetch(endpoint(roleFilter === 'all' ? null : roleFilter, search, page));
         if (!res.ok) { setUsers([]); setTotal(0); return; }
         const json = await res.json();
-        if (!mounted) return;
+        if (!mounted) {return;}
         setUsers(json.items || json || []);
         setTotal(json.total || (json.items ? json.items.length : users.length));
-      } catch (err) {
+      } catch {
         setUsers([]); setTotal(0);
       } finally {
-        if (mounted) setLoading(false);
+        if (mounted) {setLoading(false);}
       }
     })();
-    return () => { mounted = false };
-  }, [roleFilter, search, page]);
+    return () => { mounted = false; };
+  }, [roleFilter, search, page, endpoint, users.length]);
 
   async function invite() {
-    if (!inviteEmail) return;
+    if (!inviteEmail) {return;}
     try {
-      const endpoint = API_BASE ? `${API_BASE}/users/invite` : `/api/users/invite`;
+      const endpoint = API_BASE ? `${API_BASE}/users/invite` : '/api/users/invite';
       const res = await fetch(endpoint, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email: inviteEmail, role: inviteRole }) });
-      if (!res.ok) throw new Error('Invite failed');
+      if (!res.ok) {throw new Error('Invite failed');}
       setInviteEmail('');
       setPage(1);
-    } catch (err) {
+    } catch {
       // ignore for now
     }
   }

@@ -55,11 +55,11 @@ def fetch_patient_context(state: AgentState) -> Dict[str, Any]:
         # Preserve the user name from the initial state
         patient_context["name"] = existing_context.get("name", "Patient")
         patient_context["age"] = "N/A"
+        patient_context["gender"] = "Not specified"
         patient_context["email"] = "patient@example.com"
         patient_context["medical_history"] = "No data available"
         patient_context["diagnoses"] = []
         patient_context["medications"] = []
-        patient_context["allergies"] = ["None known"]
         patient_context["last_visit"] = "N/A"
         
     except Exception as e:
@@ -87,21 +87,20 @@ def generate_response(state: AgentState) -> Dict[str, Any]:
     # Extract patient details
     name = patient_context.get("name", "Patient")
     age = patient_context.get("age", "Unknown")
+    gender = patient_context.get("gender", "Not specified")
     medical_history = patient_context.get("medical_history", "No medical history available")
     diagnoses = ", ".join(patient_context.get("diagnoses", []))
     medications = ", ".join(patient_context.get("medications", []))
-    allergies = ", ".join(patient_context.get("allergies", ["None known"]))
     
     # Construct dynamic system prompt with patient context
     system_prompt = f"""You are a helpful and empathetic medical assistant AI for HealthLink, an Ethereum-based healthcare platform.
 
-You are currently speaking to **{name}**, who is **{age} years old**.
+You are currently speaking to **{name}**, who is **{age} years old** and identifies as **{gender}**.
 
 **Patient Medical Context:**
 - **Medical History:** {medical_history}
 - **Current Diagnoses:** {diagnoses or "None on record"}
 - **Current Medications:** {medications or "None on record"}
-- **Known Allergies:** {allergies}
 
 **Important Guidelines:**
 1. Provide personalized advice based on the patient's specific medical context

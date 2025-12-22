@@ -1,4 +1,4 @@
-import type { NextConfig } from "next";
+import type { NextConfig } from 'next';
 
 // LOW-SPEC OPTIMIZED NEXT.JS CONFIGURATION
 // Target: 1-2 vCPUs, 2-4GB RAM
@@ -7,13 +7,13 @@ import type { NextConfig } from "next";
 const nextConfig: NextConfig = {
   // CRITICAL: Enable standalone output (reduces build size from 300MB → 100MB)
   output: 'standalone',
-  
+
   // Strict mode for production
   reactStrictMode: true,
-  
+
   // Disable telemetry to save CPU/memory
   // Equivalent to setting NEXT_TELEMETRY_DISABLED=1
-  
+
   // Compiler optimizations
   compiler: {
     // Remove console logs in production
@@ -21,40 +21,40 @@ const nextConfig: NextConfig = {
       exclude: ['error', 'warn'],
     } : false,
   },
-  
+
   // Experimental features for performance
   experimental: {
     // Enable PPR (Partial Prerendering) for better caching
     ppr: false, // Disabled for stability on low-spec
-    
+
     // Optimize CSS loading
     optimizeCss: true,
-    
+
     // Reduce memory usage during builds
     workerThreads: false,
-    
+
     // Disable source maps in production (saves memory)
     // Use the top-level `productionBrowserSourceMaps` setting instead.
   },
-  
+
   // Image optimization (use external CDN for low-spec deployments)
   images: {
     // Disable built-in image optimization (high memory usage)
     unoptimized: true,
-    
+
     // If you use external CDN, configure domains here
     domains: [],
   },
-  
+
   // Production-only optimizations
   ...(process.env.NODE_ENV === 'production' && {
     // Minimize bundle size
     productionBrowserSourceMaps: false,
-    
+
     // Disable React DevTools in production
     reactProductionProfiling: false,
   }),
-  
+
   // Backend API proxy configuration (keep for middleware communication)
   async rewrites() {
     return [
@@ -64,7 +64,7 @@ const nextConfig: NextConfig = {
       },
     ];
   },
-  
+
   // Headers for aggressive caching
   async headers() {
     return [
@@ -88,9 +88,9 @@ const nextConfig: NextConfig = {
       },
     ];
   },
-  
+
   // Webpack optimizations for low-spec builds
-  webpack: (config, { dev, isServer }) => {
+  webpack: (config, { dev, isServer: _isServer }) => {
     // Production optimizations
     if (!dev) {
       // Minimize bundle size
@@ -123,7 +123,7 @@ const nextConfig: NextConfig = {
         },
       };
     }
-    
+
     return config;
   },
 };

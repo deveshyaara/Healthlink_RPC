@@ -1,52 +1,52 @@
-"use client";
-import React, { useState } from "react";
+'use client';
+import React, { useState } from 'react';
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || "";
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || '';
 
 export default function AdminAppointmentForm(): JSX.Element {
-  const [patientAddress, setPatientAddress] = useState("");
-  const [doctorAddress, setDoctorAddress] = useState("");
-  const [time, setTime] = useState("");
-  const [details, setDetails] = useState("");
+  const [patientAddress, setPatientAddress] = useState('');
+  const [doctorAddress, setDoctorAddress] = useState('');
+  const [time, setTime] = useState('');
+  const [details, setDetails] = useState('');
   const [loading, setLoading] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
 
-  const endpoint = API_BASE ? `${API_BASE}/api/v1/healthcare/appointments` : "/api/v1/healthcare/appointments";
+  const endpoint = API_BASE ? `${API_BASE}/api/v1/healthcare/appointments` : '/api/v1/healthcare/appointments';
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setNotice(null);
     if (!patientAddress || !doctorAddress || !time) {
-      setNotice("Please fill patient, doctor and date/time.");
+      setNotice('Please fill patient, doctor and date/time.');
       return;
     }
 
     const unix = Math.floor(new Date(time).getTime() / 1000);
-    const payload = { 
-      appointmentId: `appt-${Date.now()}`, 
-      patientId: patientAddress, 
-      doctorAddress, 
-      timestamp: unix, 
-      reason: details, 
-      notes: '' 
+    const payload = {
+      appointmentId: `appt-${Date.now()}`,
+      patientId: patientAddress,
+      doctorAddress,
+      timestamp: unix,
+      reason: details,
+      notes: ''
     };
 
     try {
       setLoading(true);
       const res = await fetch(endpoint, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
       });
       const json = await res.json();
-      if (!res.ok) throw new Error(json?.message || "Failed");
-      setNotice("Appointment scheduled");
-      setPatientAddress("");
-      setDoctorAddress("");
-      setTime("");
-      setDetails("");
-    } catch (err: any) {
-      setNotice(err?.message || "Error");
+      if (!res.ok) {throw new Error(json?.message || 'Failed');}
+      setNotice('Appointment scheduled');
+      setPatientAddress('');
+      setDoctorAddress('');
+      setTime('');
+      setDetails('');
+    } catch (_err: any) {
+      setNotice(_err?.message || 'Error');
     } finally {
       setLoading(false);
     }
@@ -103,7 +103,7 @@ export default function AdminAppointmentForm(): JSX.Element {
             disabled={loading}
             className="inline-flex items-center px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700 disabled:opacity-60"
           >
-            {loading ? "Scheduling..." : "Schedule"}
+            {loading ? 'Scheduling...' : 'Schedule'}
           </button>
         </div>
 

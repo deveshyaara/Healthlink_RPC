@@ -1,41 +1,41 @@
-"use client";
-import React, { useEffect, useRef, useState } from "react";
+'use client';
+import React, { useEffect, useRef, useState } from 'react';
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || "";
-const CHAT_ENDPOINT = API_BASE ? `${API_BASE}/api/chat` : "/api/chat";
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || '';
+const CHAT_ENDPOINT = API_BASE ? `${API_BASE}/api/chat` : '/api/chat';
 
-type Message = { id: string; role: "user" | "bot"; text: string };
+type Message = { id: string; role: 'user' | 'bot'; text: string };
 
 export function ChatWidget(): JSX.Element {
   const [open, setOpen] = useState(false);
-  const [input, setInput] = useState("");
+  const [input, setInput] = useState('');
   const [messages, setMessages] = useState<Message[]>([]);
   const [loading, setLoading] = useState(false);
   const listRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
-    if (open) listRef.current?.scrollTo({ top: 99999 });
+    if (open) {listRef.current?.scrollTo({ top: 99999 });}
   }, [open, messages]);
 
   async function sendMessage() {
-    if (!input.trim()) return;
-    const userMsg: Message = { id: String(Date.now()), role: "user", text: input.trim() };
+    if (!input.trim()) {return;}
+    const userMsg: Message = { id: String(Date.now()), role: 'user', text: input.trim() };
     setMessages((m) => [...m, userMsg]);
-    setInput("");
+    setInput('');
     setLoading(true);
 
     try {
       const res = await fetch(CHAT_ENDPOINT, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ prompt: userMsg.text }),
       });
       const json = await res.json();
-      const botText = json?.reply || json?.message || "(no reply)";
-      const botMsg: Message = { id: String(Date.now() + 1), role: "bot", text: botText };
+      const botText = json?.reply || json?.message || '(no reply)';
+      const botMsg: Message = { id: String(Date.now() + 1), role: 'bot', text: botText };
       setMessages((m) => [...m, botMsg]);
-    } catch (err) {
-      const errMsg: Message = { id: String(Date.now() + 2), role: "bot", text: "Error: could not reach chat backend." };
+    } catch {
+      const errMsg: Message = { id: String(Date.now() + 2), role: 'bot', text: 'Error: could not reach chat backend.' };
       setMessages((m) => [...m, errMsg]);
     } finally {
       setLoading(false);
@@ -43,7 +43,7 @@ export function ChatWidget(): JSX.Element {
   }
 
   function onKey(e: React.KeyboardEvent<HTMLInputElement>) {
-    if (e.key === "Enter" && !e.shiftKey) {
+    if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       sendMessage();
     }
@@ -69,8 +69,8 @@ export function ChatWidget(): JSX.Element {
           <div ref={listRef} className="h-64 overflow-y-auto p-3 space-y-3 bg-gray-50">
             {messages.length === 0 && <div className="text-sm text-gray-500">Say hi — ask about symptoms, medications, or appointments.</div>}
             {messages.map((m) => (
-              <div key={m.id} className={`flex ${m.role === "user" ? "justify-end" : "justify-start"}`}>
-                <div className={`${m.role === "user" ? "bg-indigo-600 text-white" : "bg-white text-gray-800 border"} max-w-[80%] px-3 py-2 rounded-lg`}>{m.text}</div>
+              <div key={m.id} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                <div className={`${m.role === 'user' ? 'bg-indigo-600 text-white' : 'bg-white text-gray-800 border'} max-w-[80%] px-3 py-2 rounded-lg`}>{m.text}</div>
               </div>
             ))}
             {loading && <div className="text-sm text-gray-500">Typing...</div>}
