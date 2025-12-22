@@ -49,9 +49,9 @@ export default function DoctorVerification(): JSX.Element {
       setMessage(`Doctor ${doctorAddress} verified successfully`);
       // Reload data to reflect changes
       await loadData();
-    } catch (error: any) {
-      console.error('Failed to verify doctor:', error);
-      setMessage(error?.message || 'Failed to verify doctor');
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Failed to verify doctor';
+      setMessage(errorMessage);
     } finally {
       setVerifying(null);
     }

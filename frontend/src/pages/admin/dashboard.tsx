@@ -7,6 +7,14 @@ import { appointmentsApi, storageApi, medicalRecordsApi, walletApi, doctorsApi }
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || '';
 
+interface Identity {
+  address?: string;
+  wallet?: string;
+  id?: string;
+  name?: string;
+  email?: string;
+}
+
 export default function AdminDashboard(): JSX.Element {
   const [patients, setPatients] = useState<Array<{ address: string; label?: string }>>([]);
   const [doctors, setDoctors] = useState<Array<{ address: string; label?: string }>>([]);
@@ -25,12 +33,12 @@ export default function AdminDashboard(): JSX.Element {
         ]);
         if (mounted) {
           const identities = pRes?.identities || pRes || [];
-          setPatients(identities.map((x: any) => ({
+          setPatients(identities.map((x: Identity) => ({
             address: x.address || x.wallet || x.id,
             label: x.name || x.address || x.email
           })));
-          setDoctors((dRes || []).map((x: any) => ({
-            address: x.address || x.wallet || x.id,
+          setDoctors((dRes || []).map((x: Identity) => ({
+            address: x.address || x.wallet || x.id || 'unknown',
             label: x.name || x.address || x.email
           })));
         }

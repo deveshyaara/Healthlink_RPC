@@ -55,7 +55,7 @@ export function AddPatientDialog() {
     name: '',
     age: '',
     gender: '',
-    ipfsHash: '',
+    email: '',
   });
 
   const resetForm = () => {
@@ -64,7 +64,7 @@ export function AddPatientDialog() {
       name: '',
       age: '',
       gender: '',
-      ipfsHash: '',
+      email: '',
     });
     setError(null);
   };
@@ -75,9 +75,9 @@ export function AddPatientDialog() {
     setError(null);
 
     try {
-      // Validate required fields - ensure all 5 fields are not empty/null
-      if (!formData.patientAddress || !formData.name || !formData.age || !formData.gender || !formData.ipfsHash) {
-        throw new Error('All fields are required');
+      // Validate required fields - ensure all fields are not empty/null
+      if (!formData.patientAddress || !formData.name || !formData.age || !formData.gender || !formData.email) {
+        throw new Error('All fields are required, including email');
       }
 
       const ageNumber = parseInt(formData.age);
@@ -85,22 +85,39 @@ export function AddPatientDialog() {
         throw new Error('Please enter a valid age');
       }
 
-      // Construct the payload object with keys matching backend requirements exactly
+      // Validate email format
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(formData.email)) {
+        throw new Error('Please enter a valid email address');
+      }
+
+      // Construct the payload object for the new API route
       const payload = {
-        patientAddress: formData.patientAddress,
+        email: formData.email,
         name: formData.name,
-        age: ageNumber, // Ensure age is sent as a Number
+        age: ageNumber,
         gender: formData.gender,
-        ipfsHash: formData.ipfsHash,
+        walletAddress: formData.patientAddress, // Keep wallet address for blockchain compatibility
       };
 
       console.log('Creating patient:', payload);
 
-      // Use API client to create patient
-      const { patientsApi } = await import('@/lib/api-client');
-      const response = await patientsApi.create(payload);
+      // Call the new Next.js API route
+      const response = await fetch('/api/patients/create', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload),
+      });
 
-      console.log('Patient created successfully:', response);
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || `HTTP ${response.status}: ${response.statusText}`);
+      }
+
+      const result = await response.json();
+      console.log('Patient created successfully:', result);
 
       // Success!
       toast({
@@ -215,12 +232,13 @@ export function AddPatientDialog() {
             </div>
 
             <div className="grid gap-2">
-              <Label htmlFor="ipfsHash">IPFS Hash *</Label>
+              <Label htmlFor="email">Email Address *</Label>
               <Input
-                id="ipfsHash"
-                placeholder="Qm..."
-                value={formData.ipfsHash}
-                onChange={(e) => setFormData({ ...formData, ipfsHash: e.target.value })}
+                id="email"
+                type="email"
+                placeholder="patient@example.com"
+                value={formData.email}
+                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                 required
                 disabled={loading}
               />

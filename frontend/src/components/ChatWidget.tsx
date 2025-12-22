@@ -64,8 +64,9 @@ export function ChatWidget(): JSX.Element | null {
       const botText = response?.data?.response || response?.reply || response?.message || 'Sorry, I could not process your message.';
       const botMsg: Message = { id: String(Date.now() + 1), role: 'bot', text: botText };
       setMessages((m) => [...m, botMsg]);
-    } catch (error: any) {
-      const errMsg: Message = { id: String(Date.now() + 2), role: 'bot', text: error?.message || 'Error: could not reach chat backend.' };
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Error: could not reach chat backend.';
+      const errMsg: Message = { id: String(Date.now() + 2), role: 'bot', text: errorMessage };
       setMessages((m) => [...m, errMsg]);
     } finally {
       setLoading(false);

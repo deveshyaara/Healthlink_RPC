@@ -21,8 +21,9 @@ export default function DoctorTools({ doctorAddress }: { doctorAddress: string }
       if (!res.ok) {throw new Error('Failed');}
       setNotice('Prescription created');
       setDrug(''); setDosage(''); setDuration('');
-    } catch (err: any) {
-      setNotice(err?.message || 'Error');
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : 'Error';
+      setNotice(errorMessage);
     } finally { setLoading(false); }
   }
 
@@ -39,8 +40,9 @@ export default function DoctorTools({ doctorAddress }: { doctorAddress: string }
       const endpoint = API_BASE ? `${API_BASE}/api/v1/healthcare/appointments` : '/api/v1/healthcare/appointments';
       await fetch(endpoint, { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify({ appointmentId: `appt-${Date.now()}`, patientId: patientAddress, doctorAddress, timestamp: unix, reason: details, notes: '' }) });
       setNotice('Appointment scheduled');
-    } catch (err: any) {
-      setNotice(err?.message || 'Error');
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : 'Error';
+      setNotice(errorMessage);
     } finally { setLoading(false); }
   }
 

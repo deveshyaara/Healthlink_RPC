@@ -36,8 +36,9 @@ export default function AdminAppointmentForm(): JSX.Element {
       setDoctorAddress('');
       setTime('');
       setDetails('');
-    } catch (_err: any) {
-      setNotice(_err?.message || 'Error');
+    } catch (_err: unknown) {
+      const errorMessage = _err instanceof Error ? _err.message : 'Error';
+      setNotice(errorMessage);
     } finally {
       setLoading(false);
     }

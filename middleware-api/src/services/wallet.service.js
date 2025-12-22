@@ -1,8 +1,6 @@
 import { ethers } from 'ethers';
 import fs from 'fs';
 import path from 'path';
-import crypto from 'crypto';
-import config from '../config/index.js';
 import logger from '../utils/logger.js';
 import { BlockchainError } from '../utils/errors.js';
 

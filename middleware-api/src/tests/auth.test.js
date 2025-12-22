@@ -158,7 +158,7 @@ describe('Authentication API', () => {
     });
 
     it('should return 401 if not authenticated', async () => {
-      authenticateJWT.mockImplementation((req, res, next) => {
+      authenticateJWT.mockImplementation((req, res, _next) => {
         return res.status(401).json({ error: 'Unauthorized' });
       });
 

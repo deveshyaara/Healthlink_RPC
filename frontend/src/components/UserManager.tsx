@@ -2,12 +2,21 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { walletApi, usersApi, doctorsApi } from '../lib/api-client';
 
+interface User {
+  id?: string;
+  address?: string;
+  wallet?: string;
+  name?: string;
+  email?: string;
+  role?: string;
+}
+
 export default function UserManager(): JSX.Element {
   const [roleFilter, setRoleFilter] = useState<'all' | 'doctor' | 'patient'>('all');
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
   const [pageSize] = useState(10);
-  const [users, setUsers] = useState<any[]>([]);
+  const [users, setUsers] = useState<User[]>([]);
   const [_total, setTotal] = useState(0);
   const [loading, setLoading] = useState(false);
   const [inviteEmail, setInviteEmail] = useState('');
@@ -51,8 +60,7 @@ export default function UserManager(): JSX.Element {
       setPage(1);
       // Reload data to show updated invitation list
       setRefreshTrigger(prev => prev + 1);
-    } catch (error: any) {
-      console.error('Failed to send invitation:', error);
+    } catch (_error: unknown) { // eslint-disable-line @typescript-eslint/no-unused-vars
       // Could add error state here
     }
   }
@@ -61,7 +69,7 @@ export default function UserManager(): JSX.Element {
     <div className="bg-white rounded shadow p-4">
       <h3 className="font-medium mb-3">User Manager</h3>
       <div className="flex gap-2 mb-3">
-        <select value={roleFilter} onChange={(e) => { setRoleFilter(e.target.value as any); setPage(1); }} className="rounded border px-2 py-1">
+        <select value={roleFilter} onChange={(e) => { setRoleFilter(e.target.value as 'all' | 'doctor' | 'patient'); setPage(1); }} className="rounded border px-2 py-1">
           <option value="all">All</option>
           <option value="doctor">Doctors</option>
           <option value="patient">Patients</option>
@@ -82,7 +90,7 @@ export default function UserManager(): JSX.Element {
           <tbody>
             {loading && <tr><td colSpan={3} className="py-4">Loading…</td></tr>}
             {!loading && users.length === 0 && <tr><td colSpan={3} className="py-4">No users</td></tr>}
-            {users.map((u: any) => (
+            {users.map((u: User) => (
               <tr key={u.address || u.id} className="border-t">
                 <td className="py-2">{u.address || u.wallet || u.id}</td>
                 <td className="py-2">{u.name || u.email || '-'}</td>
@@ -96,7 +104,7 @@ export default function UserManager(): JSX.Element {
       <div className="flex items-center justify-between mt-3">
         <div className="flex gap-2 items-center">
           <input placeholder="invite email" value={inviteEmail} onChange={(e) => setInviteEmail(e.target.value)} className="rounded border px-2 py-1" />
-          <select value={inviteRole} onChange={(e) => setInviteRole(e.target.value as any)} className="rounded border px-2 py-1">
+          <select value={inviteRole} onChange={(e) => setInviteRole(e.target.value as 'doctor' | 'patient')} className="rounded border px-2 py-1">
             <option value="patient">Patient</option>
             <option value="doctor">Doctor</option>
           </select>
