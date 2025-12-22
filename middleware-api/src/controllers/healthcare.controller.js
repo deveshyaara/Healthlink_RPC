@@ -9,28 +9,76 @@ import { v4 as uuidv4 } from 'uuid';
 class HealthcareController {
   /**
    * Create a new patient
-   * POST /api/v1/patients
+   * POST /api/v1/healthcare/patients
    */
   async createPatient(req, res, next) {
     try {
-      const { patientAddress, name, age, gender, ipfsHash } = req.body;
+      const { patientAddress, name, age, gender, email } = req.body;
 
       // Validate required fields
-      if (!patientAddress || !name || age === undefined || !gender || !ipfsHash) {
-        return res.status(400).json({ error: 'Missing required fields: patientAddress, name, age, gender, ipfsHash' });
+      if (!patientAddress || !name || age === undefined || !gender) {
+        return res.status(400).json({
+          error: 'Missing required fields: patientAddress, name, age, gender'
+        });
       }
 
       // Parse age to number
       const parsedAge = parseInt(age, 10);
-      if (isNaN(parsedAge)) {
-        return res.status(400).json({ error: 'Age must be a valid number' });
+      if (isNaN(parsedAge) || parsedAge < 0 || parsedAge > 150) {
+        return res.status(400).json({ error: 'Age must be a valid number between 0 and 150' });
       }
 
+      // Upload patient metadata to IPFS using Pinata
+      const PinataSDK = (await import('@pinata/sdk')).default;
+      const pinata = new PinataSDK(
+        process.env.PINATA_API_KEY,
+        process.env.PINATA_SECRET_API_KEY
+      );
+
+      const patientMetadata = {
+        email: email || '',
+        name,
+        age: parsedAge,
+        gender,
+        walletAddress: patientAddress,
+        createdAt: new Date().toISOString(),
+      };
+
+      let ipfsHash;
+      try {
+        const pinataResult = await pinata.pinJSONToIPFS(patientMetadata, {
+          pinataMetadata: {
+            name: `patient-${email || patientAddress}-${Date.now()}`,
+          },
+          pinataOptions: {
+            cidVersion: 1,
+          },
+        });
+        ipfsHash = pinataResult.IpfsHash;
+      } catch (ipfsError) {
+        logger.error('Failed to upload patient data to IPFS:', ipfsError);
+        return res.status(500).json({ error: 'Failed to upload patient data to IPFS' });
+      }
+
+      // Create patient on blockchain
       const result = await transactionService.createPatient(
         patientAddress, name, parsedAge, gender, ipfsHash,
       );
 
-      res.status(201).json(result);
+      res.status(201).json({
+        success: true,
+        data: {
+          id: result.data?.id || patientAddress,
+          patientAddress,
+          name,
+          age: parsedAge,
+          gender,
+          email: email || '',
+          ipfsHash,
+          createdAt: new Date().toISOString(),
+        },
+        message: 'Patient created successfully',
+      });
     } catch (error) {
       next(error);
     }
