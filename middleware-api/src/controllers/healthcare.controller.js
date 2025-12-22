@@ -43,11 +43,11 @@ class HealthcareController {
   async getPatient(req, res, next) {
     try {
       const { patientId } = req.params;
-      const userId = req.user.userId || req.user.id;
       const userRole = req.user.role;
+      const userWalletAddress = req.user.walletAddress;
 
       // Check permissions
-      if (userRole === 'patient' && userId !== patientId) {
+      if (userRole === 'patient' && userWalletAddress !== patientId) {
         return res.status(403).json({
           success: false,
           error: {

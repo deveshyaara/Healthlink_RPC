@@ -102,6 +102,9 @@ export const authenticateJWT = async (req, res, next) => {
         type: 'X.509',
       };
 
+      // Add wallet address for permission checks
+      req.user.walletAddress = user.fabric_enrollment_id;
+
       next();
     } catch (error) {
       logger.error('Failed to load Fabric identity:', error);
