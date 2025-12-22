@@ -1,6 +1,6 @@
 import { API_CONFIG, API_ENDPOINTS } from '@/config/api.config';
 
-export interface ApiResponse<T = any> {
+export interface ApiResponse<T = unknown> {
   success: boolean;
   data?: T;
   error?: {
@@ -72,11 +72,12 @@ class BlockchainApiService {
       }
 
       return data;
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Network error occurred';
       return {
         success: false,
         error: {
-          message: error.message || 'Network error occurred',
+          message: errorMessage,
           type: 'NETWORK_ERROR',
         },
       };
@@ -159,7 +160,7 @@ class BlockchainApiService {
   async createAsset(
     contractName: string,
     functionName: string,
-    assetData: any,
+    assetData: unknown,
     userId: string,
   ) {
     return this.request(API_ENDPOINTS.CREATE_ASSET, {
@@ -172,7 +173,7 @@ class BlockchainApiService {
     assetId: string,
     contractName: string,
     functionName: string,
-    assetData: any,
+    assetData: unknown,
     userId: string,
   ) {
     return this.request(`${API_ENDPOINTS.UPDATE_ASSET}/${assetId}`, {
@@ -220,7 +221,7 @@ class BlockchainApiService {
 
   async createPatient(
     patientId: string,
-    patientDetails: any,
+    patientDetails: unknown,
     userId: string,
     async = false,
   ) {

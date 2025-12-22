@@ -47,5 +47,12 @@
     "no-debugger": "error",
     "no-alert": "warn"
   },
-  "overrides": []
+  "overrides": [
+    {
+      "files": ["**/tests/**/*.js", "**/tests/**/*.ts", "**/*.test.js", "**/*.test.ts", "**/*.spec.js", "**/*.spec.ts"],
+      "env": {
+        "jest": true
+      }
+    }
+  ]
 }

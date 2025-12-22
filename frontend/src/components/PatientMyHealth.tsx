@@ -1,11 +1,12 @@
 'use client';
 import React, { useEffect, useState } from 'react';
+import { MedicalRecord, Appointment } from '@/lib/api-client';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || '';
 
 export default function PatientMyHealth({ patientAddress }: { patientAddress: string }) {
-  const [records, setRecords] = useState<any[]>([]);
-  const [appointments, setAppointments] = useState<any[]>([]);
+  const [records, setRecords] = useState<MedicalRecord[]>([]);
+  const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -61,7 +62,7 @@ export default function PatientMyHealth({ patientAddress }: { patientAddress: st
         ) : (
           <ul className="mt-2 space-y-2">
             {appointments.length === 0 && <li className="text-sm text-gray-500">No appointments</li>}
-            {appointments.map((a: any) => (
+            {appointments.map((a: Appointment) => (
               <li key={a.id || a.appointmentId || Math.random()} className="p-2 border rounded">
                 <div className="text-sm font-medium">With: {a.doctorName || a.doctor}</div>
                 <div className="text-xs text-gray-600">When: {a.time ? new Date(a.time * 1000).toLocaleString() : a.time}</div>

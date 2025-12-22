@@ -4,11 +4,17 @@
   "description": "HealthLink RPC - Blockchain Medical Records",
   "type": "module",
   "scripts": {
-    "init-identities": "node initialize_identities.js"
+    "init-identities": "node initialize_identities.js",
+    "validate": "node scripts/validate-deployment.js",
+    "setup-db": "cd supabase && (./setup.sh 2>/dev/null || setup.bat)",
+    "deploy-check": "npm run validate && echo '✅ Ready for deployment!'"
   },
   "dependencies": {
-    "fabric-network": "^2.2.20",
-    "fabric-ca-client": "^2.2.20"
+    "@google/generative-ai": "^0.24.1",
+    "@pinata/sdk": "^2.1.0",
+    "@supabase/supabase-js": "^2.89.0",
+    "fabric-ca-client": "^2.2.20",
+    "fabric-network": "^2.2.20"
   },
   "devDependencies": {
     "node-fetch": "^3.3.2",

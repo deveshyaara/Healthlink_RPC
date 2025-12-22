@@ -7,9 +7,9 @@ import { Badge } from '@/components/ui/badge';
 import { Copy, Eye, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/auth-context';
-import { patientsApi } from '@/lib/api-client';
+import { patientsApi, Patient } from '@/lib/api-client';
 
-interface PatientData {
+interface PatientData extends Patient {
   patientId: string;
   publicData: {
     name: string;
@@ -17,8 +17,7 @@ interface PatientData {
     gender: string;
     ipfsHash: string;
   };
-  exists: boolean;
-  createdAt: number;
+  exists?: boolean;
 }
 
 export function PatientProfile() {
@@ -42,8 +41,8 @@ export function PatientProfile() {
 
         const result = await patientsApi.get(user.walletAddress);
 
-        if (result && result.data) {
-          setPatientData(result.data);
+        if (result) {
+          setPatientData(result);
         } else {
           throw new Error('Patient data not found');
         }
@@ -181,7 +180,7 @@ export function PatientProfile() {
         </div>
 
         <div className="text-xs text-muted-foreground pt-2">
-          Created: {new Date(patientData.createdAt * 1000).toLocaleDateString()}
+          Created: {patientData.createdAt ? new Date(typeof patientData.createdAt === 'number' ? patientData.createdAt * 1000 : patientData.createdAt).toLocaleDateString() : 'Unknown'}
         </div>
       </CardContent>
     </Card>

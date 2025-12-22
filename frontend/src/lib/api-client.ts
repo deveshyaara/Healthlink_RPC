@@ -37,7 +37,204 @@ export interface AuthResponse {
 export interface ApiError {
   message: string;
   code?: string;
-  details?: any;
+  details?: unknown;
+}
+
+// Medical Record Types
+export interface MedicalRecord {
+  id?: string;
+  recordId?: string;
+  patientId: string;
+  doctorId?: string;
+  doctor?: string;
+  doctorName?: string;
+  attending?: string;
+  diagnosis?: string;
+  treatment?: string;
+  fileName?: string;
+  name?: string;
+  ipfsHash?: string;
+  hash?: string;
+  recordType?: string;
+  metadata?: string;
+  notes?: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface CreateMedicalRecordRequest {
+  [key: string]: unknown; // Flexible to match different API expectations
+}
+
+// Patient Types
+export interface Patient {
+  id?: string;
+  patientId: string;
+  email?: string;
+  name?: string;
+  age?: number;
+  gender?: string;
+  walletAddress?: string;
+  ipfsHash?: string;
+  publicData: {
+    name: string;
+    age: number;
+    gender: string;
+    ipfsHash: string;
+  };
+  exists?: boolean;
+  createdAt?: string | number;
+  updatedAt?: string;
+}
+
+export interface CreatePatientRequest {
+  email: string;
+  name: string;
+  age: number;
+  gender: string;
+  walletAddress: string;
+}
+
+// Doctor Types
+export interface Doctor {
+  id?: string;
+  doctorId?: string;
+  address: string;
+  name: string;
+  email: string;
+  specialization?: string;
+  walletAddress?: string;
+  licenseNumber?: string;
+  verified?: boolean;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface DoctorRegistrationRequest {
+  name: string;
+  email: string;
+  specialization: string;
+  walletAddress: string;
+  licenseNumber: string;
+}
+export interface Appointment {
+  id?: string;
+  appointmentId: string;
+  patientId: string;
+  doctorId: string;
+  doctor?: string;
+  doctorName?: string;
+  appointmentDate: string;
+  appointmentTime: string;
+  time?: number;
+  status: string;
+  type: string;
+  notes?: string;
+  details?: string;
+  prescriptionIds?: string[];
+  labTestIds?: string[];
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface CreateAppointmentRequest {
+  appointmentId: string;
+  patientId: string;
+  doctorAddress: string;
+  timestamp: number;
+  reason?: string;
+  notes?: string;
+}
+
+export interface UpdateAppointmentRequest {
+  status?: 'scheduled' | 'completed' | 'cancelled';
+  notes?: string;
+}
+
+// Prescription Types
+export interface Prescription {
+  prescriptionId: string;
+  appointmentId: string;
+  patientId: string;
+  doctorId: string;
+  medications: Array<{
+    name: string;
+    dosage: string;
+    frequency: string;
+    duration: string;
+  }>;
+  instructions: string;
+  status?: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface CreatePrescriptionRequest {
+  [key: string]: unknown; // Flexible to match different API expectations
+}
+
+export interface UpdatePrescriptionRequest {
+  medication?: string;
+  dosage?: string;
+  frequency?: string;
+  duration?: string;
+  notes?: string;
+}
+
+// Consent Types
+export interface Consent {
+  consentId: string;
+  patientId: string;
+  granteeId: string;
+  scope: string;
+  purpose: string;
+  validUntil: string;
+  status?: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface GrantConsentRequest {
+  patientId: string;
+  granteeId: string;
+  scope: string;
+  purpose: string;
+  validUntil: string;
+}
+
+// Lab Test Types
+export interface LabTest {
+  labTestId: string;
+  appointmentId: string;
+  patientId: string;
+  doctorId: string;
+  testType: string;
+  testName: string;
+  instructions: string;
+  priority: 'routine' | 'urgent' | 'asap';
+  status?: 'pending' | 'completed' | 'cancelled';
+  results?: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface CreateLabTestRequest {
+  patientId: string;
+  doctorId: string;
+  testName: string;
+  testType: string;
+}
+
+// Dashboard Stats Types
+export interface DashboardStats {
+  totalPatients: number;
+  totalAppointments: number;
+  totalPrescriptions: number;
+  totalRecords: number;
+  activeRecords: number;
+  pendingConsents: number;
+  auditEvents24h: number;
+  unreadNotifications: number;
 }
 
 // ========================================
@@ -130,7 +327,7 @@ async function fetchApi<T>(
 /**
  * Upload file with FormData (with progress support)
  */
-async function uploadFile(endpoint: string, formData: FormData, onProgress?: (progress: number) => void): Promise<any> {
+async function uploadFile(endpoint: string, formData: FormData, onProgress?: (progress: number) => void): Promise<{ hash: string }> {
   const apiUrl = getApiBaseUrl();
   const url = `${apiUrl}${endpoint}`;
   const token = authUtils.getToken();
@@ -160,9 +357,10 @@ async function uploadFile(endpoint: string, formData: FormData, onProgress?: (pr
       if (xhr.status >= 200 && xhr.status < 300) {
         try {
           const jsonResponse = JSON.parse(xhr.responseText);
-          resolve(jsonResponse.data || jsonResponse);
+          const result = jsonResponse.data || jsonResponse;
+          resolve(result);
         } catch (_error) { // eslint-disable-line @typescript-eslint/no-unused-vars
-          resolve(xhr.responseText);
+          reject(new Error('Invalid JSON response from upload endpoint'));
         }
       } else {
         try {
@@ -253,8 +451,8 @@ export const medicalRecordsApi = {
    * Backend route: POST /api/medical-records
    * Function: CreateRecord
    */
-  create: async (recordData: any): Promise<any> => {
-    return fetchApi<any>('/api/medical-records', {
+  create: async (recordData: CreateMedicalRecordRequest): Promise<MedicalRecord> => {
+    return fetchApi<MedicalRecord>('/api/medical-records', {
       method: 'POST',
       body: JSON.stringify(recordData),
     });
@@ -265,8 +463,8 @@ export const medicalRecordsApi = {
    * Backend route: GET /api/medical-records/patient/:patientId
    * Function: GetRecordsByPatient
    */
-  getByPatient: async (patientId: string): Promise<any[]> => {
-    return fetchApi<any[]>(`/api/medical-records/patient/${patientId}`, { method: 'GET' }, true);
+  getByPatient: async (patientId: string): Promise<MedicalRecord[]> => {
+    return fetchApi<MedicalRecord[]>(`/api/medical-records/patient/${patientId}`, { method: 'GET' }, true);
   },
 };
 
@@ -283,8 +481,8 @@ export const patientsApi = {
    * Backend route: POST /api/v1/healthcare/patients
    * Function: CreatePatient
    */
-  create: async (patientData: any): Promise<any> => {
-    return fetchApi<any>('/api/v1/healthcare/patients', {
+  create: async (patientData: CreatePatientRequest): Promise<Patient> => {
+    return fetchApi<Patient>('/api/v1/healthcare/patients', {
       method: 'POST',
       body: JSON.stringify(patientData),
     });
@@ -295,8 +493,8 @@ export const patientsApi = {
    * Backend route: GET /api/v1/healthcare/patients/:patientId
    * Function: GetPatient
    */
-  get: async (patientId: string): Promise<any> => {
-    return fetchApi<any>(`/api/v1/healthcare/patients/${patientId}`, { method: 'GET' });
+  get: async (patientId: string): Promise<Patient> => {
+    return fetchApi<Patient>(`/api/v1/healthcare/patients/${patientId}`, { method: 'GET' });
   },
 };
 
@@ -310,8 +508,8 @@ export const appointmentsApi = {
    * Backend route: GET /api/appointments
    * Function: GetAppointmentsByPatient or GetAppointmentsByDoctor (role-based)
    */
-  getAll: async (): Promise<any[]> => {
-    return fetchApi<any[]>('/api/appointments', { method: 'GET' }, true);
+  getAll: async (): Promise<Appointment[]> => {
+    return fetchApi<Appointment[]>('/api/appointments', { method: 'GET' }, true);
   },
 
   /**
@@ -319,8 +517,8 @@ export const appointmentsApi = {
    * Backend route: POST /api/v1/healthcare/appointments
    * Function: CreateAppointment
    */
-  create: async (appointmentData: any): Promise<any> => {
-    return fetchApi<any>('/api/v1/healthcare/appointments', {
+  create: async (appointmentData: CreateAppointmentRequest): Promise<Appointment> => {
+    return fetchApi<Appointment>('/api/v1/healthcare/appointments', {
       method: 'POST',
       body: JSON.stringify(appointmentData),
     });
@@ -331,8 +529,8 @@ export const appointmentsApi = {
    * Backend route: PUT /api/appointments/:appointmentId
    * Function: UpdateAppointment
    */
-  update: async (appointmentId: string, updateData: any): Promise<any> => {
-    return fetchApi<any>(`/api/appointments/${appointmentId}`, {
+  update: async (appointmentId: string, updateData: UpdateAppointmentRequest): Promise<Appointment> => {
+    return fetchApi<Appointment>(`/api/appointments/${appointmentId}`, {
       method: 'PUT',
       body: JSON.stringify(updateData),
     });
@@ -360,8 +558,8 @@ export const prescriptionsApi = {
    * Backend route: GET /api/prescriptions
    * Function: GetPrescriptionsByPatient or GetPrescriptionsByDoctor
    */
-  getAll: async (): Promise<any[]> => {
-    return fetchApi<any[]>('/api/prescriptions', { method: 'GET' }, true);
+  getAll: async (): Promise<Prescription[]> => {
+    return fetchApi<Prescription[]>('/api/prescriptions', { method: 'GET' }, true);
   },
 
   /**
@@ -369,8 +567,8 @@ export const prescriptionsApi = {
    * Backend route: POST /api/v1/healthcare/prescriptions
    * Function: CreatePrescription
    */
-  create: async (prescriptionData: any): Promise<any> => {
-    return fetchApi<any>('/api/v1/healthcare/prescriptions', {
+  create: async (prescriptionData: CreatePrescriptionRequest): Promise<Prescription> => {
+    return fetchApi<Prescription>('/api/v1/healthcare/prescriptions', {
       method: 'POST',
       body: JSON.stringify(prescriptionData),
     });
@@ -381,8 +579,8 @@ export const prescriptionsApi = {
    * Backend route: PUT /api/prescriptions/:prescriptionId
    * Function: UpdatePrescription
    */
-  update: async (prescriptionId: string, updateData: any): Promise<any> => {
-    return fetchApi<any>(`/api/prescriptions/${prescriptionId}`, {
+  update: async (prescriptionId: string, updateData: UpdatePrescriptionRequest): Promise<Prescription> => {
+    return fetchApi<Prescription>(`/api/prescriptions/${prescriptionId}`, {
       method: 'PUT',
       body: JSON.stringify(updateData),
     });
@@ -399,8 +597,8 @@ export const consentsApi = {
    * Backend route: GET /api/consents
    * Function: GetConsentsByPatient
    */
-  getAll: async (): Promise<any[]> => {
-    return fetchApi<any[]>('/api/consents', { method: 'GET' }, true);
+  getAll: async (): Promise<Consent[]> => {
+    return fetchApi<Consent[]>('/api/consents', { method: 'GET' }, true);
   },
 
   /**
@@ -408,8 +606,8 @@ export const consentsApi = {
    * Backend route: GET /api/consents/:consentId
    * Function: GetConsent
    */
-  getById: async (consentId: string): Promise<any> => {
-    return fetchApi<any>(`/api/consents/${consentId}`, { method: 'GET' });
+  getById: async (consentId: string): Promise<Consent> => {
+    return fetchApi<Consent>(`/api/consents/${consentId}`, { method: 'GET' });
   },
 
   /**
@@ -417,8 +615,8 @@ export const consentsApi = {
    * Backend route: POST /api/v1/healthcare/consents
    * Function: CreateConsent
    */
-  grant: async (consentData: any): Promise<any> => {
-    return fetchApi<any>('/api/v1/healthcare/consents', {
+  grant: async (consentData: GrantConsentRequest): Promise<Consent> => {
+    return fetchApi<Consent>('/api/v1/healthcare/consents', {
       method: 'POST',
       body: JSON.stringify(consentData),
     });
@@ -449,8 +647,8 @@ export const doctorsApi = {
    * Backend route: POST /api/v1/healthcare/doctors
    * Function: RegisterDoctor
    */
-  register: async (doctorData: any): Promise<any> => {
-    return fetchApi<any>('/api/v1/healthcare/doctors', {
+  register: async (doctorData: DoctorRegistrationRequest): Promise<Doctor> => {
+    return fetchApi<Doctor>('/api/v1/healthcare/doctors', {
       method: 'POST',
       body: JSON.stringify(doctorData),
     });
@@ -461,8 +659,8 @@ export const doctorsApi = {
    * Backend route: POST /api/v1/healthcare/doctors/:doctorAddress/verify
    * Function: VerifyDoctor
    */
-  verify: async (doctorAddress: string): Promise<any> => {
-    return fetchApi<any>(`/api/v1/healthcare/doctors/${doctorAddress}/verify`, {
+  verify: async (doctorAddress: string): Promise<Doctor> => {
+    return fetchApi<Doctor>(`/api/v1/healthcare/doctors/${doctorAddress}/verify`, {
       method: 'POST',
     });
   },
@@ -472,8 +670,8 @@ export const doctorsApi = {
    * Backend route: GET /api/v1/healthcare/doctors/verified
    * Function: GetVerifiedDoctors
    */
-  getVerified: async (): Promise<any[]> => {
-    return fetchApi<any[]>('/api/v1/healthcare/doctors/verified', { method: 'GET' });
+  getVerified: async (): Promise<Doctor[]> => {
+    return fetchApi<Doctor[]>('/api/v1/healthcare/doctors/verified', { method: 'GET' });
   },
 };
 
@@ -696,27 +894,29 @@ export const auditApi = {
 };
 
 export const labTestsApi = {
-  getAll: async (): Promise<any[]> => {
+  getAll: async (): Promise<LabTest[]> => {
     return [];
   },
-  getById: async (_id: string): Promise<any> => {
+  getById: async (_id: string): Promise<LabTest> => {
     throw new Error('Lab Tests API not yet implemented');
   },
-  create: async (_data: any): Promise<any> => {
-    console.warn('[API Client] labTestsApi.create() not yet implemented');
+  create: async (_data: CreateLabTestRequest): Promise<LabTest> => {
     throw new Error('Lab Tests API not yet implemented');
   },
 };
 
 export const dashboardApi = {
-  getStats: async (): Promise<any> => {
-    console.warn('[API Client] dashboardApi.getStats() not yet implemented');
+  getStats: async (): Promise<DashboardStats> => {
     // Return empty stats to prevent dashboard crashes
     return {
       totalPatients: 0,
       totalAppointments: 0,
       totalPrescriptions: 0,
       totalRecords: 0,
+      activeRecords: 0,
+      pendingConsents: 0,
+      auditEvents24h: 0,
+      unreadNotifications: 0,
     };
   },
 };
