@@ -1,17 +1,44 @@
 /**
  * Chat Controller
- * Handles AI chatbot interactions using Python LangGraph agent via child_process
+ * Handles AI chatbot interactions using Google Gemini API directly
  */
 
-import { spawn } from 'child_process';
-import path from 'path';
-import { fileURLToPath } from 'url';
+import { GoogleGenerativeAI } from '@google/generative-ai';
 import logger from '../utils/logger.js';
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-
 class ChatController {
+  constructor() {
+    this.genAI = null;
+    this.model = null;
+    this.initializeGemini();
+  }
+
+  /**
+   * Initialize Google Gemini AI
+   */
+  initializeGemini() {
+    try {
+      const apiKey = process.env.GEMINI_API_KEY;
+      if (!apiKey) {
+        logger.warn('GEMINI_API_KEY not found - chat functionality will be limited');
+        return;
+      }
+
+      this.genAI = new GoogleGenerativeAI(apiKey);
+      this.model = this.genAI.getGenerativeModel({
+        model: process.env.GEMINI_MODEL || 'gemini-1.5-flash',
+        generationConfig: {
+          temperature: parseFloat(process.env.LLM_TEMPERATURE || '0.2'),
+          maxOutputTokens: 1000,
+        },
+      });
+
+      logger.info('Google Gemini AI initialized for chat');
+    } catch (error) {
+      logger.error('Failed to initialize Gemini AI:', error);
+    }
+  }
+
   /**
    * @route   POST /api/chat
    * @desc    Send message to AI agent and get response
@@ -21,6 +48,7 @@ class ChatController {
     const { message, thread_id } = req.body;
     const userId = req.user?.userId || 'anonymous';
     const userName = req.user?.name || 'User';
+    const userRole = req.user?.role || 'patient';
 
     if (!message || message.trim().length === 0) {
       return res.status(400).json({
@@ -34,197 +62,138 @@ class ChatController {
       });
     }
 
-    // Path to Python agent entry script
-    const pythonScriptPath = path.join(__dirname, '../../python_agent/run_agent.py');
-
-    // Determine Python executable based on environment
-    let pythonExecutable;
-    if (process.env.NODE_ENV === 'production' || process.env.RENDER) {
-      // In production (Render), use global python3
-      pythonExecutable = 'python3';
-    } else {
-      // In development, use virtual environment
-      pythonExecutable = process.platform === 'win32'
-        ? path.join(__dirname, '../../venv/Scripts/python.exe')
-        : path.join(__dirname, '../../venv/bin/python');
-    }
-
-    // Arguments for Python script - include user name for personalization
-    const args = [
-      pythonScriptPath,
-      userId.toString(),
-      userName,
-      message,
-    ];
-    if (thread_id) {
-      args.push(thread_id);
-    }
-
-    // Spawn Python process with timeout
-    const PYTHON_TIMEOUT = 30000; // 30 seconds
-    const pythonProcess = spawn(pythonExecutable, args, {
-      env: {
-        ...process.env,
-        GEMINI_API_KEY: process.env.GEMINI_API_KEY,
-        GEMINI_MODEL: process.env.GEMINI_MODEL || 'gemini-2.0-flash-exp',
-        LLM_TEMPERATURE: process.env.LLM_TEMPERATURE || '0.2',
-        PYTHONIOENCODING: 'utf-8',
-      },
-      stdio: ['pipe', 'pipe', 'pipe'],
-    });
-
-    // Set timeout to kill process if it takes too long
-    const timeout = setTimeout(() => {
-      pythonProcess.kill();
-      logger.error('Python process timeout', { userId, message: message.substring(0, 100) });
-      return res.status(504).json({
+    if (!this.model) {
+      return res.status(503).json({
         status: 'error',
-        statusCode: 504,
-        message: 'Agent response timeout',
+        statusCode: 503,
+        message: 'AI service unavailable',
         error: {
-          code: 'TIMEOUT',
-          details: 'AI agent took too long to respond',
+          code: 'AI_UNAVAILABLE',
+          details: 'Gemini API key not configured',
         },
       });
-    }, PYTHON_TIMEOUT);
+    }
 
-    let stdout = '';
-    let stderr = '';
+    try {
+      // Create healthcare-focused system prompt
+      const systemPrompt = `You are a helpful healthcare AI assistant for HealthLink, a blockchain-based healthcare platform.
 
-    // Capture stdout (agent response)
-    pythonProcess.stdout.on('data', (data) => {
-      stdout += data.toString();
-    });
+You are speaking with ${userName}, who is a ${userRole} in the HealthLink system.
 
-    // Capture stderr (errors and logs)
-    pythonProcess.stderr.on('data', (data) => {
-      stderr += data.toString();
-    });
+IMPORTANT GUIDELINES:
+1. Be empathetic, supportive, and professional
+2. NEVER provide medical diagnoses or prescribe medications
+3. NEVER give specific medical advice or treatment recommendations
+4. If the user asks for medical advice, direct them to consult their healthcare provider
+5. You can help with general health information, appointment scheduling questions, and platform navigation
+6. Always remind users that you are an AI assistant, not a medical professional
+7. For urgent medical issues, advise seeking immediate professional help
 
-    // Handle process completion
-    pythonProcess.on('close', (code) => {
-      clearTimeout(timeout);
-      if (code !== 0) {
-        logger.error('Python agent error:', { stderr, userId });
-        return res.status(500).json({
-          status: 'error',
-          statusCode: 500,
-          message: 'Failed to generate AI response',
-          error: {
-            code: 'AGENT_ERROR',
-            details: stderr || 'Python process failed',
+Available HealthLink features you can help with:
+- Medical record access and management
+- Appointment scheduling and management
+- Prescription tracking
+- Doctor credential verification
+- General health information and education
+
+Keep responses concise but helpful. If you don't know something, say so clearly.`;
+
+      // Generate response using Gemini
+      const chat = this.model.startChat({
+        history: [
+          {
+            role: 'user',
+            parts: [{ text: 'Hello, I need help with HealthLink.' }],
           },
-        });
-      }
-
-      try {
-        // Parse JSON response from Python agent
-        const agentResponse = JSON.parse(stdout);
-
-        if (agentResponse.error) {
-          return res.status(500).json({
-            status: 'error',
-            statusCode: 500,
-            message: 'Agent returned an error',
-            error: {
-              code: 'AGENT_EXECUTION_ERROR',
-              details: agentResponse.error,
-            },
-          });
-        }
-
-        return res.status(200).json({
-          status: 'success',
-          statusCode: 200,
-          message: 'Message processed successfully',
-          data: {
-            response: agentResponse.response,
-            thread_id: agentResponse.thread_id,
-            user_id: agentResponse.user_id,
-            patient_context: agentResponse.patient_context,
+          {
+            role: 'model',
+            parts: [{ text: systemPrompt }],
           },
-        });
+        ],
+      });
 
-      } catch (parseError) {
-        logger.error('Failed to parse Python response:', { stdout, parseError: parseError.message, userId });
-        return res.status(500).json({
-          status: 'error',
-          statusCode: 500,
-          message: 'Failed to parse agent response',
-          error: {
-            code: 'PARSE_ERROR',
-            details: parseError.message,
-          },
-        });
-      }
-    });
+      const result = await chat.sendMessage(message);
+      const aiResponse = result.response.text();
 
-    // Handle process errors
-    pythonProcess.on('error', (error) => {
-      logger.error('Failed to start Python process:', { error: error.message, userId });
-      return res.status(500).json({
+      logger.info('AI chat response generated', {
+        userId,
+        messageLength: message.length,
+        responseLength: aiResponse.length,
+      });
+
+      res.status(200).json({
+        status: 'success',
+        statusCode: 200,
+        data: {
+          response: aiResponse,
+          user_id: userId,
+          thread_id: thread_id || `thread-${userId}`,
+          timestamp: new Date().toISOString(),
+        },
+      });
+
+    } catch (error) {
+      logger.error('Failed to generate AI response:', error);
+
+      res.status(500).json({
         status: 'error',
         statusCode: 500,
-        message: 'Failed to start AI agent',
+        message: 'Failed to generate AI response',
         error: {
-          code: 'PROCESS_ERROR',
-          details: error.message,
+          code: 'AI_ERROR',
+          details: 'Unable to process your message at this time',
         },
       });
-    });
+    }
   }
 
   /**
    * @route   GET /api/chat/health
-   * @desc    Check if Python agent is accessible
+   * @desc    Check if AI service is accessible
    * @access  Public
    */
   async healthCheck(req, res) {
     try {
-      // Simple check to see if Python is available
-      const pythonProcess = spawn('python', ['--version']);
-      let version = '';
-      pythonProcess.stdout.on('data', (data) => {
-        version += data.toString();
-      });
-      pythonProcess.stderr.on('data', (data) => {
-        version += data.toString();
-      });
-      pythonProcess.on('close', (code) => {
-        if (code === 0) {
-          return res.status(200).json({
-            status: 'success',
-            statusCode: 200,
-            message: 'Chat agent is healthy',
-            data: {
-              python_version: version.trim(),
-              gemini_configured: !!process.env.GEMINI_API_KEY,
-            },
-          });
-        } else {
-          return res.status(500).json({
-            status: 'error',
-            statusCode: 500,
-            message: 'Python is not available',
-            error: {
-              code: 'PYTHON_NOT_FOUND',
-              details: 'Python interpreter not found in system PATH',
-            },
-          });
-        }
+      const isAvailable = !!this.model;
+
+      res.status(200).json({
+        status: 'success',
+        statusCode: 200,
+        data: {
+          service: 'HealthLink AI Chat',
+          available: isAvailable,
+          model: process.env.GEMINI_MODEL || 'gemini-1.5-flash',
+          timestamp: new Date().toISOString(),
+        },
       });
     } catch (error) {
-      return res.status(500).json({
+      logger.error('Health check failed:', error);
+
+      res.status(503).json({
         status: 'error',
-        statusCode: 500,
-        message: 'Health check failed',
+        statusCode: 503,
+        message: 'AI service health check failed',
         error: {
-          code: 'HEALTH_CHECK_ERROR',
-          details: error.message,
+          code: 'HEALTH_CHECK_FAILED',
+          details: 'Unable to verify AI service status',
         },
       });
     }
   }
 }
 
-export default new ChatController();
+// Singleton instance
+let chatControllerInstance = null;
+
+/**
+ * Get or create chat controller instance
+ * @returns {ChatController}
+ */
+export const getChatControllerInstance = () => {
+  if (!chatControllerInstance) {
+    chatControllerInstance = new ChatController();
+  }
+  return chatControllerInstance;
+};
+
+export default ChatController;
