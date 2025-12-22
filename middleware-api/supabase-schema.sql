@@ -144,11 +144,73 @@ GRANT ALL ON healthlink_users TO service_role;
 GRANT ALL ON healthlink_user_audit_log TO service_role;
 GRANT SELECT ON healthlink_users_safe TO service_role;
 
+-- Create user invitations table
+CREATE TABLE user_invitations (
+  -- Primary key
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  
+  -- Invitation details
+  email VARCHAR(255) NOT NULL,
+  role VARCHAR(50) NOT NULL CHECK (role IN ('patient', 'doctor')),
+  token VARCHAR(255) UNIQUE NOT NULL,
+  status VARCHAR(50) DEFAULT 'pending' CHECK (status IN ('pending', 'accepted', 'cancelled', 'expired')),
+  
+  -- Invitation metadata
+  invited_by UUID REFERENCES healthlink_users(id) ON DELETE SET NULL,
+  expires_at TIMESTAMP WITH TIME ZONE NOT NULL,
+  
+  -- Timestamps
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Create indexes for performance
+CREATE INDEX idx_user_invitations_email ON user_invitations(email);
+CREATE INDEX idx_user_invitations_token ON user_invitations(token);
+CREATE INDEX idx_user_invitations_status ON user_invitations(status);
+CREATE INDEX idx_user_invitations_expires_at ON user_invitations(expires_at);
+
+-- Row Level Security (RLS) policies
+ALTER TABLE user_invitations ENABLE ROW LEVEL SECURITY;
+
+-- Policy: Admins can view all invitations
+CREATE POLICY "Admins can view all invitations" ON user_invitations
+  FOR SELECT USING (
+    EXISTS (
+      SELECT 1 FROM healthlink_users
+      WHERE id = auth.uid() AND role = 'admin'
+    )
+  );
+
+-- Policy: Admins can create invitations
+CREATE POLICY "Admins can create invitations" ON user_invitations
+  FOR INSERT WITH CHECK (
+    EXISTS (
+      SELECT 1 FROM healthlink_users
+      WHERE id = auth.uid() AND role = 'admin'
+    )
+  );
+
+-- Policy: Admins can update invitations
+CREATE POLICY "Admins can update invitations" ON user_invitations
+  FOR UPDATE USING (
+    EXISTS (
+      SELECT 1 FROM healthlink_users
+      WHERE id = auth.uid() AND role = 'admin'
+    )
+  );
+
+-- Policy: Public can accept invitations (with valid token)
+CREATE POLICY "Public can accept invitations" ON user_invitations
+  FOR UPDATE USING (status = 'pending' AND expires_at > CURRENT_TIMESTAMP);
+
+-- Grant permissions
+GRANT ALL ON user_invitations TO service_role;
+
 -- Comments for documentation
-COMMENT ON TABLE healthlink_users IS 'User authentication and profile metadata (OFF-CHAIN ONLY - medical records on Fabric)';
-COMMENT ON COLUMN healthlink_users.fabric_enrollment_id IS 'Hyperledger Fabric enrollment ID for blockchain identity';
-COMMENT ON COLUMN healthlink_users.password_hash IS 'Bcrypt hashed password - NEVER store plaintext';
-COMMENT ON TABLE healthlink_user_audit_log IS 'Audit trail for user authentication events';
+COMMENT ON TABLE user_invitations IS 'User invitation system for admin-managed user registration';
+COMMENT ON COLUMN user_invitations.token IS 'Secure token for invitation acceptance (expires after 7 days)';
+COMMENT ON COLUMN user_invitations.invited_by IS 'Admin user who created the invitation';
 -- Success message
 DO $$
 BEGIN

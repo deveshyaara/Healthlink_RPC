@@ -236,5 +236,38 @@ def fetch_patient_context(state: AgentState) -> Dict[str, Any]:
 3. **Async Processing**: For heavy workloads, use queue system (Bull/RabbitMQ)
 4. **Response Streaming**: Implement streaming for real-time responses (advanced)
 
+## Deployment on Render
+
+The AI agent is fully compatible with Render deployment:
+
+### Build Configuration
+Render automatically installs Python dependencies during build:
+```yaml
+buildCommand: |
+  npm install
+  python3 -m pip install --upgrade pip
+  python3 -m pip install -r python_agent/requirements.txt
+```
+
+### Runtime Behavior
+- **Production Detection**: The system automatically detects `NODE_ENV=production` and uses global `python3`
+- **Environment Variables**: All required API keys and settings are configured via Render environment variables
+- **Process Spawning**: Uses `child_process.spawn()` to invoke Python agent with proper error handling
+- **Timeout Handling**: 30-second timeout prevents hanging requests
+
+### Environment Variables Required
+```env
+GEMINI_API_KEY=your-gemini-api-key
+GEMINI_MODEL=gemini-2.5-flash
+LLM_TEMPERATURE=0.2
+NODE_ENV=production
+```
+
+### Troubleshooting
+- **Python Not Found**: Ensure `python3` is available (Render provides it)
+- **Module Errors**: Dependencies are installed globally, not in virtual environment
+- **Timeout Issues**: Free tier may have slower response times; consider upgrading plan
+- **API Key Issues**: Verify GEMINI_API_KEY is set correctly in Render dashboard
+
 ## Support
 For issues or questions, contact the HealthLink development team.

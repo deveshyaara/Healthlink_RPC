@@ -311,7 +311,7 @@ export const appointmentsApi = {
    * Function: GetAppointmentsByPatient or GetAppointmentsByDoctor (role-based)
    */
   getAll: async (): Promise<any[]> => {
-    return fetchApi<any[]>('/api/v1/healthcare/appointments', { method: 'GET' }, true);
+    return fetchApi<any[]>('/api/appointments', { method: 'GET' }, true);
   },
 
   /**
@@ -328,11 +328,11 @@ export const appointmentsApi = {
 
   /**
    * Update appointment
-   * Backend route: PUT /api/appointments/:id
+   * Backend route: PUT /api/appointments/:appointmentId
    * Function: UpdateAppointment
    */
-  update: async (id: string, updateData: any): Promise<any> => {
-    return fetchApi<any>(`/api/v1/healthcare/appointments/${id}`, {
+  update: async (appointmentId: string, updateData: any): Promise<any> => {
+    return fetchApi<any>(`/api/appointments/${appointmentId}`, {
       method: 'PUT',
       body: JSON.stringify(updateData),
     });
@@ -340,11 +340,11 @@ export const appointmentsApi = {
 
   /**
    * Cancel appointment
-   * Backend route: POST /api/appointments/:id/cancel
+   * Backend route: POST /api/appointments/:appointmentId/cancel
    * Function: CancelAppointment
    */
-  cancel: async (id: string): Promise<any> => {
-    return fetchApi<any>(`/api/v1/healthcare/appointments/${id}/cancel`, {
+  cancel: async (appointmentId: string): Promise<any> => {
+    return fetchApi<any>(`/api/appointments/${appointmentId}/cancel`, {
       method: 'POST',
     });
   },
@@ -361,7 +361,7 @@ export const prescriptionsApi = {
    * Function: GetPrescriptionsByPatient or GetPrescriptionsByDoctor
    */
   getAll: async (): Promise<any[]> => {
-    return fetchApi<any[]>('/api/v1/healthcare/prescriptions', { method: 'GET' }, true);
+    return fetchApi<any[]>('/api/prescriptions', { method: 'GET' }, true);
   },
 
   /**
@@ -378,11 +378,11 @@ export const prescriptionsApi = {
 
   /**
    * Update prescription
-   * Backend route: PUT /api/prescriptions/:id
+   * Backend route: PUT /api/prescriptions/:prescriptionId
    * Function: UpdatePrescription
    */
-  update: async (id: string, updateData: any): Promise<any> => {
-    return fetchApi<any>(`/api/v1/healthcare/prescriptions/${id}`, {
+  update: async (prescriptionId: string, updateData: any): Promise<any> => {
+    return fetchApi<any>(`/api/prescriptions/${prescriptionId}`, {
       method: 'PUT',
       body: JSON.stringify(updateData),
     });
@@ -400,7 +400,7 @@ export const consentsApi = {
    * Function: GetConsentsByPatient
    */
   getAll: async (): Promise<any[]> => {
-    return fetchApi<any[]>('/api/v1/healthcare/consents', { method: 'GET' }, true);
+    return fetchApi<any[]>('/api/consents', { method: 'GET' }, true);
   },
 
   /**
@@ -409,7 +409,7 @@ export const consentsApi = {
    * Function: GetConsent
    */
   getById: async (consentId: string): Promise<any> => {
-    return fetchApi<any>(`/api/v1/healthcare/consents/${consentId}`, { method: 'GET' });
+    return fetchApi<any>(`/api/consents/${consentId}`, { method: 'GET' });
   },
 
   /**
@@ -430,7 +430,7 @@ export const consentsApi = {
    * Function: RevokeConsent
    */
   revoke: async (consentId: string): Promise<any> => {
-    return fetchApi<any>(`/api/v1/healthcare/consents/${consentId}/revoke`, {
+    return fetchApi<any>(`/api/consents/${consentId}/revoke`, {
       method: 'PATCH',
     });
   },
@@ -438,6 +438,188 @@ export const consentsApi = {
 
 // Alias for compatibility
 export const consentApi = consentsApi;
+
+// ========================================
+// DOCTORS API (Admin Functions)
+// ========================================
+
+export const doctorsApi = {
+  /**
+   * Register a new doctor
+   * Backend route: POST /api/v1/healthcare/doctors
+   * Function: RegisterDoctor
+   */
+  register: async (doctorData: any): Promise<any> => {
+    return fetchApi<any>('/api/v1/healthcare/doctors', {
+      method: 'POST',
+      body: JSON.stringify(doctorData),
+    });
+  },
+
+  /**
+   * Verify a doctor
+   * Backend route: POST /api/v1/healthcare/doctors/:doctorAddress/verify
+   * Function: VerifyDoctor
+   */
+  verify: async (doctorAddress: string): Promise<any> => {
+    return fetchApi<any>(`/api/v1/healthcare/doctors/${doctorAddress}/verify`, {
+      method: 'POST',
+    });
+  },
+
+  /**
+   * Get all verified doctors
+   * Backend route: GET /api/v1/healthcare/doctors/verified
+   * Function: GetVerifiedDoctors
+   */
+  getVerified: async (): Promise<any[]> => {
+    return fetchApi<any[]>('/api/v1/healthcare/doctors/verified', { method: 'GET' });
+  },
+};
+
+// ========================================
+// WALLET API (Identity Management)
+// ========================================
+
+export const walletApi = {
+  /**
+   * Get all wallet identities
+   * Backend route: GET /api/v1/wallet/identities
+   * Function: ListIdentities
+   */
+  getIdentities: async (params?: { page?: number; pageSize?: number; search?: string }): Promise<any> => {
+    const queryParams = new URLSearchParams();
+    if (params?.page) {
+      queryParams.append('page', params.page.toString());
+    }
+    if (params?.pageSize) {
+      queryParams.append('pageSize', params.pageSize.toString());
+    }
+    if (params?.search) {
+      queryParams.append('search', params.search);
+    }
+
+    const queryString = queryParams.toString();
+    const url = queryString ? `/api/v1/wallet/identities?${queryString}` : '/api/v1/wallet/identities';
+
+    return fetchApi<any>(url, { method: 'GET' });
+  },
+
+  /**
+   * Get wallet identity by user ID
+   * Backend route: GET /api/v1/wallet/identity/:userId
+   * Function: GetIdentity
+   */
+  getIdentity: async (userId: string): Promise<any> => {
+    return fetchApi<any>(`/api/v1/wallet/identity/${userId}`, { method: 'GET' });
+  },
+
+  /**
+   * Register and enroll a new user
+   * Backend route: POST /api/v1/wallet/register
+   * Function: RegisterUser
+   */
+  register: async (userData: { userId: string; role: string; affiliation?: string }): Promise<any> => {
+    return fetchApi<any>('/api/v1/wallet/register', {
+      method: 'POST',
+      body: JSON.stringify(userData),
+    });
+  },
+
+  /**
+   * Enroll admin user
+   * Backend route: POST /api/v1/wallet/enroll-admin
+   * Function: EnrollAdmin
+   */
+  enrollAdmin: async (): Promise<any> => {
+    return fetchApi<any>('/api/v1/wallet/enroll-admin', {
+      method: 'POST',
+    });
+  },
+};
+
+// ========================================
+// USERS API (User Management)
+// ========================================
+
+export const usersApi = {
+  /**
+   * Send user invitation
+   * Backend route: POST /api/users/invite
+   * Function: SendInvitation
+   */
+  invite: async (invitationData: { email: string; role: 'patient' | 'doctor' }): Promise<any> => {
+    return fetchApi<any>('/api/users/invite', {
+      method: 'POST',
+      body: JSON.stringify(invitationData),
+    });
+  },
+
+  /**
+   * List pending invitations
+   * Backend route: GET /api/users/invitations
+   * Function: ListInvitations
+   */
+  getInvitations: async (): Promise<any[]> => {
+    return fetchApi<any[]>('/api/users/invitations', { method: 'GET' }, true);
+  },
+
+  /**
+   * Accept user invitation
+   * Backend route: POST /api/users/invitations/:token/accept
+   * Function: AcceptInvitation
+   */
+  acceptInvitation: async (token: string, userData: { name: string; password: string }): Promise<any> => {
+    return fetchApi<any>(`/api/users/invitations/${token}/accept`, {
+      method: 'POST',
+      body: JSON.stringify(userData),
+    });
+  },
+
+  /**
+   * Cancel invitation
+   * Backend route: DELETE /api/users/invitations/:id
+   * Function: CancelInvitation
+   */
+  cancelInvitation: async (invitationId: string): Promise<any> => {
+    return fetchApi<any>(`/api/users/invitations/${invitationId}`, {
+      method: 'DELETE',
+    });
+  },
+};
+
+// ========================================
+// CHAT API (AI Assistant)
+// ========================================
+
+export const chatApi = {
+  /**
+   * Send message to AI chat assistant
+   * Backend route: POST /api/chat
+   * Function: SendChatMessage
+   */
+  sendMessage: async (message: string): Promise<any> => {
+    return fetchApi<any>('/api/chat', {
+      method: 'POST',
+      body: JSON.stringify({ message }),
+    });
+  },
+};
+
+// ========================================
+// HEALTH API (System Health Check)
+// ========================================
+
+export const healthApi = {
+  /**
+   * Check backend health status
+   * Backend route: GET /api/health
+   * Function: HealthCheck
+   */
+  check: async (): Promise<any> => {
+    return fetchApi<any>('/api/health', { method: 'GET' });
+  },
+};
 
 // ========================================
 // STORAGE API (File Upload)

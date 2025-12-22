@@ -12,6 +12,9 @@
     "compile": "hardhat compile",
     "deploy": "hardhat run scripts/deploy.js",
     "deploy:localhost": "hardhat run scripts/deploy.js --network localhost",
+    "deploy:sepolia": "hardhat run scripts/deploy.js --network sepolia",
+    "deploy:mainnet": "hardhat run scripts/deploy.js --network mainnet",
+    "verify": "hardhat verify --network",
     "node": "hardhat node"
   },
   "keywords": [
@@ -25,6 +28,7 @@
   "license": "ISC",
   "devDependencies": {
     "@nomicfoundation/hardhat-toolbox": "^5.0.0",
+    "@nomicfoundation/hardhat-verify": "^2.0.9",
     "@openzeppelin/contracts": "^5.4.0",
     "ethers": "^6.16.0",
     "hardhat": "^2.22.0"

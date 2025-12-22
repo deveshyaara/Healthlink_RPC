@@ -1,41 +1,71 @@
 'use client';
 import React, { useEffect, useRef, useState } from 'react';
+import { useAuth } from '@/contexts/auth-context';
+import { chatApi, healthApi } from '@/lib/api-client';
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || '';
-const CHAT_ENDPOINT = API_BASE ? `${API_BASE}/api/chat` : '/api/chat';
+const _API_BASE = process.env.NEXT_PUBLIC_API_URL || '';
+// const CHAT_ENDPOINT = API_BASE ? `${API_BASE}/api/chat` : '/api/chat';
 
 type Message = { id: string; role: 'user' | 'bot'; text: string };
 
-export function ChatWidget(): JSX.Element {
+export function ChatWidget(): JSX.Element | null {
+  const { isAuthenticated } = useAuth();
   const [open, setOpen] = useState(false);
   const [input, setInput] = useState('');
   const [messages, setMessages] = useState<Message[]>([]);
   const [loading, setLoading] = useState(false);
+  const [backendConnected, setBackendConnected] = useState(false);
+  const [connectionChecked, setConnectionChecked] = useState(false);
   const listRef = useRef<HTMLDivElement | null>(null);
 
+  // Check backend connection on mount
   useEffect(() => {
-    if (open) {listRef.current?.scrollTo({ top: 99999 });}
+    const checkBackendConnection = async () => {
+      if (!isAuthenticated) {
+        return;
+      }
+
+      try {
+        await healthApi.check();
+        setBackendConnected(true);
+      } catch (error) {
+        console.error('Backend connection check failed:', error);
+        setBackendConnected(false);
+      } finally {
+        setConnectionChecked(true);
+      }
+    };
+
+    checkBackendConnection();
+  }, [isAuthenticated]);
+
+  useEffect(() => {
+    if (open) {
+      listRef.current?.scrollTo({ top: 99999 });
+    }
   }, [open, messages]);
 
+  // Don't render if not authenticated or backend not connected
+  if (!isAuthenticated || !connectionChecked || !backendConnected) {
+    return null;
+  }
+
   async function sendMessage() {
-    if (!input.trim()) {return;}
+    if (!input.trim()) {
+      return;
+    }
     const userMsg: Message = { id: String(Date.now()), role: 'user', text: input.trim() };
     setMessages((m) => [...m, userMsg]);
     setInput('');
     setLoading(true);
 
     try {
-      const res = await fetch(CHAT_ENDPOINT, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ prompt: userMsg.text }),
-      });
-      const json = await res.json();
-      const botText = json?.reply || json?.message || '(no reply)';
+      const response = await chatApi.sendMessage(userMsg.text);
+      const botText = response?.data?.response || response?.reply || response?.message || 'Sorry, I could not process your message.';
       const botMsg: Message = { id: String(Date.now() + 1), role: 'bot', text: botText };
       setMessages((m) => [...m, botMsg]);
-    } catch {
-      const errMsg: Message = { id: String(Date.now() + 2), role: 'bot', text: 'Error: could not reach chat backend.' };
+    } catch (error: any) {
+      const errMsg: Message = { id: String(Date.now() + 2), role: 'bot', text: error?.message || 'Error: could not reach chat backend.' };
       setMessages((m) => [...m, errMsg]);
     } finally {
       setLoading(false);

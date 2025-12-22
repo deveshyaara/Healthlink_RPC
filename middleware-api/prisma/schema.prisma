@@ -9,9 +9,8 @@ generator client {
 }
 
 datasource db {
-  provider  = "postgresql"
-  url       = env("DATABASE_URL")
-  directUrl = env("DIRECT_URL")
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
 }
 
 // ============================================================================
@@ -58,6 +57,7 @@ model User {
   
   // Relations
   auditLogs UserAuditLog[]
+  sentInvitations UserInvitation[] @relation("SentInvitations")
   
   @@index([email], name: "idx_users_email")
   @@index([role], name: "idx_users_role")
@@ -110,3 +110,47 @@ enum DoctorVerificationStatus {
   
   @@map("doctor_verification_status")
 }
+
+enum InvitationStatus {
+  PENDING
+  ACCEPTED
+  CANCELLED
+  EXPIRED
+  
+  @@map("invitation_status")
+}
+
+// ============================================================================
+// UserInvitation Model - Admin-Managed User Registration
+// ============================================================================
+model UserInvitation {
+  // Primary Key
+  id String @id @default(uuid()) @db.Uuid
+  
+  // Invitation Details
+  email String @unique @db.VarChar(255)
+  role Role
+  token String @unique @db.VarChar(255)
+  status InvitationStatus @default(PENDING)
+  
+  // Invitation Metadata
+  invitedBy String? @map("invited_by") @db.Uuid
+  invitedByUser User? @relation("SentInvitations", fields: [invitedBy], references: [id], onDelete: SetNull)
+  
+  // Expiration
+  expiresAt DateTime @map("expires_at") @db.Timestamptz(6)
+  
+  // Timestamps
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+  
+  @@index([email], name: "idx_user_invitations_email")
+  @@index([token], name: "idx_user_invitations_token")
+  @@index([status], name: "idx_user_invitations_status")
+  @@index([expiresAt], name: "idx_user_invitations_expires_at")
+  @@map("user_invitations")
+}
+
+// ============================================================================
+// Enums - Type-Safe Role and Status Values
+// ============================================================================
