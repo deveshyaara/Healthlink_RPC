@@ -48,6 +48,7 @@ class AuthController {
             name: user.name,
             email: user.email,
             role: user.role,
+            walletAddress: user.fabric_enrollment_id,
           },
         },
       });
@@ -170,6 +171,7 @@ class AuthController {
             name: user.name,
             email: user.email,
             role: user.role,
+            walletAddress: user.fabric_enrollment_id,
           },
         },
       });
@@ -265,6 +267,7 @@ class AuthController {
             name: user.name,
             email: user.email,
             role: user.role,
+            walletAddress: user.fabric_enrollment_id,
           },
         },
       });

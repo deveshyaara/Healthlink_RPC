@@ -6,6 +6,7 @@ import { Calendar, FileText, Heart, ShieldCheck, Activity } from 'lucide-react';
 import { useAuth } from '@/contexts/auth-context';
 import Link from 'next/link';
 import { PatientStats } from '@/components/dashboard/PatientStats';
+import { PatientProfile } from '@/components/PatientProfile';
 
 export default function PatientDashboard() {
   const { user } = useAuth();
@@ -26,6 +27,9 @@ export default function PatientDashboard() {
 
       {/* Stats Cards - Now using PatientStats component */}
       <PatientStats />
+
+      {/* Patient Profile */}
+      <PatientProfile />
 
       {/* Main Content Areas */}
       <div className="grid gap-6 md:grid-cols-2">
