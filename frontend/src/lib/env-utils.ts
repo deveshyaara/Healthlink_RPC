@@ -64,11 +64,11 @@ export function getApiBaseUrl(): string {
 
   // Fall back to localhost for local development
   if (typeof window !== 'undefined') {
-    return 'http://localhost:3000';
+    return 'http://localhost:4000';
   }
 
   // Server-side
-  return process.env.API_URL || 'http://localhost:3000';
+  return process.env.API_URL || 'http://localhost:4000';
 }
 
 /**
