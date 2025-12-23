@@ -23,6 +23,13 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Pill, AlertCircle, CheckCircle, Loader2 } from 'lucide-react';
@@ -38,19 +45,35 @@ export function CreatePrescriptionDialog() {
 
   const [formData, setFormData] = useState({
     prescriptionId: '',
-    patientId: '',
+    patientEmail: '',
     medication: '',
     dosage: '',
     instructions: '',
+    expiryDate: '',
+    includePatientDetails: false,
+    patientAge: '',
+    patientGender: '',
+    patientPhone: '',
+    patientEmergencyContact: '',
+    patientBloodGroup: '',
+    patientDateOfBirth: '',
   });
 
   const resetForm = () => {
     setFormData({
       prescriptionId: '',
-      patientId: '',
+      patientEmail: '',
       medication: '',
       dosage: '',
       instructions: '',
+      expiryDate: '',
+      includePatientDetails: false,
+      patientAge: '',
+      patientGender: '',
+      patientPhone: '',
+      patientEmergencyContact: '',
+      patientBloodGroup: '',
+      patientDateOfBirth: '',
     });
     setError(null);
   };
@@ -62,7 +85,7 @@ export function CreatePrescriptionDialog() {
 
     try {
       // Validate required fields
-      if (!formData.prescriptionId || !formData.patientId || !formData.medication || !formData.dosage) {
+      if (!formData.prescriptionId || !formData.patientEmail || !formData.medication || !formData.dosage) {
         throw new Error('Please fill in all required fields');
       }
 
@@ -70,27 +93,57 @@ export function CreatePrescriptionDialog() {
       const expiryTimestamp = Math.floor(Date.now() / 1000) + (30 * 24 * 60 * 60);
 
       // Create prescription payload matching backend expectations
-      const prescriptionPayload = {
+      const prescriptionPayload: any = {
         prescriptionId: formData.prescriptionId,
-        patientId: formData.patientId,
+        patientEmail: formData.patientEmail,
         doctorAddress: user?.id || '', // Use authenticated user's ID as doctor address
         medication: formData.medication,
         dosage: formData.dosage,
+        instructions: formData.instructions || '',
         expiryTimestamp: expiryTimestamp,
       };
 
+      // Add patient details if provided
+      if (formData.includePatientDetails) {
+        const patientDetails: any = {};
+        
+        if (formData.patientAge) patientDetails.age = parseInt(formData.patientAge);
+        if (formData.patientGender) patientDetails.gender = formData.patientGender;
+        if (formData.patientPhone) patientDetails.phoneNumber = formData.patientPhone;
+        if (formData.patientEmergencyContact) patientDetails.emergencyContact = formData.patientEmergencyContact;
+        if (formData.patientBloodGroup) patientDetails.bloodGroup = formData.patientBloodGroup;
+        if (formData.patientDateOfBirth) patientDetails.dateOfBirth = formData.patientDateOfBirth;
+
+        if (Object.keys(patientDetails).length > 0) {
+          prescriptionPayload.patientDetails = patientDetails;
+        }
+      }
+
       console.log('Creating prescription:', prescriptionPayload);
 
-      // Use API client to create prescription
-      const { prescriptionsApi } = await import('@/lib/api-client');
-      const response = await prescriptionsApi.create(prescriptionPayload);
+      // Call healthcare API to create prescription
+      const token = localStorage.getItem('authToken');
+      const response = await fetch('/api/v1/healthcare/prescriptions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify(prescriptionPayload),
+      });
 
-      console.log('Prescription created successfully:', response);
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to create prescription');
+      }
+
+      const result = await response.json();
+      console.log('Prescription created successfully:', result);
 
       // Success!
       toast({
         title: 'Prescription Created',
-        description: `Prescription ${formData.prescriptionId} for patient ${formData.patientId} has been created successfully.`,
+        description: `Prescription ${formData.prescriptionId} for patient ${formData.patientEmail} has been created successfully.`,
       });
 
       // Reset and close
@@ -157,12 +210,13 @@ export function CreatePrescriptionDialog() {
             </div>
 
             <div className="grid gap-2">
-              <Label htmlFor="patientId">Patient ID *</Label>
+              <Label htmlFor="patientEmail">Patient Email *</Label>
               <Input
-                id="patientId"
-                placeholder="PATIENT_001"
-                value={formData.patientId}
-                onChange={(e) => setFormData({ ...formData, patientId: e.target.value })}
+                id="patientEmail"
+                type="email"
+                placeholder="patient@example.com"
+                value={formData.patientEmail}
+                onChange={(e) => setFormData({ ...formData, patientEmail: e.target.value })}
                 required
                 disabled={loading}
               />
@@ -202,6 +256,115 @@ export function CreatePrescriptionDialog() {
                 disabled={loading}
               />
             </div>
+
+            <div className="flex items-center space-x-2">
+              <input
+                type="checkbox"
+                id="includePatientDetails"
+                checked={formData.includePatientDetails}
+                onChange={(e) => setFormData({ ...formData, includePatientDetails: e.target.checked })}
+                disabled={loading}
+                className="rounded"
+              />
+              <Label htmlFor="includePatientDetails" className="text-sm">
+                Update patient details with this prescription
+              </Label>
+            </div>
+
+            {formData.includePatientDetails && (
+              <div className="border rounded-lg p-4 bg-gray-50 dark:bg-gray-900">
+                <h4 className="font-medium mb-3">Patient Details (Optional)</h4>
+                <div className="grid gap-3">
+                  <div className="grid gap-2">
+                    <Label htmlFor="patientAge">Age</Label>
+                    <Input
+                      id="patientAge"
+                      type="number"
+                      min="0"
+                      max="150"
+                      placeholder="30"
+                      value={formData.patientAge}
+                      onChange={(e) => setFormData({ ...formData, patientAge: e.target.value })}
+                      disabled={loading}
+                    />
+                  </div>
+
+                  <div className="grid gap-2">
+                    <Label htmlFor="patientGender">Gender</Label>
+                    <Select
+                      value={formData.patientGender}
+                      onValueChange={(value) => setFormData({ ...formData, patientGender: value })}
+                      disabled={loading}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select gender" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Male">Male</SelectItem>
+                        <SelectItem value="Female">Female</SelectItem>
+                        <SelectItem value="Other">Other</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="grid gap-2">
+                    <Label htmlFor="patientPhone">Phone Number</Label>
+                    <Input
+                      id="patientPhone"
+                      placeholder="+1-555-0123"
+                      value={formData.patientPhone}
+                      onChange={(e) => setFormData({ ...formData, patientPhone: e.target.value })}
+                      disabled={loading}
+                    />
+                  </div>
+
+                  <div className="grid gap-2">
+                    <Label htmlFor="patientEmergencyContact">Emergency Contact</Label>
+                    <Input
+                      id="patientEmergencyContact"
+                      placeholder="Emergency contact info"
+                      value={formData.patientEmergencyContact}
+                      onChange={(e) => setFormData({ ...formData, patientEmergencyContact: e.target.value })}
+                      disabled={loading}
+                    />
+                  </div>
+
+                  <div className="grid gap-2">
+                    <Label htmlFor="patientBloodGroup">Blood Group</Label>
+                    <Select
+                      value={formData.patientBloodGroup}
+                      onValueChange={(value) => setFormData({ ...formData, patientBloodGroup: value })}
+                      disabled={loading}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select blood group" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="A+">A+</SelectItem>
+                        <SelectItem value="A-">A-</SelectItem>
+                        <SelectItem value="B+">B+</SelectItem>
+                        <SelectItem value="B-">B-</SelectItem>
+                        <SelectItem value="AB+">AB+</SelectItem>
+                        <SelectItem value="AB-">AB-</SelectItem>
+                        <SelectItem value="O+">O+</SelectItem>
+                        <SelectItem value="O-">O-</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="grid gap-2">
+                    <Label htmlFor="patientDateOfBirth">Date of Birth</Label>
+                    <Input
+                      id="patientDateOfBirth"
+                      type="date"
+                      value={formData.patientDateOfBirth}
+                      onChange={(e) => setFormData({ ...formData, patientDateOfBirth: e.target.value })}
+                      disabled={loading}
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
 
           <DialogFooter>

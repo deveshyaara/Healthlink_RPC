@@ -23,7 +23,7 @@ const medicationSchema = z.object({
 
 // Zod validation schema for the entire prescription form (single medication)
 const createPrescriptionSchema = z.object({
-  patientId: z.string().min(1, 'Please select a patient'),
+  patientEmail: z.string().email('Please enter a valid patient email'),
   diagnosis: z.string().optional(),
   appointmentId: z.string().optional(),
   medication: medicationSchema, // Single medication object, not array
@@ -73,7 +73,7 @@ export function CreatePrescriptionForm({
   } = useForm<CreatePrescriptionFormData>({
     resolver: zodResolver(createPrescriptionSchema),
     defaultValues: {
-      patientId: defaultPatientId || '',
+      patientEmail: '',
       medication: {
         name: '',
         dosage: '',
@@ -85,31 +85,35 @@ export function CreatePrescriptionForm({
     },
   });
 
-  const patientId = watch('patientId');
+  const patientEmail = watch('patientEmail');
 
   // Fetch doctor's patient list
   useEffect(() => {
     const fetchPatients = async () => {
       try {
-        // Import dynamically to avoid circular dependencies
-        const { medicalRecordsApi } = await import('@/lib/api-client');
-        const records = await medicalRecordsApi.getAll();
+        // Fetch patients from healthcare API
+        const token = localStorage.getItem('authToken');
+        const response = await fetch('/api/v1/healthcare/patients', {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+          },
+        });
 
-        // Extract unique patients from records
-        const patientMap = new Map();
-        if (Array.isArray(records)) {
-          records.forEach((record: { id: string; patientId: string; diagnosis: string; patientName?: string; patientEmail?: string }) => {
-            if (record.patientId && !patientMap.has(record.patientId)) {
-              patientMap.set(record.patientId, {
-                patientId: record.patientId,
-                patientName: record.patientName || record.patientId,
-                email: record.patientEmail || 'N/A',
-              });
-            }
-          });
+        if (!response.ok) {
+          throw new Error('Failed to fetch patients');
         }
 
-        setPatients(Array.from(patientMap.values()));
+        const result = await response.json();
+        const patientsData = result.data || result;
+
+        // Transform to expected format
+        const transformedPatients = patientsData.map((patient: any) => ({
+          patientId: patient.id || patient.email,
+          patientName: patient.name,
+          email: patient.email,
+        }));
+
+        setPatients(transformedPatients);
       } catch (error) {
         console.error('Failed to fetch patients:', error);
         setPatients([]);
@@ -129,21 +133,35 @@ export function CreatePrescriptionForm({
       // Create prescription payload matching backend expectations
       const prescriptionPayload = {
         prescriptionId: `RX${Date.now()}`,
-        patientId: data.patientId,
+        patientEmail: data.patientEmail,
         doctorAddress: doctorId, // Backend expects doctorAddress, not doctorId
         medication: data.medication.name, // Single medication string
         dosage: data.medication.dosage, // Single dosage string
         expiryTimestamp: Math.floor(Date.now() / 1000) + (30 * 24 * 60 * 60), // 30 days from now
       };
 
-      // Import dynamically to avoid circular dependencies
-      const { prescriptionsApi } = await import('@/lib/api-client');
-      const _response = await prescriptionsApi.create(prescriptionPayload);
+      // Call healthcare API to create prescription
+      const token = localStorage.getItem('authToken');
+      const response = await fetch('/api/v1/healthcare/prescriptions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify(prescriptionPayload),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to create prescription');
+      }
+
+      const result = await response.json();
 
       // Import toast dynamically
       const { toast } = await import('sonner');
       toast.success('Prescription Created', {
-        description: `Prescription for ${data.patientId} has been created`,
+        description: `Prescription for ${data.patientEmail} has been created`,
       });
 
       // Reset form and call success callback
@@ -168,8 +186,8 @@ export function CreatePrescriptionForm({
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
       {/* Patient Selection */}
       <div className="space-y-2">
-        <Label htmlFor="patientId" className="text-sm font-medium">
-                    Patient <span className="text-red-500">*</span>
+        <Label htmlFor="patientEmail" className="text-sm font-medium">
+                    Patient Email <span className="text-red-500">*</span>
         </Label>
         {loadingPatients ? (
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -178,17 +196,17 @@ export function CreatePrescriptionForm({
           </div>
         ) : (
           <Select
-            value={patientId}
-            onValueChange={(value) => setValue('patientId', value)}
-            disabled={isSubmitting || !!defaultPatientId}
+            value={patientEmail}
+            onValueChange={(value) => setValue('patientEmail', value)}
+            disabled={isSubmitting}
           >
-            <SelectTrigger id="patientId">
+            <SelectTrigger id="patientEmail">
               <SelectValue placeholder="Select a patient" />
             </SelectTrigger>
             <SelectContent>
               {patients.map((patient) => (
-                <SelectItem key={patient.patientId} value={patient.patientId}>
-                  {patient.patientName} ({patient.patientId})
+                <SelectItem key={patient.email} value={patient.email}>
+                  {patient.patientName} ({patient.email})
                 </SelectItem>
               ))}
               {patients.length === 0 && (
@@ -199,8 +217,8 @@ export function CreatePrescriptionForm({
             </SelectContent>
           </Select>
         )}
-        {errors.patientId && (
-          <p className="text-sm text-red-500">{errors.patientId.message}</p>
+        {errors.patientEmail && (
+          <p className="text-sm text-red-500">{errors.patientEmail.message}</p>
         )}
       </div>
 
