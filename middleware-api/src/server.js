@@ -28,6 +28,9 @@ import StorageService from './services/storage.service.js';
 const app = express();
 const httpServer = createServer(app);
 
+// Trust proxy for accurate IP detection behind reverse proxies (e.g., Render)
+app.set('trust proxy', true);
+
 // ======================
 // Security Middleware
 // ======================
