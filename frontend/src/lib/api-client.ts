@@ -270,7 +270,6 @@ async function fetchApi<T>(
       ...defaultHeaders,
       ...options.headers,
     },
-    credentials: 'include',
     mode: 'cors',
   };
 
@@ -921,4 +920,4 @@ export const dashboardApi = {
   },
 };
 
-console.log('[API Client] Initialized with base URL:', getApiBaseUrl());
+logger.info('[API Client] Initialized with base URL:', getApiBaseUrl());

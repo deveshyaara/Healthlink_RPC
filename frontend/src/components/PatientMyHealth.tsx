@@ -15,9 +15,17 @@ export default function PatientMyHealth({ patientAddress }: { patientAddress: st
       setLoading(true);
       try {
         // For current user, use alias endpoints that return current user's data
+        const token = localStorage.getItem('auth_token');
+        const headers: Record<string, string> = {};
+        if (token) {
+          headers['Authorization'] = `Bearer ${token}`;
+        }
         const recEndpoint = API_BASE ? `${API_BASE}/api/medical-records` : '/api/medical-records';
         const aptEndpoint = API_BASE ? `${API_BASE}/api/appointments` : '/api/appointments';
-        const [rRes, aRes] = await Promise.all([fetch(recEndpoint, { credentials: 'include' }), fetch(aptEndpoint, { credentials: 'include' })]);
+        const [rRes, aRes] = await Promise.all([
+          fetch(recEndpoint, { headers }),
+          fetch(aptEndpoint, { headers })
+        ]);
         const rJson = rRes.ok ? await rRes.json() : [];
         const aJson = aRes.ok ? await aRes.json() : [];
         if (mounted) {

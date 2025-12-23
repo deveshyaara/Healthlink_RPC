@@ -18,7 +18,7 @@ class HealthcareController {
       // Validate required fields
       if (!patientAddress || !name || age === undefined || !gender) {
         return res.status(400).json({
-          error: 'Missing required fields: patientAddress, name, age, gender'
+          error: 'Missing required fields: patientAddress, name, age, gender',
         });
       }
 
@@ -32,7 +32,7 @@ class HealthcareController {
       const PinataSDK = (await import('@pinata/sdk')).default;
       const pinata = new PinataSDK(
         process.env.PINATA_API_KEY,
-        process.env.PINATA_SECRET_API_KEY
+        process.env.PINATA_SECRET_API_KEY,
       );
 
       const patientMetadata = {

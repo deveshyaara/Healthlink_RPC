@@ -19,8 +19,13 @@ export default function useCurrentUser() {
     (async () => {
       setLoading(true);
       try {
+        const token = localStorage.getItem('auth_token');
         const endpoint = API_BASE ? `${API_BASE}/api/auth/me` : '/api/auth/me';
-        const res = await fetch(endpoint, { credentials: 'include' });
+        const headers: Record<string, string> = {};
+        if (token) {
+          headers['Authorization'] = `Bearer ${token}`;
+        }
+        const res = await fetch(endpoint, { headers });
         if (!mounted) {return;}
         if (!res.ok) { setUser(null); return; }
         const json = await res.json();
