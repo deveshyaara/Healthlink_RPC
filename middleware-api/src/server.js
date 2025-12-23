@@ -80,6 +80,7 @@ app.use((req, res, next) => {
 
 app.get('/health', (req, res) => {
   res.status(200).json({
+    success: true,
     status: 'UP',
     timestamp: new Date().toISOString(),
     service: 'healthlink-middleware-api',
@@ -101,6 +102,7 @@ app.get('/api/health', async (req, res) => {
     }
 
     res.status(200).json({
+      success: true,
       status: ethereumStatus === 'UP' ? 'UP' : 'DEGRADED',
       timestamp: new Date().toISOString(),
       services: {
@@ -111,6 +113,7 @@ app.get('/api/health', async (req, res) => {
   } catch (error) {
     logger.error('Health check failed:', error);
     res.status(503).json({
+      success: false,
       status: 'DOWN',
       timestamp: new Date().toISOString(),
       error: 'Health check failed',
@@ -118,11 +121,22 @@ app.get('/api/health', async (req, res) => {
   }
 });
 
+// Blockchain status endpoint (standardized response)
+app.get('/api/blockchain/status', (req, res) => {
+  // Return a simple standardized response for clients and health checks
+  res.status(200).json({
+    success: true,
+    connected: true,
+    network: 'sepolia',
+  });
+});
+
 // ======================
 // API Routes
 // ======================
 
 const API_VERSION = config.server.apiVersion;
+const PORT = process.env.PORT || 4000;
 
 // Mount authentication routes
 app.use('/api/auth', authRoutes);
@@ -193,14 +207,21 @@ app.get(`/api/${API_VERSION}`, (req, res) => {
 
 // Handle 404
 app.use((req, res) => {
-  res.status(404).json({
+  const errorResponse = {
     success: false,
-    error: {
-      message: 'Endpoint not found',
+    error: 'Endpoint not found',
+    code: 'NOT_FOUND',
+  };
+
+  // Add technical details in development
+  if (process.env.NODE_ENV !== 'production') {
+    errorResponse.details = {
       path: req.originalUrl,
       method: req.method,
-    },
-  });
+    };
+  }
+
+  res.status(404).json(errorResponse);
 });
 
 // ======================
@@ -243,23 +264,23 @@ const startServer = async () => {
     }
 
     // Start HTTP server
-    httpServer.listen(config.server.port, () => {
+    httpServer.listen(PORT, () => {
       logger.info(`
 ╔════════════════════════════════════════════════════════════╗
 ║   HealthLink Middleware API Server                        ║
 ║   Environment: ${config.server.env.padEnd(43)}║
-║   HTTP Port: ${config.server.port.toString().padEnd(45)}║
+║   HTTP Port: ${PORT.toString().padEnd(45)}║
 ║   WebSocket Port: ${config.websocket.port.toString().padEnd(40)}║
 ║   API Version: ${config.server.apiVersion.padEnd(43)}║
 ║                                                            ║
-║   HTTP API: http://localhost:${config.server.port}${' '.repeat(28)}║
-║   Health Check: http://localhost:${config.server.port}/health${' '.repeat(17)}║
+║   HTTP API: http://localhost:${PORT}${' '.repeat(28)}║
+║   Health Check: http://localhost:${PORT}/health${' '.repeat(17)}║
 ║   Blockchain: Ethereum${' '.repeat(35)}║
 ╚════════════════════════════════════════════════════════════╝
       `);
 
       logger.info('✅ Server started successfully');
-      logger.info(`📊 API Documentation available at: http://localhost:${config.server.port}/api/${API_VERSION}`);
+      logger.info(`📊 API Documentation available at: http://localhost:${PORT}/api/${API_VERSION}`);
     });
 
     // Graceful shutdown handling

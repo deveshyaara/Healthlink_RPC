@@ -72,23 +72,30 @@ function DoctorPatientsPageContent() {
 
       const data = await response.json();
 
-      if (data.success && Array.isArray(data.data)) {
-        // Transform the data to match the expected Patient interface
-        const transformedPatients: Patient[] = data.data.map((patient: any) => ({
-          patientId: patient.walletAddress, // Use wallet address as patient ID
-          name: patient.name,
-          email: patient.email,
-          lastVisit: patient.createdAt,
-          recordCount: (patient.appointments?.length || 0) + (patient.prescriptions?.length || 0) + (patient.medicalRecords?.length || 0),
-          status: patient.isActive ? 'Active' : 'Inactive',
-        }));
-
-        setPatients(transformedPatients);
-        setFilteredPatients(transformedPatients);
+      // Support new flat responses: { success: true, patients: [...] }
+      let patientsArray: any[] = [];
+      if (data && typeof data === 'object' && Object.prototype.hasOwnProperty.call(data, 'success')) {
+        if (data.success === true) {
+          patientsArray = Array.isArray(data.patients) ? data.patients : (Array.isArray(data.data) ? data.data : []);
+        } else {
+          throw new Error(data.error || data.message || 'Failed to fetch patients');
+        }
       } else {
-        setPatients([]);
-        setFilteredPatients([]);
+        // Back-compat: JSend-style or raw array
+        patientsArray = Array.isArray(data.data) ? data.data : (Array.isArray(data) ? data : []);
       }
+
+      const transformedPatients: Patient[] = patientsArray.map((patient: any) => ({
+        patientId: patient.walletAddress, // Use wallet address as patient ID
+        name: patient.name,
+        email: patient.email,
+        lastVisit: patient.createdAt,
+        recordCount: (patient.appointments?.length || 0) + (patient.prescriptions?.length || 0) + (patient.medicalRecords?.length || 0),
+        status: patient.isActive ? 'Active' : 'Inactive',
+      }));
+
+      setPatients(transformedPatients);
+      setFilteredPatients(transformedPatients);
     } catch (err) {
       console.error('Error fetching patients:', err);
       setError(err instanceof Error ? err.message : 'Failed to fetch patients');

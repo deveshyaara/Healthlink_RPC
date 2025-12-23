@@ -17,7 +17,7 @@ class TransactionService {
    */
   async initialize() {
     if (!this.initialized) {
-      const rpcUrl = process.env.ETHEREUM_RPC_URL || 'http://127.0.0.1:8545';
+      const rpcUrl = process.env.ETHEREUM_RPC_URL || 'https://rpc.sepolia.org';
       const privateKey = process.env.PRIVATE_KEY || process.env.DEPLOYER_PRIVATE_KEY;
       await ethereumService.initialize(rpcUrl, privateKey);
       this.initialized = true;

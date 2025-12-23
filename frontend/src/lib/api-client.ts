@@ -274,16 +274,10 @@ async function fetchApi<T>(
   };
 
   try {
-    logger.log('[API Client] Making request to:', url);
-    logger.log('[API Client] Method:', config.method || 'GET');
-
-    const response = await fetch(url, config);
-
-    logger.log('[API Client] Response status:', response.status);
+  const response = await fetch(url, config);
 
     // Handle 404 gracefully if requested (for dashboard stats)
     if (response.status === 404 && handleNotFound) {
-      logger.log('[API Client] 404 - Returning empty array');
       return [] as T;
     }
 
@@ -294,7 +288,9 @@ async function fetchApi<T>(
     if (!response.ok) {
       if (isJson) {
         const errorResponse = await response.json();
-        throw new Error(errorResponse.message || `HTTP ${response.status}: ${response.statusText}`);
+        // Backend now returns { success: false, error: 'message' }
+        const errMessage = (errorResponse && (errorResponse.error || errorResponse.message)) || `HTTP ${response.status}: ${response.statusText}`;
+        throw new Error(typeof errMessage === 'string' ? errMessage : JSON.stringify(errMessage));
       } else {
         throw new Error(`HTTP ${response.status}: ${response.statusText}`);
       }
@@ -305,14 +301,25 @@ async function fetchApi<T>(
       const jsonResponse = await response.json();
       logger.log('[API Client] Raw response:', jsonResponse);
 
-      // Backend wraps responses in { status, data, message } format
-      // Extract the data field if it exists
+      // New flat response format: { success: true|false, ... }
+      if (jsonResponse && typeof jsonResponse === 'object' && Object.prototype.hasOwnProperty.call(jsonResponse, 'success')) {
+        if (jsonResponse.success === true) {
+          // Return the flat payload directly to callers
+          return jsonResponse as unknown as T;
+        }
+
+        // success === false -> throw standardized error
+        const err = jsonResponse.error || jsonResponse.message || JSON.stringify(jsonResponse);
+        throw new Error(typeof err === 'string' ? err : JSON.stringify(err));
+      }
+
+      // Backwards-compat: extract nested JSend-style data
       const extracted = jsonResponse.data || jsonResponse;
       logger.log('[API Client] Extracted data:', extracted);
-      logger.log('[API Client] Has token:', !!extracted.token);
-      logger.log('[API Client] Has user:', !!extracted.user);
+      logger.log('[API Client] Has token:', !!(extracted && (extracted as any).token));
+      logger.log('[API Client] Has user:', !!(extracted && (extracted as any).user));
 
-      return extracted;
+      return extracted as unknown as T;
     }
 
     // Return empty object for 204 No Content
@@ -356,6 +363,18 @@ async function uploadFile(endpoint: string, formData: FormData, onProgress?: (pr
       if (xhr.status >= 200 && xhr.status < 300) {
         try {
           const jsonResponse = JSON.parse(xhr.responseText);
+          // Handle new flat response format
+          if (jsonResponse && typeof jsonResponse === 'object' && Object.prototype.hasOwnProperty.call(jsonResponse, 'success')) {
+            if (jsonResponse.success === true) {
+              resolve(jsonResponse as any);
+              return;
+            }
+
+            const err = jsonResponse.error || jsonResponse.message || JSON.stringify(jsonResponse);
+            reject(new Error(typeof err === 'string' ? err : JSON.stringify(err)));
+            return;
+          }
+
           const result = jsonResponse.data || jsonResponse;
           resolve(result);
         } catch (_error) { // eslint-disable-line @typescript-eslint/no-unused-vars
@@ -782,6 +801,15 @@ export const usersApi = {
     return fetchApi<any>(`/api/users/invitations/${invitationId}`, {
       method: 'DELETE',
     });
+  },
+
+  /**
+   * Get all users
+   * Backend route: GET /api/users
+   * Function: GetUsers
+   */
+  getUsers: async (): Promise<any[]> => {
+    return fetchApi<any[]>('/api/users', { method: 'GET' }, true);
   },
 };
 

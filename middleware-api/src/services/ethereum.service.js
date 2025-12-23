@@ -3,6 +3,14 @@ import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import logger from '../utils/logger.js';
+import {
+  Web3Error,
+  UserRejectedError,
+  InsufficientFundsError,
+  NonceError,
+  ContractRevertError,
+  NetworkError,
+} from '../utils/errors.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -17,6 +25,11 @@ class EthereumService {
     this.signer = null;
     this.contracts = {};
     this.initialized = false;
+    this.isHealthy = true;
+    this.currentNonce = null;
+    this.transactionQueue = [];
+    this.isProcessingQueue = false;
+
     // In-memory fallback stores when contracts are not deployed locally
     this._stores = {
       records: new Map(), // recordId -> record
@@ -27,13 +40,22 @@ class EthereumService {
 
   /**
      * Initialize Ethereum connection
-     * @param {string} providerUrl - RPC URL (default: localhost)
+     * @param {string} providerUrl - RPC URL (default: Sepolia testnet)
      * @param {string} privateKey - Private key for signing transactions
      */
-  async initialize(providerUrl = 'http://127.0.0.1:8545', privateKey = null) {
+  async initialize(providerUrl = 'https://rpc.sepolia.org', privateKey = null) {
     try {
-      // Connect to provider
-      this.provider = new ethers.JsonRpcProvider(providerUrl);
+      // Connect to provider with timeout and retry options
+      this.provider = new ethers.JsonRpcProvider(providerUrl, undefined, {
+        timeout: 30000, // 30 second timeout
+        throttleLimit: 2,
+      });
+
+      // Verify network is Sepolia (chainId 11155111)
+      const network = await this.provider.getNetwork();
+      if (network.chainId !== 11155111n) {
+        throw new Error(`Expected Sepolia testnet (chainId 11155111), but connected to ${network.name} (chainId ${network.chainId})`);
+      }
 
       // Set up signer
       if (privateKey) {
@@ -47,10 +69,14 @@ class EthereumService {
         this.signer = await this.provider.getSigner(0);
       }
 
+      // Initialize nonce tracking
+      await this._initializeNonce();
+
       // Load contract addresses and ABIs
       await this.loadContracts();
 
       this.initialized = true;
+      this.isHealthy = true;
       logger.info('✅ Ethereum Service initialized successfully');
       logger.info('Connected to: %o', await this.provider.getNetwork());
       logger.info('Signer address: %s', await this.signer.getAddress());
@@ -58,8 +84,184 @@ class EthereumService {
       return true;
     } catch (error) {
       logger.error('Failed to initialize Ethereum Service:', error);
+      this.isHealthy = false;
       throw error;
     }
+  }
+
+  /**
+   * Initialize nonce tracking
+   */
+  async _initializeNonce() {
+    try {
+      const signerAddress = await this.signer.getAddress();
+      this.currentNonce = await this.provider.getTransactionCount(signerAddress, 'pending');
+      logger.info('Initialized nonce tracking at:', this.currentNonce);
+    } catch (error) {
+      logger.error('Failed to initialize nonce:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Health check method
+   */
+  async checkConnection() {
+    try {
+      await this.provider.getBlockNumber();
+      this.isHealthy = true;
+      return { healthy: true, message: 'Connection OK' };
+    } catch (error) {
+      this.isHealthy = false;
+      logger.error('Health check failed:', error);
+      return { healthy: false, message: 'RPC connection failed', error: error.message };
+    }
+  }
+
+  /**
+   * Send transaction with nonce management and retry logic
+   */
+  async sendTransaction(contractMethod, ...args) {
+    return new Promise((resolve, reject) => {
+      this.transactionQueue.push({ contractMethod, args, resolve, reject });
+      this._processQueue();
+    });
+  }
+
+  /**
+   * Process transaction queue sequentially
+   */
+  async _processQueue() {
+    if (this.isProcessingQueue || this.transactionQueue.length === 0) {
+      return;
+    }
+
+    this.isProcessingQueue = true;
+
+    while (this.transactionQueue.length > 0) {
+      const { contractMethod, args, resolve, reject } = this.transactionQueue.shift();
+
+      try {
+        const result = await this._executeTransactionWithRetry(contractMethod, ...args);
+        resolve(result);
+      } catch (error) {
+        reject(error);
+      }
+    }
+
+    this.isProcessingQueue = false;
+  }
+
+  /**
+   * Execute transaction with retry logic
+   */
+  async _executeTransactionWithRetry(contractMethod, ...args) {
+    let lastError;
+    const maxRetries = 3;
+
+    for (let attempt = 0; attempt < maxRetries; attempt++) {
+      try {
+        // Estimate gas first
+        const gasEstimate = await this._safeEstimateGas(contractMethod, ...args);
+
+        // Get current nonce
+        const nonce = this.currentNonce++;
+
+        // Execute transaction
+        const tx = await contractMethod(...args, {
+          nonce,
+          gasLimit: gasEstimate,
+        });
+
+        const receipt = await this.waitForTransaction(tx);
+        return receipt;
+
+      } catch (error) {
+        lastError = error;
+        const errorMessage = error.message?.toLowerCase() || '';
+
+        // Check if error is retryable
+        const isRetryable = errorMessage.includes('nonce too low') ||
+                           errorMessage.includes('replacement transaction underpriced') ||
+                           errorMessage.includes('network error') ||
+                           errorMessage.includes('timeout') ||
+                           errorMessage.includes('connection');
+
+        if (!isRetryable || attempt === maxRetries - 1) {
+          // Re-sync nonce on final failure
+          try {
+            await this._initializeNonce();
+          } catch (nonceError) {
+            logger.warn('Failed to re-sync nonce:', nonceError);
+          }
+          throw this._formatTransactionError(error);
+        }
+
+        // Wait before retry
+        logger.warn(`Transaction attempt ${attempt + 1} failed, retrying in 500ms:`, error.message);
+        await new Promise(resolve => setTimeout(resolve, 500));
+
+        // Re-sync nonce on retryable errors
+        try {
+          await this._initializeNonce();
+        } catch (nonceError) {
+          logger.warn('Failed to re-sync nonce during retry:', nonceError);
+        }
+      }
+    }
+
+    throw lastError;
+  }
+
+  /**
+   * Safe gas estimation with error handling
+   */
+  async _safeEstimateGas(contractMethod, ...args) {
+    try {
+      const gasEstimate = await contractMethod.estimateGas(...args);
+      // Add 20% buffer
+      return Math.ceil(Number(gasEstimate) * 1.2);
+    } catch (error) {
+      const errorMessage = error.message?.toLowerCase() || '';
+      if (errorMessage.includes('revert') || errorMessage.includes('execution reverted')) {
+        throw new ContractRevertError('Smart Contract Logic Reverted: ' + (error.reason || error.message), error.reason);
+      }
+      // Default gas limit if estimation fails
+      logger.warn('Gas estimation failed, using default:', error.message);
+      return 200000; // Default gas limit
+    }
+  }
+
+  /**
+   * Format transaction errors
+   */
+  _formatTransactionError(error) {
+    const message = error.message || 'Transaction failed';
+    const errorMessage = message.toLowerCase();
+
+    // Map to specific error types
+    if (error.code === 'ACTION_REJECTED' || errorMessage.includes('user denied') || errorMessage.includes('user rejected')) {
+      return new UserRejectedError(message);
+    }
+
+    if (errorMessage.includes('insufficient funds')) {
+      return new InsufficientFundsError(message);
+    }
+
+    if (errorMessage.includes('nonce too low') || errorMessage.includes('replacement transaction underpriced')) {
+      return new NonceError(message);
+    }
+
+    if (errorMessage.includes('smart contract logic reverted') || errorMessage.includes('execution reverted')) {
+      return new ContractRevertError(message, error.reason);
+    }
+
+    if (errorMessage.includes('network') || errorMessage.includes('connection') || errorMessage.includes('timeout')) {
+      return new NetworkError(message);
+    }
+
+    // Default Web3 error
+    return new Web3Error(message, error, error.code);
   }
 
   /**
@@ -174,7 +376,9 @@ class EthereumService {
     const contract = this.getContract('PatientRecords');
     if (contract) {
       try {
-        const tx = await contract.createRecord(
+        // Use the new transaction queue system
+        return await this.sendTransaction(
+          contract.createRecord,
           recordId,
           patientId,
           doctorId,
@@ -182,7 +386,6 @@ class EthereumService {
           ipfsHash,
           JSON.stringify(metadata),
         );
-        return await this.waitForTransaction(tx);
       } catch (error) {
         logger.error('Error calling createRecord on contract:', error);
         // Fall back to in-memory store
@@ -264,7 +467,7 @@ class EthereumService {
     }
 
     // Fallback to in-memory store
-    const all = Array.from(this._stores.records.values()).filter(r => r.patientId === patientId);
+    const all = Array.from(this._stores.records.values()).filter(r => r.patientId.toLowerCase() === patientId.toLowerCase());
     return all.map(r => ({
       recordId: r.recordId,
       patientId: r.patientId,
@@ -279,22 +482,30 @@ class EthereumService {
 
   async updateRecordMetadata(recordId, metadata) {
     const contract = this.getContract('PatientRecords');
-    const tx = await contract.updateRecordMetadata(recordId, JSON.stringify(metadata));
-    return await this.waitForTransaction(tx);
+    return await this.sendTransaction(
+      contract.updateRecordMetadata,
+      recordId,
+      JSON.stringify(metadata),
+    );
   }
 
   async deleteRecord(recordId) {
     const contract = this.getContract('PatientRecords');
-    const tx = await contract.deleteRecord(recordId);
-    return await this.waitForTransaction(tx);
+    return await this.sendTransaction(contract.deleteRecord, recordId);
   }
 
   // ====== HealthLink Contract Methods ======
 
   async createPatient(patientAddress, name, age, gender, ipfsHash) {
     const contract = this.getContract('HealthLink');
-    const tx = await contract.createPatient(patientAddress, name, age, gender, ipfsHash);
-    return await this.waitForTransaction(tx);
+    return await this.sendTransaction(
+      contract.createPatient,
+      patientAddress,
+      name,
+      age,
+      gender,
+      ipfsHash,
+    );
   }
 
   async getPatient(patientId) {
@@ -310,13 +521,17 @@ class EthereumService {
 
   async updatePatientData(patientId, updatedData) {
     const contract = this.getContract('HealthLink');
-    const tx = await contract.updatePatientData(patientId, JSON.stringify(updatedData));
-    return await this.waitForTransaction(tx);
+    return await this.sendTransaction(
+      contract.updatePatientData,
+      patientId,
+      JSON.stringify(updatedData),
+    );
   }
 
   async createConsent(consentId, patientId, granteeAddress, scope, purpose, validUntil) {
     const contract = this.getContract('HealthLink');
-    const tx = await contract.createConsent(
+    return await this.sendTransaction(
+      contract.createConsent,
       consentId,
       patientId,
       granteeAddress,
@@ -324,13 +539,11 @@ class EthereumService {
       purpose,
       validUntil,
     );
-    return await this.waitForTransaction(tx);
   }
 
   async revokeConsent(consentId) {
     const contract = this.getContract('HealthLink');
-    const tx = await contract.revokeConsent(consentId);
-    return await this.waitForTransaction(tx);
+    return await this.sendTransaction(contract.revokeConsent, consentId);
   }
 
   async getConsent(consentId) {
@@ -370,7 +583,8 @@ class EthereumService {
   async createAppointment(appointmentId, patientId, doctorId, appointmentDate, reason, notes) {
     const contract = this.getContract('Appointments');
     if (contract) {
-      const tx = await contract.createAppointment(
+      return await this.sendTransaction(
+        contract.createAppointment,
         appointmentId,
         patientId,
         doctorId,
@@ -378,7 +592,6 @@ class EthereumService {
         reason,
         notes,
       );
-      return await this.waitForTransaction(tx);
     }
 
     // Fallback: in-memory appointment
@@ -419,7 +632,7 @@ class EthereumService {
       }
     }
 
-    const all = Array.from(this._stores.appointments.values()).filter(a => a.patientId === patientId);
+    const all = Array.from(this._stores.appointments.values()).filter(a => a.patientId.toLowerCase() === patientId.toLowerCase());
     return all.map(apt => ({
       appointmentId: apt.appointmentId,
       patientId: apt.patientId,
@@ -454,7 +667,7 @@ class EthereumService {
       }
     }
 
-    const all = Array.from(this._stores.appointments.values()).filter(a => a.doctorId === doctorId);
+    const all = Array.from(this._stores.appointments.values()).filter(a => a.doctorId.toLowerCase() === doctorId.toLowerCase());
     return all.map(apt => ({
       appointmentId: apt.appointmentId,
       patientId: apt.patientId,
@@ -504,8 +717,11 @@ class EthereumService {
   async updateAppointmentStatus(appointmentId, status) {
     const contract = this.getContract('Appointments');
     if (contract) {
-      const tx = await contract.updateAppointmentStatus(appointmentId, status);
-      return await this.waitForTransaction(tx);
+      return await this.sendTransaction(
+        contract.updateAppointmentStatus,
+        appointmentId,
+        status,
+      );
     }
 
     const apt = this._stores.appointments.get(appointmentId);
@@ -650,7 +866,7 @@ class EthereumService {
       }
     }
 
-    const all = Array.from(this._stores.prescriptions.values()).filter(p => p.patientId === patientId);
+    const all = Array.from(this._stores.prescriptions.values()).filter(p => p.patientId.toLowerCase() === patientId.toLowerCase());
     return all.map(p => ({
       prescriptionId: p.prescriptionId,
       patientId: p.patientId,
@@ -689,7 +905,7 @@ class EthereumService {
       }
     }
 
-    const all = Array.from(this._stores.prescriptions.values()).filter(p => p.doctorId === doctorId);
+    const all = Array.from(this._stores.prescriptions.values()).filter(p => p.doctorId.toLowerCase() === doctorId.toLowerCase());
     return all.map(p => ({
       prescriptionId: p.prescriptionId,
       patientId: p.patientId,

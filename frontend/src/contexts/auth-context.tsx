@@ -87,8 +87,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
           if (response.ok) {
             const jsonData = await response.json();
-            // Backend returns { status, data: { user } }
-            const userData = jsonData.data?.user || jsonData.user;
+            // Backend returns flat { success: true, user } or legacy { data: { user } }
+            let userData = null as any;
+            if (jsonData && typeof jsonData === 'object' && Object.prototype.hasOwnProperty.call(jsonData, 'success')) {
+              if (jsonData.success === true) {
+                userData = jsonData.user || jsonData.data || null;
+              } else {
+                userData = jsonData.data?.user || jsonData.user || null;
+              }
+            } else {
+              userData = jsonData.data?.user || jsonData.user || null;
+            }
             if (userData) {
               setUser(userData);
               setToken(storedToken);

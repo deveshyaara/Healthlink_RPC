@@ -6,9 +6,12 @@
   "type": "module",
   "scripts": {
     "start": "node src/server.js",
+    "start:prod": "NODE_ENV=production node src/server.js",
     "dev": "nodemon src/server.js",
     "test": "npx jest",
     "lint": "eslint src/**/*.js",
+    "migrate": "node run_migration.js",
+    "validate": "node scripts/validate-deployment.js",
     "postinstall": "npx prisma generate"
   },
   "keywords": [
