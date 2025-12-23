@@ -1,18 +1,37 @@
 import transactionService from '../services/transaction.service.js';
 import logger from '../utils/logger.js';
 import { v4 as uuidv4 } from 'uuid';
-import { PrismaClient } from '@prisma/client';
+import dbService from '../services/db.service.prisma.js';
 
-// Lazy initialize Prisma client to ensure environment variables are loaded
-let prisma = null;
+// In-memory fallback for environments without Prisma/Supabase available
+const _inMemory = {
+  patientWalletMapping: new Map(),
+  async findUniqueByEmail(email) {
+    for (const v of this.patientWalletMapping.values()) {
+      if (v.email === email) {return v;}
+    }
+    return null;
+  },
+  async createPatient(data) {
+    const id = uuidv4();
+    const record = { id, ...data, createdAt: new Date().toISOString(), isActive: true };
+    this.patientWalletMapping.set(id, record);
+    return record;
+  },
+  async findManyByDoctor(doctorId) {
+    const results = [];
+    for (const v of this.patientWalletMapping.values()) {
+      if (v.createdBy === doctorId && v.isActive) {results.push(v);}
+    }
+    return results;
+  },
+};
 
 function getPrismaClient() {
-  if (!prisma) {
-    prisma = new PrismaClient({
-      datasourceUrl: process.env.DATABASE_URL,
-    });
+  if (dbService && dbService.isReady && dbService.isReady()) {
+    return dbService.prisma;
   }
-  return prisma;
+  return _inMemory;
 }
 
 /**
@@ -31,7 +50,7 @@ class HealthcareController {
 
       if (!doctorId) {
         return res.status(503).json({
-          error: 'Unable to determine creating doctor id. Authentication/user service may be unavailable. Try again later.'
+          error: 'Unable to determine creating doctor id. Authentication/user service may be unavailable. Try again later.',
         });
       }
 
@@ -48,10 +67,14 @@ class HealthcareController {
         return res.status(400).json({ error: 'Invalid email format' });
       }
 
-      // Check if patient already exists
-      const existingPatient = await getPrismaClient().patientWalletMapping.findUnique({
-        where: { email }
-      });
+      // Check if patient already exists (supports Prisma or in-memory fallback)
+      const db = getPrismaClient();
+      let existingPatient = null;
+      if (db.patientWalletMapping && typeof db.patientWalletMapping.findUnique === 'function') {
+        existingPatient = await db.patientWalletMapping.findUnique({ where: { email } });
+      } else if (typeof db.findUniqueByEmail === 'function') {
+        existingPatient = await db.findUniqueByEmail(email);
+      }
 
       if (existingPatient) {
         return res.status(409).json({
@@ -60,8 +83,8 @@ class HealthcareController {
             id: existingPatient.id,
             email: existingPatient.email,
             name: existingPatient.name,
-            walletAddress: existingPatient.walletAddress
-          }
+            walletAddress: existingPatient.walletAddress,
+          },
         });
       }
 
@@ -76,14 +99,27 @@ class HealthcareController {
       }
 
       // Create patient wallet mapping in database
-      const patientMapping = await getPrismaClient().patientWalletMapping.create({
-        data: {
+      // Create patient mapping (Prisma or in-memory)
+      let patientMapping;
+      if (db.patientWalletMapping && typeof db.patientWalletMapping.create === 'function') {
+        patientMapping = await db.patientWalletMapping.create({
+          data: {
+            email,
+            name,
+            walletAddress: patientWalletAddress,
+            createdBy: doctorId,
+          },
+        });
+      } else if (typeof db.createPatient === 'function') {
+        patientMapping = await db.createPatient({
           email,
           name,
           walletAddress: patientWalletAddress,
-          createdBy: doctorId
-        }
-      });
+          createdBy: doctorId,
+        });
+      } else {
+        throw new Error('No database backend available to create patient mapping');
+      }
 
       // Upload patient metadata to IPFS using Pinata (initial minimal data)
       const PinataSDK = (await import('@pinata/sdk')).default;
@@ -201,7 +237,7 @@ class HealthcareController {
       const patients = await getPrismaClient().patientWalletMapping.findMany({
         where: {
           createdBy: doctorId,
-          isActive: true
+          isActive: true,
         },
         select: {
           id: true,
@@ -214,41 +250,41 @@ class HealthcareController {
               id: true,
               title: true,
               scheduledAt: true,
-              status: true
+              status: true,
             },
             orderBy: {
-              scheduledAt: 'desc'
+              scheduledAt: 'desc',
             },
-            take: 5 // Last 5 appointments
+            take: 5, // Last 5 appointments
           },
           prescriptions: {
             select: {
               id: true,
               medication: true,
               createdAt: true,
-              status: true
+              status: true,
             },
             orderBy: {
-              createdAt: 'desc'
+              createdAt: 'desc',
             },
-            take: 3 // Last 3 prescriptions
+            take: 3, // Last 3 prescriptions
           },
           medicalRecords: {
             select: {
               id: true,
               title: true,
               recordType: true,
-              createdAt: true
+              createdAt: true,
             },
             orderBy: {
-              createdAt: 'desc'
+              createdAt: 'desc',
             },
-            take: 3 // Last 3 records
-          }
+            take: 3, // Last 3 records
+          },
         },
         orderBy: {
-          createdAt: 'desc'
-        }
+          createdAt: 'desc',
+        },
       });
 
       res.status(200).json({
@@ -465,20 +501,20 @@ class HealthcareController {
         patientEmail,
         doctorAddress,
         doctorId,
-        timestamp,
+        timestamp: _timestamp,
         title,
         description,
         scheduledAt,
         reason = '',
         notes = '',
-        patientDetails // Optional: { age, gender, phoneNumber, emergencyContact, bloodGroup, dateOfBirth }
+        patientDetails, // Optional: { age, gender, phoneNumber, emergencyContact, bloodGroup, dateOfBirth }
       } = req.body;
 
       const doctorUserId = req.user?.id;
 
       if (!doctorUserId) {
         return res.status(503).json({
-          error: 'Unable to determine doctor user id. Authentication/user service may be unavailable. Try again later.'
+          error: 'Unable to determine doctor user id. Authentication/user service may be unavailable. Try again later.',
         });
       }
 
@@ -491,7 +527,7 @@ class HealthcareController {
 
       // Find patient by email
       const patient = await getPrismaClient().patientWalletMapping.findUnique({
-        where: { email: patientEmail }
+        where: { email: patientEmail },
       });
 
       if (!patient) {
@@ -510,7 +546,7 @@ class HealthcareController {
           status: 'SCHEDULED',
           patientId: patient.id,
           doctorId: doctorUserId,
-          notes: notes || reason
+          notes: notes || reason,
         },
         include: {
           patient: {
@@ -518,17 +554,17 @@ class HealthcareController {
               id: true,
               email: true,
               name: true,
-              walletAddress: true
-            }
+              walletAddress: true,
+            },
           },
           doctor: {
             select: {
               id: true,
               fullName: true,
-              email: true
-            }
-          }
-        }
+              email: true,
+            },
+          },
+        },
       });
 
       // Try to create appointment on blockchain
@@ -540,7 +576,7 @@ class HealthcareController {
           doctorAddress || doctorId || '',
           Math.floor(new Date(scheduledAt).getTime() / 1000),
           title,
-          description || notes || ''
+          description || notes || '',
         );
         blockchainResult = result;
       } catch (blockchainError) {
@@ -593,11 +629,11 @@ class HealthcareController {
         success: true,
         data: {
           ...appointment,
-          blockchainCreated: !!blockchainResult
+          blockchainCreated: !!blockchainResult,
         },
         message: patientDetails ?
           'Appointment created successfully and patient details updated.' :
-          'Appointment created successfully.'
+          'Appointment created successfully.',
       });
     } catch (error) {
       next(error);
@@ -667,12 +703,12 @@ class HealthcareController {
    */
   async createPrescription(req, res, next) {
     try {
-      const user = req.user || {};
+      const _user = req.user || {};
       const {
         prescriptionId = uuidv4(),
         patientEmail,
         doctorAddress,
-        doctorId,
+        doctorId: _doctorId,
         medication,
         medications,
         dosage = '',
@@ -685,7 +721,7 @@ class HealthcareController {
 
       if (!doctorUserId) {
         return res.status(503).json({
-          error: 'Unable to determine doctor user id. Authentication/user service may be unavailable. Try again later.'
+          error: 'Unable to determine doctor user id. Authentication/user service may be unavailable. Try again later.',
         });
       }
 
@@ -698,7 +734,7 @@ class HealthcareController {
 
       // Find patient by email
       const patient = await getPrismaClient().patientWalletMapping.findUnique({
-        where: { email: patientEmail }
+        where: { email: patientEmail },
       });
 
       if (!patient) {
@@ -725,7 +761,7 @@ class HealthcareController {
           expiryDate: expiryDate ? new Date(expiryDate) : null,
           status: 'ACTIVE',
           patientId: patient.id,
-          doctorId: doctorUserId
+          doctorId: doctorUserId,
         },
         include: {
           patient: {
@@ -733,33 +769,43 @@ class HealthcareController {
               id: true,
               email: true,
               name: true,
-              walletAddress: true
-            }
+              walletAddress: true,
+            },
           },
           doctor: {
             select: {
               id: true,
               fullName: true,
-              email: true
-            }
-          }
-        }
+              email: true,
+            },
+          },
+        },
       });
 
-      // Try to create prescription on blockchain
+      // Try to create prescription on blockchain only when we have usable on-chain addresses
       let blockchainResult = null;
       try {
         const expiryTimestamp = expiryDate ? Math.floor(new Date(expiryDate).getTime() / 1000) : 0;
-        const result = await transactionService.createPrescription(
-          prescriptionId,
-          patient.walletAddress,
-          doctorAddress || doctorId || '',
-          med,
-          dosage,
-          instructions,
-          expiryTimestamp
-        );
-        blockchainResult = result;
+
+        // Prefer explicit on-chain wallet addresses. Use patient.walletAddress when available,
+        // otherwise fall back to patient.id for local/in-memory flows. For doctor, prefer req.user.walletAddress.
+        const patientOnchainId = patient.walletAddress || patient.id || '';
+        const doctorOnchainId = (req.user && req.user.walletAddress) || doctorAddress || '';
+
+        if (!patientOnchainId || !doctorOnchainId) {
+          logger.warn('Skipping blockchain prescription creation - missing patient or doctor on-chain address', { patientOnchainId, doctorOnchainId });
+        } else {
+          const result = await transactionService.createPrescription(
+            prescriptionId,
+            patientOnchainId,
+            doctorOnchainId,
+            med,
+            dosage,
+            instructions,
+            expiryTimestamp,
+          );
+          blockchainResult = result;
+        }
       } catch (blockchainError) {
         logger.error('Failed to create prescription on blockchain:', blockchainError);
         // Continue with database creation even if blockchain fails
@@ -810,11 +856,11 @@ class HealthcareController {
         success: true,
         data: {
           ...prescription,
-          blockchainCreated: !!blockchainResult
+          blockchainCreated: !!blockchainResult,
         },
         message: patientDetails ?
           'Prescription created successfully and patient details updated.' :
-          'Prescription created successfully.'
+          'Prescription created successfully.',
       });
     } catch (error) {
       next(error);
@@ -1092,7 +1138,7 @@ class HealthcareController {
       // Get appointments for this doctor
       const appointments = await getPrismaClient().appointment.findMany({
         where: {
-          doctorId: doctorId
+          doctorId: doctorId,
         },
         include: {
           patient: {
@@ -1100,13 +1146,13 @@ class HealthcareController {
               id: true,
               email: true,
               name: true,
-              walletAddress: true
-            }
-          }
+              walletAddress: true,
+            },
+          },
         },
         orderBy: {
-          scheduledAt: 'desc'
-        }
+          scheduledAt: 'desc',
+        },
       });
 
       res.status(200).json({
@@ -1140,7 +1186,7 @@ class HealthcareController {
       // Get prescriptions for this doctor
       const prescriptions = await getPrismaClient().prescription.findMany({
         where: {
-          doctorId: doctorId
+          doctorId: doctorId,
         },
         include: {
           patient: {
@@ -1148,13 +1194,13 @@ class HealthcareController {
               id: true,
               email: true,
               name: true,
-              walletAddress: true
-            }
-          }
+              walletAddress: true,
+            },
+          },
         },
         orderBy: {
-          createdAt: 'desc'
-        }
+          createdAt: 'desc',
+        },
       });
 
       res.status(200).json({
@@ -1188,7 +1234,7 @@ class HealthcareController {
       // Get medical records for this doctor
       const records = await getPrismaClient().medicalRecord.findMany({
         where: {
-          doctorId: doctorId
+          doctorId: doctorId,
         },
         include: {
           patient: {
@@ -1196,13 +1242,13 @@ class HealthcareController {
               id: true,
               email: true,
               name: true,
-              walletAddress: true
-            }
-          }
+              walletAddress: true,
+            },
+          },
         },
         orderBy: {
-          createdAt: 'desc'
-        }
+          createdAt: 'desc',
+        },
       });
 
       res.status(200).json({
@@ -1236,7 +1282,7 @@ class HealthcareController {
       // Get lab tests for this doctor
       const labTests = await getPrismaClient().labTest.findMany({
         where: {
-          doctorId: doctorId
+          doctorId: doctorId,
         },
         include: {
           patient: {
@@ -1244,20 +1290,20 @@ class HealthcareController {
               id: true,
               email: true,
               name: true,
-              walletAddress: true
-            }
+              walletAddress: true,
+            },
           },
           lab: {
             select: {
               id: true,
               fullName: true,
-              email: true
-            }
-          }
+              email: true,
+            },
+          },
         },
         orderBy: {
-          createdAt: 'desc'
-        }
+          createdAt: 'desc',
+        },
       });
 
       res.status(200).json({
@@ -1291,7 +1337,7 @@ class HealthcareController {
       // Get consent requests for this doctor
       const consents = await getPrismaClient().consentRequest.findMany({
         where: {
-          requesterId: doctorId
+          requesterId: doctorId,
         },
         include: {
           patient: {
@@ -1299,13 +1345,13 @@ class HealthcareController {
               id: true,
               email: true,
               name: true,
-              walletAddress: true
-            }
-          }
+              walletAddress: true,
+            },
+          },
         },
         orderBy: {
-          createdAt: 'desc'
-        }
+          createdAt: 'desc',
+        },
       });
 
       res.status(200).json({
@@ -1352,14 +1398,14 @@ class HealthcareController {
                 select: {
                   id: true,
                   fullName: true,
-                  email: true
-                }
-              }
+                  email: true,
+                },
+              },
             },
             orderBy: {
-              scheduledAt: 'desc'
+              scheduledAt: 'desc',
             },
-            take: 10
+            take: 10,
           },
           prescriptions: {
             include: {
@@ -1367,14 +1413,14 @@ class HealthcareController {
                 select: {
                   id: true,
                   fullName: true,
-                  email: true
-                }
-              }
+                  email: true,
+                },
+              },
             },
             orderBy: {
-              createdAt: 'desc'
+              createdAt: 'desc',
             },
-            take: 10
+            take: 10,
           },
           medicalRecords: {
             include: {
@@ -1382,24 +1428,24 @@ class HealthcareController {
                 select: {
                   id: true,
                   fullName: true,
-                  email: true
-                }
-              }
+                  email: true,
+                },
+              },
             },
             orderBy: {
-              createdAt: 'desc'
+              createdAt: 'desc',
             },
-            take: 10
+            take: 10,
           },
           _count: {
             select: {
               appointments: true,
               prescriptions: true,
               medicalRecords: true,
-              labTests: true
-            }
-          }
-        }
+              labTests: true,
+            },
+          },
+        },
       });
 
       if (!patient) {

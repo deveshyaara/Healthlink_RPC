@@ -577,6 +577,56 @@ class EthereumService {
     }
   }
 
+  /**
+   * Validate ethereum address (simple check)
+   */
+  isValidEthAddress(address) {
+    if (!address || typeof address !== 'string') {return false;}
+    return /^0x[a-fA-F0-9]{40}$/.test(address);
+  }
+
+  /**
+   * Safe prescription creation helper: only calls on-chain contract when both
+   * patient and doctor identifiers look like valid ethereum addresses.
+   * Otherwise uses the in-memory fallback to avoid ABI/ethers errors.
+   */
+  async createPrescriptionSafe(prescriptionId, patientId, doctorId, medication, dosage, instructions, expiryDate) {
+    const contract = this.contracts['Prescriptions'];
+
+    const patientIsAddr = this.isValidEthAddress(patientId);
+    const doctorIsAddr = this.isValidEthAddress(doctorId);
+
+    if (contract && patientIsAddr && doctorIsAddr) {
+      // both addresses look valid — proceed with on-chain call
+      return await this.createPrescription(prescriptionId, patientId, doctorId, medication, dosage, instructions, expiryDate);
+    }
+
+    logger.warn('createPrescriptionSafe: skipping on-chain call; using in-memory fallback', { prescriptionId, patientIdIsAddr: patientIsAddr, doctorIdIsAddr: doctorIsAddr });
+
+    // Use same fallback as createPrescription's fallback
+    const now = Date.now();
+    const medArg = (typeof medication === 'string') ? medication : JSON.stringify(medication);
+    const dosageArg = dosage || '';
+    const instructionsArg = instructions || '';
+    const expiryArg = expiryDate ? Number(expiryDate) : 0;
+
+    const pres = {
+      prescriptionId,
+      patientId,
+      doctorId,
+      medication: medArg,
+      dosage: dosageArg,
+      instructions: instructionsArg,
+      issuedDate: now,
+      expiryDate: expiryArg,
+      status: 0,
+      createdAt: now,
+      updatedAt: now,
+    };
+    this._stores.prescriptions.set(prescriptionId, pres);
+    return { transactionHash: `local-pres-${prescriptionId}-${now}`, blockNumber: 0, gasUsed: '0', status: 'success' };
+  }
+
   async getPrescriptionsByPatient(patientId) {
     const contract = this.getContract('Prescriptions');
     if (contract) {

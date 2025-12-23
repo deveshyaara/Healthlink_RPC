@@ -7,7 +7,6 @@ import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { useState, useEffect } from 'react';
-import { medicalRecordsApi } from '@/lib/api-client';
 import { useAuth } from '@/contexts/auth-context';
 import { ErrorBanner } from '@/components/ui/error-banner';
 import { Users, Search, Eye, FileText, PlusCircle } from 'lucide-react';
