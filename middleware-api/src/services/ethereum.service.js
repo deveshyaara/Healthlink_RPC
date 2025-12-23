@@ -173,15 +173,20 @@ class EthereumService {
   async createMedicalRecord(recordId, patientId, doctorId, recordType, ipfsHash, metadata) {
     const contract = this.getContract('PatientRecords');
     if (contract) {
-      const tx = await contract.createRecord(
-        recordId,
-        patientId,
-        doctorId,
-        recordType,
-        ipfsHash,
-        JSON.stringify(metadata),
-      );
-      return await this.waitForTransaction(tx);
+      try {
+        const tx = await contract.createRecord(
+          recordId,
+          patientId,
+          doctorId,
+          recordType,
+          ipfsHash,
+          JSON.stringify(metadata),
+        );
+        return await this.waitForTransaction(tx);
+      } catch (error) {
+        logger.error('Error calling createRecord on contract:', error);
+        // Fall back to in-memory store
+      }
     }
 
     // Fallback: store in-memory for local dev if contract isn't deployed
@@ -204,18 +209,23 @@ class EthereumService {
   async getMedicalRecord(recordId) {
     const contract = this.getContract('PatientRecords');
     if (contract) {
-      const record = await contract.getRecord(recordId);
-      return {
-        recordId: record.recordId,
-        patientId: record.patientId,
-        doctorId: record.doctorId,
-        recordType: record.recordType,
-        ipfsHash: record.ipfsHash,
-        metadata: record.metadata ? JSON.parse(record.metadata) : {},
-        createdAt: Number(record.createdAt),
-        updatedAt: Number(record.updatedAt),
-        exists: record.exists,
-      };
+      try {
+        const record = await contract.getRecord(recordId);
+        return {
+          recordId: record.recordId,
+          patientId: record.patientId,
+          doctorId: record.doctorId,
+          recordType: record.recordType,
+          ipfsHash: record.ipfsHash,
+          metadata: record.metadata ? JSON.parse(record.metadata) : {},
+          createdAt: Number(record.createdAt),
+          updatedAt: Number(record.updatedAt),
+          exists: record.exists,
+        };
+      } catch (error) {
+        logger.error('Error calling getRecord on contract:', error);
+        // Fall back to in-memory store
+      }
     }
 
     const rec = this._stores.records.get(recordId);

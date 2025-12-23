@@ -82,6 +82,19 @@ class UserController {
       const token = crypto.randomBytes(32).toString('hex');
       const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days
 
+      // Ensure inviter id is available
+      const inviterId = req.user?.id;
+      if (!inviterId) {
+        return res.status(503).json({
+          success: false,
+          error: {
+            type: 'DEPENDENCY_UNAVAILABLE',
+            message: 'User service unavailable — cannot determine inviter id',
+            statusCode: 503,
+          },
+        });
+      }
+
       // Create invitation record
       const { data: invitation, error } = await supabase
         .from('user_invitations')
@@ -90,7 +103,7 @@ class UserController {
           role,
           token,
           expires_at: expiresAt.toISOString(),
-          invited_by: req.user.id,
+          invited_by: inviterId,
         })
         .select()
         .single();

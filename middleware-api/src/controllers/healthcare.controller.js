@@ -27,7 +27,13 @@ class HealthcareController {
   async createPatient(req, res, next) {
     try {
       const { name, email, walletAddress } = req.body;
-      const doctorId = req.user.id;
+      const doctorId = req.user?.id || req.user?.userId;
+
+      if (!doctorId) {
+        return res.status(503).json({
+          error: 'Unable to determine creating doctor id. Authentication/user service may be unavailable. Try again later.'
+        });
+      }
 
       // Validate required fields - only name and email are required initially
       if (!name || !email) {
@@ -468,7 +474,13 @@ class HealthcareController {
         patientDetails // Optional: { age, gender, phoneNumber, emergencyContact, bloodGroup, dateOfBirth }
       } = req.body;
 
-      const doctorUserId = req.user.id;
+      const doctorUserId = req.user?.id;
+
+      if (!doctorUserId) {
+        return res.status(503).json({
+          error: 'Unable to determine doctor user id. Authentication/user service may be unavailable. Try again later.'
+        });
+      }
 
       // Validate required fields
       if (!patientEmail || !title || !scheduledAt) {
@@ -669,7 +681,13 @@ class HealthcareController {
         patientDetails, // Optional: { age, gender, phoneNumber, emergencyContact, bloodGroup, dateOfBirth }
       } = req.body;
 
-      const doctorUserId = req.user.id;
+      const doctorUserId = req.user?.id;
+
+      if (!doctorUserId) {
+        return res.status(503).json({
+          error: 'Unable to determine doctor user id. Authentication/user service may be unavailable. Try again later.'
+        });
+      }
 
       // Validate required fields
       if (!patientEmail || !medication) {

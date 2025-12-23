@@ -91,39 +91,39 @@ router.get('/patients/search', authenticateJWT, requireDoctor, healthcareControl
 // ======================
 
 /**
- * @route   GET /api/v1/healthcare/appointments
+ * @route   GET /api/v1/healthcare/doctor/appointments
  * @desc    Get all appointments for a doctor
  * @access  Protected (Doctor or Admin)
  */
-router.get('/appointments', authenticateJWT, requireDoctor, healthcareController.getAppointmentsForDoctor);
+router.get('/doctor/appointments', authenticateJWT, requireDoctor, healthcareController.getAppointmentsForDoctor);
 
 /**
- * @route   GET /api/v1/healthcare/prescriptions
+ * @route   GET /api/v1/healthcare/doctor/prescriptions
  * @desc    Get all prescriptions for a doctor
  * @access  Protected (Doctor or Admin)
  */
-router.get('/prescriptions', authenticateJWT, requireDoctor, healthcareController.getPrescriptionsForDoctor);
+router.get('/doctor/prescriptions', authenticateJWT, requireDoctor, healthcareController.getPrescriptionsForDoctor);
 
 /**
- * @route   GET /api/v1/healthcare/records
+ * @route   GET /api/v1/healthcare/doctor/records
  * @desc    Get all medical records for a doctor
  * @access  Protected (Doctor or Admin)
  */
-router.get('/records', authenticateJWT, requireDoctor, healthcareController.getMedicalRecordsForDoctor);
+router.get('/doctor/records', authenticateJWT, requireDoctor, healthcareController.getMedicalRecordsForDoctor);
 
 /**
- * @route   GET /api/v1/healthcare/lab-tests
+ * @route   GET /api/v1/healthcare/doctor/lab-tests
  * @desc    Get all lab tests for a doctor
  * @access  Protected (Doctor or Admin)
  */
-router.get('/lab-tests', authenticateJWT, requireDoctor, healthcareController.getLabTestsForDoctor);
+router.get('/doctor/lab-tests', authenticateJWT, requireDoctor, healthcareController.getLabTestsForDoctor);
 
 /**
- * @route   GET /api/v1/healthcare/consents
+ * @route   GET /api/v1/healthcare/doctor/consents
  * @desc    Get all consent requests for a doctor
  * @access  Protected (Doctor or Admin)
  */
-router.get('/consents', authenticateJWT, requireDoctor, healthcareController.getConsentRequestsForDoctor);
+router.get('/doctor/consents', authenticateJWT, requireDoctor, healthcareController.getConsentRequestsForDoctor);
 
 // ======================
 // Medical Records Routes
