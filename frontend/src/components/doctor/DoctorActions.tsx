@@ -34,6 +34,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { PlusCircle, Calendar, AlertCircle, CheckCircle, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { authUtils } from '@/lib/auth-utils';
 
 /**
  * Add Patient Dialog
@@ -96,7 +97,7 @@ export function AddPatientDialog() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
+          'Authorization': `Bearer ${authUtils.getToken()}`,
         },
         body: JSON.stringify(payload),
       });
@@ -348,7 +349,7 @@ export function ScheduleAppointmentDialog({
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
+          'Authorization': `Bearer ${authUtils.getToken()}`,
         },
         body: JSON.stringify(appointmentPayload),
       });

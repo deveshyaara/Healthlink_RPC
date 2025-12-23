@@ -1,5 +1,6 @@
 'use client';
 import React, { useState } from 'react';
+import { authUtils } from '@/lib/auth-utils';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || '';
 
@@ -16,7 +17,7 @@ export default function DoctorTools({ doctorAddress }: { doctorAddress: string }
     const payload = { doctorAddress, drug, dosage, duration };
     try {
       setLoading(true);
-      const token = localStorage.getItem('auth_token');
+      const token = authUtils.getToken();
       const endpoint = API_BASE ? `${API_BASE}/api/prescriptions` : '/api/prescriptions';
       const headers: Record<string, string> = { 'Content-Type': 'application/json' };
       if (token) {
@@ -42,7 +43,7 @@ export default function DoctorTools({ doctorAddress }: { doctorAddress: string }
     const unix = Math.floor(new Date(time).getTime() / 1000);
     try {
       setLoading(true);
-      const token = localStorage.getItem('auth_token');
+      const token = authUtils.getToken();
       const endpoint = API_BASE ? `${API_BASE}/api/v1/healthcare/appointments` : '/api/v1/healthcare/appointments';
       const headers: Record<string, string> = { 'Content-Type': 'application/json' };
       if (token) {

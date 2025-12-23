@@ -10,6 +10,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { useState, useEffect } from 'react';
 import { Loader2, Pill } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { authUtils } from '@/lib/auth-utils';
 
 // Zod validation schema for a single medication (backend expects single medication, not array)
 const medicationSchema = z.object({
@@ -92,7 +93,7 @@ export function CreatePrescriptionForm({
     const fetchPatients = async () => {
       try {
         // Fetch patients from healthcare API
-        const token = localStorage.getItem('authToken');
+        const token = authUtils.getToken();
         const response = await fetch('/api/v1/healthcare/patients', {
           headers: {
             'Authorization': `Bearer ${token}`,
@@ -141,7 +142,7 @@ export function CreatePrescriptionForm({
       };
 
       // Call healthcare API to create prescription
-      const token = localStorage.getItem('authToken');
+      const token = authUtils.getToken();
       const response = await fetch('/api/v1/healthcare/prescriptions', {
         method: 'POST',
         headers: {

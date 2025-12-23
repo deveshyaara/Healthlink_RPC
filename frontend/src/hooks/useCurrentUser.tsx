@@ -1,5 +1,6 @@
 'use client';
 import { useEffect, useState } from 'react';
+import { authUtils } from '@/lib/auth-utils';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || '';
 
@@ -19,7 +20,7 @@ export default function useCurrentUser() {
     (async () => {
       setLoading(true);
       try {
-        const token = localStorage.getItem('auth_token');
+        const token = authUtils.getToken();
         const endpoint = API_BASE ? `${API_BASE}/api/auth/me` : '/api/auth/me';
         const headers: Record<string, string> = {};
         if (token) {
