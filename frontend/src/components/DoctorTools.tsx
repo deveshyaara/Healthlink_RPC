@@ -16,8 +16,13 @@ export default function DoctorTools({ doctorAddress }: { doctorAddress: string }
     const payload = { doctorAddress, drug, dosage, duration };
     try {
       setLoading(true);
+      const token = localStorage.getItem('auth_token');
       const endpoint = API_BASE ? `${API_BASE}/api/prescriptions` : '/api/prescriptions';
-      const res = await fetch(endpoint, { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify(payload) });
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+      const res = await fetch(endpoint, { method: 'POST', headers, body: JSON.stringify(payload) });
       if (!res.ok) {throw new Error('Failed');}
       setNotice('Prescription created');
       setDrug(''); setDosage(''); setDuration('');
@@ -37,8 +42,13 @@ export default function DoctorTools({ doctorAddress }: { doctorAddress: string }
     const unix = Math.floor(new Date(time).getTime() / 1000);
     try {
       setLoading(true);
+      const token = localStorage.getItem('auth_token');
       const endpoint = API_BASE ? `${API_BASE}/api/v1/healthcare/appointments` : '/api/v1/healthcare/appointments';
-      await fetch(endpoint, { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify({ appointmentId: `appt-${Date.now()}`, patientId: patientAddress, doctorAddress, timestamp: unix, reason: details, notes: '' }) });
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+      await fetch(endpoint, { method: 'POST', headers, body: JSON.stringify({ appointmentId: `appt-${Date.now()}`, patientId: patientAddress, doctorAddress, timestamp: unix, reason: details, notes: '' }) });
       setNotice('Appointment scheduled');
     } catch (err: unknown) {
       const errorMessage = err instanceof Error ? err.message : 'Error';
