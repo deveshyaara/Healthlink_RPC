@@ -51,20 +51,16 @@ export function AddPatientDialog() {
   const [error, setError] = useState<string | null>(null);
 
   const [formData, setFormData] = useState({
-    patientAddress: '',
     name: '',
-    age: '',
-    gender: '',
     email: '',
+    walletAddress: '', // Optional - will be auto-generated if not provided
   });
 
   const resetForm = () => {
     setFormData({
-      patientAddress: '',
       name: '',
-      age: '',
-      gender: '',
       email: '',
+      walletAddress: '',
     });
     setError(null);
   };
@@ -75,14 +71,9 @@ export function AddPatientDialog() {
     setError(null);
 
     try {
-      // Validate required fields - ensure all fields are not empty/null
-      if (!formData.patientAddress || !formData.name || !formData.age || !formData.gender || !formData.email) {
-        throw new Error('All fields are required, including email');
-      }
-
-      const ageNumber = parseInt(formData.age);
-      if (isNaN(ageNumber) || ageNumber < 0 || ageNumber > 150) {
-        throw new Error('Please enter a valid age');
+      // Validate required fields - only name and email are required
+      if (!formData.name || !formData.email) {
+        throw new Error('Name and email are required');
       }
 
       // Validate email format
@@ -91,22 +82,21 @@ export function AddPatientDialog() {
         throw new Error('Please enter a valid email address');
       }
 
-      // Construct the payload object for the new API route
+      // Construct the payload object for the new healthcare API
       const payload = {
-        email: formData.email,
         name: formData.name,
-        age: ageNumber,
-        gender: formData.gender,
-        walletAddress: formData.patientAddress, // Keep wallet address for blockchain compatibility
+        email: formData.email,
+        walletAddress: formData.walletAddress || undefined, // Optional
       };
 
       console.log('Creating patient:', payload);
 
-      // Call the new Next.js API route
-      const response = await fetch('/api/patients/create', {
+      // Call the new healthcare API
+      const response = await fetch('/api/v1/healthcare/patients', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
         },
         body: JSON.stringify(payload),
       });
@@ -122,7 +112,7 @@ export function AddPatientDialog() {
       // Success!
       toast({
         title: 'Patient Created',
-        description: `Patient ${formData.name} has been added successfully.`,
+        description: `Patient ${formData.name} has been added successfully. Wallet address: ${result.data?.walletAddress || 'Auto-generated'}`,
       });
 
       // Reset form and close dialog
@@ -175,18 +165,6 @@ export function AddPatientDialog() {
 
           <div className="grid gap-4 py-4">
             <div className="grid gap-2">
-              <Label htmlFor="patientAddress">Patient Address *</Label>
-              <Input
-                id="patientAddress"
-                placeholder="0x1234...abcd"
-                value={formData.patientAddress}
-                onChange={(e) => setFormData({ ...formData, patientAddress: e.target.value })}
-                required
-                disabled={loading}
-              />
-            </div>
-
-            <div className="grid gap-2">
               <Label htmlFor="name">Full Name *</Label>
               <Input
                 id="name"
@@ -199,49 +177,30 @@ export function AddPatientDialog() {
             </div>
 
             <div className="grid gap-2">
-              <Label htmlFor="age">Age *</Label>
-              <Input
-                id="age"
-                type="number"
-                min="0"
-                max="150"
-                placeholder="30"
-                value={formData.age}
-                onChange={(e) => setFormData({ ...formData, age: e.target.value })}
-                required
-                disabled={loading}
-              />
-            </div>
-
-            <div className="grid gap-2">
-              <Label htmlFor="gender">Gender *</Label>
-              <Select
-                value={formData.gender}
-                onValueChange={(value) => setFormData({ ...formData, gender: value })}
-                disabled={loading}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select gender" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="Male">Male</SelectItem>
-                  <SelectItem value="Female">Female</SelectItem>
-                  <SelectItem value="Other">Other</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="grid gap-2">
               <Label htmlFor="email">Email Address *</Label>
               <Input
                 id="email"
                 type="email"
-                placeholder="patient@example.com"
+                placeholder="john.doe@example.com"
                 value={formData.email}
                 onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                 required
                 disabled={loading}
               />
+            </div>
+
+            <div className="grid gap-2">
+              <Label htmlFor="walletAddress">Wallet Address (Optional)</Label>
+              <Input
+                id="walletAddress"
+                placeholder="0x1234...abcd (leave empty to auto-generate)"
+                value={formData.walletAddress}
+                onChange={(e) => setFormData({ ...formData, walletAddress: e.target.value })}
+                disabled={loading}
+              />
+              <p className="text-sm text-muted-foreground">
+                If not provided, a wallet address will be automatically generated for this patient.
+              </p>
             </div>
           </div>
 
@@ -301,21 +260,35 @@ export function ScheduleAppointmentDialog({
 
   const [formData, setFormData] = useState({
     appointmentId: '',
-    patientId: '',
-    date: '',
-    time: '',
-    type: 'Checkup',
+    patientEmail: '',
+    title: '',
+    description: '',
+    scheduledAt: '',
     notes: '',
+    includePatientDetails: false,
+    patientAge: '',
+    patientGender: '',
+    patientPhone: '',
+    patientEmergencyContact: '',
+    patientBloodGroup: '',
+    patientDateOfBirth: '',
   });
 
   const resetForm = () => {
     setFormData({
       appointmentId: '',
-      patientId: '',
-      date: '',
-      time: '',
-      type: 'Checkup',
+      patientEmail: '',
+      title: '',
+      description: '',
+      scheduledAt: '',
       notes: '',
+      includePatientDetails: false,
+      patientAge: '',
+      patientGender: '',
+      patientPhone: '',
+      patientEmergencyContact: '',
+      patientBloodGroup: '',
+      patientDateOfBirth: '',
     });
     setError(null);
   };
@@ -327,38 +300,70 @@ export function ScheduleAppointmentDialog({
 
     try {
       // Validate required fields
-      if (!formData.appointmentId || !formData.patientId || !formData.date || !formData.time) {
+      if (!formData.patientEmail || !formData.title || !formData.scheduledAt) {
         throw new Error('Please fill in all required fields');
       }
 
-      // Combine date and time into timestamp
-      const dateTimeString = `${formData.date}T${formData.time}`;
-      const timestamp = Math.floor(new Date(dateTimeString).getTime() / 1000);
+      // Validate email format
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(formData.patientEmail)) {
+        throw new Error('Please enter a valid patient email address');
+      }
 
-      if (isNaN(timestamp)) {
+      // Parse the scheduled date/time
+      const scheduledAt = new Date(formData.scheduledAt);
+      if (isNaN(scheduledAt.getTime())) {
         throw new Error('Please enter a valid date and time');
       }
 
-      // Create appointment payload matching backend expectations
-      const appointmentPayload = {
-        appointmentId: formData.appointmentId,
-        patientId: formData.patientId,
-        doctorAddress: '', // Will be set by backend from authenticated user
-        timestamp: timestamp,
+      // Create appointment payload for the new healthcare API
+      const appointmentPayload: any = {
+        patientEmail: formData.patientEmail,
+        title: formData.title,
+        description: formData.description || formData.notes || '',
+        scheduledAt: formData.scheduledAt,
         notes: formData.notes || '',
       };
 
+      // Add patient details if provided
+      if (formData.includePatientDetails) {
+        const patientDetails: any = {};
+        
+        if (formData.patientAge) patientDetails.age = parseInt(formData.patientAge);
+        if (formData.patientGender) patientDetails.gender = formData.patientGender;
+        if (formData.patientPhone) patientDetails.phoneNumber = formData.patientPhone;
+        if (formData.patientEmergencyContact) patientDetails.emergencyContact = formData.patientEmergencyContact;
+        if (formData.patientBloodGroup) patientDetails.bloodGroup = formData.patientBloodGroup;
+        if (formData.patientDateOfBirth) patientDetails.dateOfBirth = formData.patientDateOfBirth;
+
+        if (Object.keys(patientDetails).length > 0) {
+          appointmentPayload.patientDetails = patientDetails;
+        }
+      }
+
       console.log('Scheduling appointment:', appointmentPayload);
 
-      // Use API client to create appointment
-      const { appointmentsApi } = await import('@/lib/api-client');
-      const response = await appointmentsApi.create(appointmentPayload);
+      // Call the new healthcare API
+      const response = await fetch('/api/v1/healthcare/appointments', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
+        },
+        body: JSON.stringify(appointmentPayload),
+      });
 
-      console.log('Appointment scheduled successfully:', response);
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || `HTTP ${response.status}: ${response.statusText}`);
+      }
+
+      const result = await response.json();
+      console.log('Appointment scheduled successfully:', result);
 
       toast({
         title: 'Appointment Scheduled',
-        description: `Appointment scheduled for ${formData.date} at ${formData.time}`,
+        description: `Appointment scheduled for ${new Date(formData.scheduledAt).toLocaleString()}`,
       });
 
       resetForm();
@@ -415,70 +420,64 @@ export function ScheduleAppointmentDialog({
 
           <div className="grid gap-4 py-4">
             <div className="grid gap-2">
-              <Label htmlFor="appointmentId">Appointment ID *</Label>
+              <Label htmlFor="patientEmail">Patient Email *</Label>
               <Input
-                id="appointmentId"
-                placeholder="APT_001"
-                value={formData.appointmentId}
-                onChange={(e) => setFormData({ ...formData, appointmentId: e.target.value })}
+                id="patientEmail"
+                type="email"
+                placeholder="patient@example.com"
+                value={formData.patientEmail}
+                onChange={(e) => setFormData({ ...formData, patientEmail: e.target.value })}
                 required
                 disabled={loading}
               />
             </div>
 
             <div className="grid gap-2">
-              <Label htmlFor="patientId">Patient ID *</Label>
+              <Label htmlFor="title">Appointment Title *</Label>
               <Input
-                id="patientId"
-                placeholder="PATIENT_001"
-                value={formData.patientId}
-                onChange={(e) => setFormData({ ...formData, patientId: e.target.value })}
+                id="title"
+                placeholder="Checkup, Consultation, etc."
+                value={formData.title}
+                onChange={(e) => setFormData({ ...formData, title: e.target.value })}
                 required
                 disabled={loading}
               />
             </div>
 
             <div className="grid gap-2">
-              <Label htmlFor="date">Date *</Label>
+              <Label htmlFor="scheduledAt">Date & Time *</Label>
               <Input
-                id="date"
-                type="date"
-                value={formData.date}
-                onChange={(e) => setFormData({ ...formData, date: e.target.value })}
+                id="scheduledAt"
+                type="datetime-local"
+                value={formData.scheduledAt}
+                onChange={(e) => setFormData({ ...formData, scheduledAt: e.target.value })}
                 required
                 disabled={loading}
               />
             </div>
 
             <div className="grid gap-2">
-              <Label htmlFor="time">Time *</Label>
-              <Input
-                id="time"
-                type="time"
-                value={formData.time}
-                onChange={(e) => setFormData({ ...formData, time: e.target.value })}
-                required
+              <Label htmlFor="description">Description</Label>
+              <Textarea
+                id="description"
+                placeholder="Appointment description..."
+                value={formData.description}
+                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                 disabled={loading}
+                rows={3}
               />
             </div>
 
             <div className="grid gap-2">
-              <Label htmlFor="type">Appointment Type *</Label>
-              <Select
-                value={formData.type}
-                onValueChange={(value) => setFormData({ ...formData, type: value })}
+              <Label htmlFor="notes">Notes</Label>
+              <Textarea
+                id="notes"
+                placeholder="Additional notes..."
+                value={formData.notes}
+                onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
                 disabled={loading}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select type" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="Checkup">Checkup</SelectItem>
-                  <SelectItem value="Follow-up">Follow-up</SelectItem>
-                  <SelectItem value="Consultation">Consultation</SelectItem>
-                  <SelectItem value="Emergency">Emergency</SelectItem>
-                </SelectContent>
-              </Select>
+                rows={2}
+              />
             </div>
 
             <div className="grid gap-2">
@@ -491,6 +490,115 @@ export function ScheduleAppointmentDialog({
                 disabled={loading}
               />
             </div>
+
+            <div className="flex items-center space-x-2">
+              <input
+                type="checkbox"
+                id="includePatientDetails"
+                checked={formData.includePatientDetails}
+                onChange={(e) => setFormData({ ...formData, includePatientDetails: e.target.checked })}
+                disabled={loading}
+                className="rounded"
+              />
+              <Label htmlFor="includePatientDetails" className="text-sm">
+                Update patient details with this appointment
+              </Label>
+            </div>
+
+            {formData.includePatientDetails && (
+              <div className="border rounded-lg p-4 bg-gray-50 dark:bg-gray-900">
+                <h4 className="font-medium mb-3">Patient Details (Optional)</h4>
+                <div className="grid gap-3">
+                  <div className="grid gap-2">
+                    <Label htmlFor="patientAge">Age</Label>
+                    <Input
+                      id="patientAge"
+                      type="number"
+                      min="0"
+                      max="150"
+                      placeholder="30"
+                      value={formData.patientAge}
+                      onChange={(e) => setFormData({ ...formData, patientAge: e.target.value })}
+                      disabled={loading}
+                    />
+                  </div>
+
+                  <div className="grid gap-2">
+                    <Label htmlFor="patientGender">Gender</Label>
+                    <Select
+                      value={formData.patientGender}
+                      onValueChange={(value) => setFormData({ ...formData, patientGender: value })}
+                      disabled={loading}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select gender" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Male">Male</SelectItem>
+                        <SelectItem value="Female">Female</SelectItem>
+                        <SelectItem value="Other">Other</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="grid gap-2">
+                    <Label htmlFor="patientPhone">Phone Number</Label>
+                    <Input
+                      id="patientPhone"
+                      placeholder="+1-555-0123"
+                      value={formData.patientPhone}
+                      onChange={(e) => setFormData({ ...formData, patientPhone: e.target.value })}
+                      disabled={loading}
+                    />
+                  </div>
+
+                  <div className="grid gap-2">
+                    <Label htmlFor="patientEmergencyContact">Emergency Contact</Label>
+                    <Input
+                      id="patientEmergencyContact"
+                      placeholder="Emergency contact info"
+                      value={formData.patientEmergencyContact}
+                      onChange={(e) => setFormData({ ...formData, patientEmergencyContact: e.target.value })}
+                      disabled={loading}
+                    />
+                  </div>
+
+                  <div className="grid gap-2">
+                    <Label htmlFor="patientBloodGroup">Blood Group</Label>
+                    <Select
+                      value={formData.patientBloodGroup}
+                      onValueChange={(value) => setFormData({ ...formData, patientBloodGroup: value })}
+                      disabled={loading}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select blood group" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="A+">A+</SelectItem>
+                        <SelectItem value="A-">A-</SelectItem>
+                        <SelectItem value="B+">B+</SelectItem>
+                        <SelectItem value="B-">B-</SelectItem>
+                        <SelectItem value="AB+">AB+</SelectItem>
+                        <SelectItem value="AB-">AB-</SelectItem>
+                        <SelectItem value="O+">O+</SelectItem>
+                        <SelectItem value="O-">O-</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="grid gap-2">
+                    <Label htmlFor="patientDateOfBirth">Date of Birth</Label>
+                    <Input
+                      id="patientDateOfBirth"
+                      type="date"
+                      value={formData.patientDateOfBirth}
+                      onChange={(e) => setFormData({ ...formData, patientDateOfBirth: e.target.value })}
+                      disabled={loading}
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
 
           <DialogFooter>

@@ -7,10 +7,12 @@ const router = express.Router();
 // Sanity checks: ensure controller methods exist to avoid obscure Express errors
 const expectedHandlers = [
   'createMedicalRecord', 'getCurrentUserRecords', 'getRecordsByPatient',
-  'createPatient', 'getPatient', 'getMedicalRecord',
-  'createConsent', 'getCurrentUserConsents', 'getConsent', 'revokeConsent',
-  'getCurrentUserAppointments', 'createAppointment', 'getAppointment', 'updateAppointment', 'cancelAppointment',
-  'getCurrentUserPrescriptions', 'createPrescription', 'getPrescription', 'updatePrescription',
+  'createPatient', 'getPatient', 'getPatientsForDoctor', 'getPatientByEmail',
+  'getMedicalRecord', 'getMedicalRecordsForDoctor',
+  'createConsent', 'getCurrentUserConsents', 'getConsent', 'revokeConsent', 'getConsentRequestsForDoctor',
+  'getCurrentUserAppointments', 'createAppointment', 'getAppointment', 'updateAppointment', 'cancelAppointment', 'getAppointmentsForDoctor',
+  'getCurrentUserPrescriptions', 'createPrescription', 'getPrescription', 'updatePrescription', 'getPrescriptionsForDoctor',
+  'getLabTestsForDoctor',
   'registerDoctor', 'verifyDoctor', 'getVerifiedDoctors', 'getAuditRecords',
 ];
 
@@ -71,11 +73,57 @@ router.post('/patients', authenticateJWT, requireDoctor, healthcareController.cr
 router.get('/patients/:patientId', authenticateJWT, healthcareController.getPatient);
 
 /**
- * @route   GET /api/v1/healthcare/patients/:patientId/records
- * @desc    Get all medical records for a patient
- * @access  Protected (Patient can view own records, Doctor with consent, Admin)
+ * @route   GET /api/v1/healthcare/patients
+ * @desc    Get all patients for a doctor
+ * @access  Protected (Doctor or Admin)
  */
-router.get('/patients/:patientId/records', authenticateJWT, healthcareController.getRecordsByPatient);
+router.get('/patients', authenticateJWT, requireDoctor, healthcareController.getPatientsForDoctor);
+
+/**
+ * @route   GET /api/v1/healthcare/patients/search
+ * @desc    Search patient by email
+ * @access  Protected (Doctor or Admin)
+ */
+router.get('/patients/search', authenticateJWT, requireDoctor, healthcareController.getPatientByEmail);
+
+// ======================
+// Doctor Dashboard Routes
+// ======================
+
+/**
+ * @route   GET /api/v1/healthcare/appointments
+ * @desc    Get all appointments for a doctor
+ * @access  Protected (Doctor or Admin)
+ */
+router.get('/appointments', authenticateJWT, requireDoctor, healthcareController.getAppointmentsForDoctor);
+
+/**
+ * @route   GET /api/v1/healthcare/prescriptions
+ * @desc    Get all prescriptions for a doctor
+ * @access  Protected (Doctor or Admin)
+ */
+router.get('/prescriptions', authenticateJWT, requireDoctor, healthcareController.getPrescriptionsForDoctor);
+
+/**
+ * @route   GET /api/v1/healthcare/records
+ * @desc    Get all medical records for a doctor
+ * @access  Protected (Doctor or Admin)
+ */
+router.get('/records', authenticateJWT, requireDoctor, healthcareController.getMedicalRecordsForDoctor);
+
+/**
+ * @route   GET /api/v1/healthcare/lab-tests
+ * @desc    Get all lab tests for a doctor
+ * @access  Protected (Doctor or Admin)
+ */
+router.get('/lab-tests', authenticateJWT, requireDoctor, healthcareController.getLabTestsForDoctor);
+
+/**
+ * @route   GET /api/v1/healthcare/consents
+ * @desc    Get all consent requests for a doctor
+ * @access  Protected (Doctor or Admin)
+ */
+router.get('/consents', authenticateJWT, requireDoctor, healthcareController.getConsentRequestsForDoctor);
 
 // ======================
 // Medical Records Routes

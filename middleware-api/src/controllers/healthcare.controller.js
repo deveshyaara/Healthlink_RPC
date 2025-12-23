@@ -1,6 +1,19 @@
 import transactionService from '../services/transaction.service.js';
 import logger from '../utils/logger.js';
 import { v4 as uuidv4 } from 'uuid';
+import { PrismaClient } from '@prisma/client';
+
+// Lazy initialize Prisma client to ensure environment variables are loaded
+let prisma = null;
+
+function getPrismaClient() {
+  if (!prisma) {
+    prisma = new PrismaClient({
+      datasourceUrl: process.env.DATABASE_URL,
+    });
+  }
+  return prisma;
+}
 
 /**
  * HealthcareController
@@ -13,22 +26,60 @@ class HealthcareController {
    */
   async createPatient(req, res, next) {
     try {
-      const { patientAddress, name, age, gender, email } = req.body;
+      const { name, email, walletAddress } = req.body;
+      const doctorId = req.user.id;
 
-      // Validate required fields
-      if (!patientAddress || !name || age === undefined || !gender) {
+      // Validate required fields - only name and email are required initially
+      if (!name || !email) {
         return res.status(400).json({
-          error: 'Missing required fields: patientAddress, name, age, gender',
+          error: 'Missing required fields: name, email',
         });
       }
 
-      // Parse age to number
-      const parsedAge = parseInt(age, 10);
-      if (isNaN(parsedAge) || parsedAge < 0 || parsedAge > 150) {
-        return res.status(400).json({ error: 'Age must be a valid number between 0 and 150' });
+      // Validate email format
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(email)) {
+        return res.status(400).json({ error: 'Invalid email format' });
       }
 
-      // Upload patient metadata to IPFS using Pinata
+      // Check if patient already exists
+      const existingPatient = await getPrismaClient().patientWalletMapping.findUnique({
+        where: { email }
+      });
+
+      if (existingPatient) {
+        return res.status(409).json({
+          error: 'Patient with this email already exists',
+          data: {
+            id: existingPatient.id,
+            email: existingPatient.email,
+            name: existingPatient.name,
+            walletAddress: existingPatient.walletAddress
+          }
+        });
+      }
+
+      // Generate wallet address if not provided
+      let patientWalletAddress = walletAddress;
+      if (!patientWalletAddress) {
+        // Generate a deterministic wallet address based on email
+        // In production, this would be replaced with proper wallet generation
+        const crypto = await import('crypto');
+        const hash = crypto.default.createHash('sha256').update(email).digest('hex');
+        patientWalletAddress = '0x' + hash.substring(0, 40);
+      }
+
+      // Create patient wallet mapping in database
+      const patientMapping = await getPrismaClient().patientWalletMapping.create({
+        data: {
+          email,
+          name,
+          walletAddress: patientWalletAddress,
+          createdBy: doctorId
+        }
+      });
+
+      // Upload patient metadata to IPFS using Pinata (initial minimal data)
       const PinataSDK = (await import('@pinata/sdk')).default;
       const pinata = new PinataSDK(
         process.env.PINATA_API_KEY,
@@ -36,19 +87,18 @@ class HealthcareController {
       );
 
       const patientMetadata = {
-        email: email || '',
+        email,
         name,
-        age: parsedAge,
-        gender,
-        walletAddress: patientAddress,
+        walletAddress: patientWalletAddress,
         createdAt: new Date().toISOString(),
+        // Additional details will be added later when appointments/prescriptions are created
       };
 
       let ipfsHash;
       try {
         const pinataResult = await pinata.pinJSONToIPFS(patientMetadata, {
           pinataMetadata: {
-            name: `patient-${email || patientAddress}-${Date.now()}`,
+            name: `patient-${email}-${Date.now()}`,
           },
           pinataOptions: {
             cidVersion: 1,
@@ -57,27 +107,35 @@ class HealthcareController {
         ipfsHash = pinataResult.IpfsHash;
       } catch (ipfsError) {
         logger.error('Failed to upload patient data to IPFS:', ipfsError);
-        return res.status(500).json({ error: 'Failed to upload patient data to IPFS' });
+        // Don't fail the request if IPFS upload fails, but log it
+        ipfsHash = null;
       }
 
-      // Create patient on blockchain
-      const result = await transactionService.createPatient(
-        patientAddress, name, parsedAge, gender, ipfsHash,
-      );
+      // Create patient on blockchain with minimal data (if IPFS succeeded)
+      let blockchainResult = null;
+      if (ipfsHash) {
+        try {
+          blockchainResult = await transactionService.createPatient(
+            patientWalletAddress, name, 0, '', ipfsHash, // age=0, gender='' as placeholders
+          );
+        } catch (blockchainError) {
+          logger.error('Failed to create patient on blockchain:', blockchainError);
+          // Continue with database creation even if blockchain fails
+        }
+      }
 
       res.status(201).json({
         success: true,
         data: {
-          id: result.data?.id || patientAddress,
-          patientAddress,
-          name,
-          age: parsedAge,
-          gender,
-          email: email || '',
+          id: patientMapping.id,
+          email: patientMapping.email,
+          name: patientMapping.name,
+          walletAddress: patientMapping.walletAddress,
           ipfsHash,
-          createdAt: new Date().toISOString(),
+          blockchainCreated: !!blockchainResult,
+          createdAt: patientMapping.createdAt,
         },
-        message: 'Patient created successfully',
+        message: 'Patient created successfully with minimal information. Additional details can be added when creating appointments or prescriptions.',
       });
     } catch (error) {
       next(error);
@@ -117,8 +175,89 @@ class HealthcareController {
   }
 
   /**
+   * Get all patients for a doctor
+   * GET /api/v1/healthcare/patients
+   */
+  async getPatientsForDoctor(req, res, next) {
+    try {
+      const userRole = req.user.role;
+      const doctorId = req.user.id;
+
+      // Only doctors and admins can access this endpoint
+      if (userRole !== 'doctor' && userRole !== 'admin') {
+        return res.status(403).json({
+          success: false,
+          error: 'Only doctors and admins can access patient lists',
+        });
+      }
+
+      // Get patients created by this doctor
+      const patients = await getPrismaClient().patientWalletMapping.findMany({
+        where: {
+          createdBy: doctorId,
+          isActive: true
+        },
+        select: {
+          id: true,
+          email: true,
+          name: true,
+          walletAddress: true,
+          createdAt: true,
+          appointments: {
+            select: {
+              id: true,
+              title: true,
+              scheduledAt: true,
+              status: true
+            },
+            orderBy: {
+              scheduledAt: 'desc'
+            },
+            take: 5 // Last 5 appointments
+          },
+          prescriptions: {
+            select: {
+              id: true,
+              medication: true,
+              createdAt: true,
+              status: true
+            },
+            orderBy: {
+              createdAt: 'desc'
+            },
+            take: 3 // Last 3 prescriptions
+          },
+          medicalRecords: {
+            select: {
+              id: true,
+              title: true,
+              recordType: true,
+              createdAt: true
+            },
+            orderBy: {
+              createdAt: 'desc'
+            },
+            take: 3 // Last 3 records
+          }
+        },
+        orderBy: {
+          createdAt: 'desc'
+        }
+      });
+
+      res.status(200).json({
+        success: true,
+        data: patients,
+        message: 'Patients retrieved successfully',
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
    * Create a medical record
-   * POST /api/v1/records
+   * POST /api/v1/healthcare/records
    */
   async createMedicalRecord(req, res, next) {
     try {
@@ -315,14 +454,139 @@ class HealthcareController {
    */
   async createAppointment(req, res, next) {
     try {
-      const { appointmentId, patientId, doctorAddress, doctorId, timestamp, reason = '', notes = '' } = req.body;
-      const docAddr = doctorAddress || doctorId || '';
+      const {
+        appointmentId,
+        patientEmail,
+        doctorAddress,
+        doctorId,
+        timestamp,
+        title,
+        description,
+        scheduledAt,
+        reason = '',
+        notes = '',
+        patientDetails // Optional: { age, gender, phoneNumber, emergencyContact, bloodGroup, dateOfBirth }
+      } = req.body;
 
-      const result = await transactionService.createAppointment(
-        appointmentId, patientId, docAddr, timestamp, reason || '', notes || '',
-      );
+      const doctorUserId = req.user.id;
 
-      res.status(201).json(result);
+      // Validate required fields
+      if (!patientEmail || !title || !scheduledAt) {
+        return res.status(400).json({
+          error: 'Missing required fields: patientEmail, title, scheduledAt',
+        });
+      }
+
+      // Find patient by email
+      const patient = await getPrismaClient().patientWalletMapping.findUnique({
+        where: { email: patientEmail }
+      });
+
+      if (!patient) {
+        return res.status(404).json({
+          error: 'Patient not found. Please create the patient first.',
+        });
+      }
+
+      // Create appointment in database
+      const appointment = await getPrismaClient().appointment.create({
+        data: {
+          appointmentId: appointmentId || uuidv4(),
+          title,
+          description: description || reason || notes,
+          scheduledAt: new Date(scheduledAt),
+          status: 'SCHEDULED',
+          patientId: patient.id,
+          doctorId: doctorUserId,
+          notes: notes || reason
+        },
+        include: {
+          patient: {
+            select: {
+              id: true,
+              email: true,
+              name: true,
+              walletAddress: true
+            }
+          },
+          doctor: {
+            select: {
+              id: true,
+              fullName: true,
+              email: true
+            }
+          }
+        }
+      });
+
+      // Try to create appointment on blockchain
+      let blockchainResult = null;
+      try {
+        const result = await transactionService.createAppointment(
+          appointment.appointmentId,
+          patient.walletAddress,
+          doctorAddress || doctorId || '',
+          Math.floor(new Date(scheduledAt).getTime() / 1000),
+          title,
+          description || notes || ''
+        );
+        blockchainResult = result;
+      } catch (blockchainError) {
+        logger.error('Failed to create appointment on blockchain:', blockchainError);
+        // Continue with database creation even if blockchain fails
+      }
+
+      // If patient details are provided, update the patient record
+      if (patientDetails) {
+        try {
+          // Update patient data on blockchain if blockchain is available
+          if (blockchainResult) {
+            const updatedData = {
+              name: patient.name,
+              email: patient.email,
+              ...patientDetails,
+              walletAddress: patient.walletAddress,
+              updatedAt: new Date().toISOString(),
+            };
+
+            await transactionService.updatePatientData(patient.walletAddress, updatedData);
+
+            // Update IPFS with new data
+            const PinataSDK = (await import('@pinata/sdk')).default;
+            const pinata = new PinataSDK(
+              process.env.PINATA_API_KEY,
+              process.env.PINATA_SECRET_API_KEY,
+            );
+
+            const pinataResult = await pinata.pinJSONToIPFS(updatedData, {
+              pinataMetadata: {
+                name: `patient-${patient.email}-${Date.now()}`,
+              },
+              pinataOptions: {
+                cidVersion: 1,
+              },
+            });
+
+            // Update the patient record with new IPFS hash
+            updatedData.ipfsHash = pinataResult.IpfsHash;
+            await transactionService.updatePatientData(patient.walletAddress, updatedData);
+          }
+        } catch (updateError) {
+          logger.warn('Failed to update patient details during appointment creation:', updateError);
+          // Don't fail the appointment creation if patient update fails
+        }
+      }
+
+      res.status(201).json({
+        success: true,
+        data: {
+          ...appointment,
+          blockchainCreated: !!blockchainResult
+        },
+        message: patientDetails ?
+          'Appointment created successfully and patient details updated.' :
+          'Appointment created successfully.'
+      });
     } catch (error) {
       next(error);
     }
@@ -394,17 +658,36 @@ class HealthcareController {
       const user = req.user || {};
       const {
         prescriptionId = uuidv4(),
-        patientId,
+        patientEmail,
         doctorAddress,
         doctorId,
         medication,
         medications,
         dosage = '',
         instructions = '',
-        expiryTimestamp = 0,
+        expiryDate,
+        patientDetails, // Optional: { age, gender, phoneNumber, emergencyContact, bloodGroup, dateOfBirth }
       } = req.body;
 
-      const docAddr = doctorAddress || doctorId || user.id || user.userId || '';
+      const doctorUserId = req.user.id;
+
+      // Validate required fields
+      if (!patientEmail || !medication) {
+        return res.status(400).json({
+          error: 'Missing required fields: patientEmail, medication',
+        });
+      }
+
+      // Find patient by email
+      const patient = await getPrismaClient().patientWalletMapping.findUnique({
+        where: { email: patientEmail }
+      });
+
+      if (!patient) {
+        return res.status(404).json({
+          error: 'Patient not found. Please create the patient first.',
+        });
+      }
 
       // Normalize medication input: prefer explicit `medication`, then `medications` array
       let med = medication || '';
@@ -414,22 +697,107 @@ class HealthcareController {
         med = medications.map((m) => (typeof m === 'string' ? m : JSON.stringify(m))).join('|');
       }
 
-      logger.info('createPrescription payload', {
-        prescriptionId,
-        patientId,
-        doctorAddress: docAddr,
-        medicationType: typeof med,
-        medicationSample: (typeof med === 'string' ? med.slice(0, 200) : JSON.stringify(med)),
-        dosage,
-        instructions,
-        expiryTimestamp,
+      // Create prescription in database
+      const prescription = await getPrismaClient().prescription.create({
+        data: {
+          prescriptionId,
+          medication: med,
+          dosage,
+          instructions,
+          expiryDate: expiryDate ? new Date(expiryDate) : null,
+          status: 'ACTIVE',
+          patientId: patient.id,
+          doctorId: doctorUserId
+        },
+        include: {
+          patient: {
+            select: {
+              id: true,
+              email: true,
+              name: true,
+              walletAddress: true
+            }
+          },
+          doctor: {
+            select: {
+              id: true,
+              fullName: true,
+              email: true
+            }
+          }
+        }
       });
 
-      const result = await transactionService.createPrescription(
-        prescriptionId, patientId, docAddr, med, dosage, instructions, expiryTimestamp,
-      );
+      // Try to create prescription on blockchain
+      let blockchainResult = null;
+      try {
+        const expiryTimestamp = expiryDate ? Math.floor(new Date(expiryDate).getTime() / 1000) : 0;
+        const result = await transactionService.createPrescription(
+          prescriptionId,
+          patient.walletAddress,
+          doctorAddress || doctorId || '',
+          med,
+          dosage,
+          instructions,
+          expiryTimestamp
+        );
+        blockchainResult = result;
+      } catch (blockchainError) {
+        logger.error('Failed to create prescription on blockchain:', blockchainError);
+        // Continue with database creation even if blockchain fails
+      }
 
-      res.status(201).json(result);
+      // If patient details are provided, update the patient record
+      if (patientDetails) {
+        try {
+          // Update patient data on blockchain if blockchain is available
+          if (blockchainResult) {
+            const updatedData = {
+              name: patient.name,
+              email: patient.email,
+              ...patientDetails,
+              walletAddress: patient.walletAddress,
+              updatedAt: new Date().toISOString(),
+            };
+
+            await transactionService.updatePatientData(patient.walletAddress, updatedData);
+
+            // Update IPFS with new data
+            const PinataSDK = (await import('@pinata/sdk')).default;
+            const pinata = new PinataSDK(
+              process.env.PINATA_API_KEY,
+              process.env.PINATA_SECRET_API_KEY,
+            );
+
+            const pinataResult = await pinata.pinJSONToIPFS(updatedData, {
+              pinataMetadata: {
+                name: `patient-${patient.email}-${Date.now()}`,
+              },
+              pinataOptions: {
+                cidVersion: 1,
+              },
+            });
+
+            // Update the patient record with new IPFS hash
+            updatedData.ipfsHash = pinataResult.IpfsHash;
+            await transactionService.updatePatientData(patient.walletAddress, updatedData);
+          }
+        } catch (updateError) {
+          logger.warn('Failed to update patient details during prescription creation:', updateError);
+          // Don't fail the prescription creation if patient update fails
+        }
+      }
+
+      res.status(201).json({
+        success: true,
+        data: {
+          ...prescription,
+          blockchainCreated: !!blockchainResult
+        },
+        message: patientDetails ?
+          'Prescription created successfully and patient details updated.' :
+          'Prescription created successfully.'
+      });
     } catch (error) {
       next(error);
     }
@@ -680,6 +1048,352 @@ class HealthcareController {
         success: true,
         data: appointments,
         count: appointments.length,
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * Get appointments for a doctor
+   * GET /api/v1/healthcare/appointments
+   */
+  async getAppointmentsForDoctor(req, res, next) {
+    try {
+      const userRole = req.user.role;
+      const doctorId = req.user.id;
+
+      // Only doctors and admins can access this endpoint
+      if (userRole !== 'doctor' && userRole !== 'admin') {
+        return res.status(403).json({
+          success: false,
+          error: 'Only doctors and admins can access appointments',
+        });
+      }
+
+      // Get appointments for this doctor
+      const appointments = await getPrismaClient().appointment.findMany({
+        where: {
+          doctorId: doctorId
+        },
+        include: {
+          patient: {
+            select: {
+              id: true,
+              email: true,
+              name: true,
+              walletAddress: true
+            }
+          }
+        },
+        orderBy: {
+          scheduledAt: 'desc'
+        }
+      });
+
+      res.status(200).json({
+        success: true,
+        data: appointments,
+        count: appointments.length,
+        message: 'Appointments retrieved successfully',
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * Get prescriptions for a doctor
+   * GET /api/v1/healthcare/prescriptions
+   */
+  async getPrescriptionsForDoctor(req, res, next) {
+    try {
+      const userRole = req.user.role;
+      const doctorId = req.user.id;
+
+      // Only doctors and admins can access this endpoint
+      if (userRole !== 'doctor' && userRole !== 'admin') {
+        return res.status(403).json({
+          success: false,
+          error: 'Only doctors and admins can access prescriptions',
+        });
+      }
+
+      // Get prescriptions for this doctor
+      const prescriptions = await getPrismaClient().prescription.findMany({
+        where: {
+          doctorId: doctorId
+        },
+        include: {
+          patient: {
+            select: {
+              id: true,
+              email: true,
+              name: true,
+              walletAddress: true
+            }
+          }
+        },
+        orderBy: {
+          createdAt: 'desc'
+        }
+      });
+
+      res.status(200).json({
+        success: true,
+        data: prescriptions,
+        count: prescriptions.length,
+        message: 'Prescriptions retrieved successfully',
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * Get medical records for a doctor
+   * GET /api/v1/healthcare/records
+   */
+  async getMedicalRecordsForDoctor(req, res, next) {
+    try {
+      const userRole = req.user.role;
+      const doctorId = req.user.id;
+
+      // Only doctors and admins can access this endpoint
+      if (userRole !== 'doctor' && userRole !== 'admin') {
+        return res.status(403).json({
+          success: false,
+          error: 'Only doctors and admins can access medical records',
+        });
+      }
+
+      // Get medical records for this doctor
+      const records = await getPrismaClient().medicalRecord.findMany({
+        where: {
+          doctorId: doctorId
+        },
+        include: {
+          patient: {
+            select: {
+              id: true,
+              email: true,
+              name: true,
+              walletAddress: true
+            }
+          }
+        },
+        orderBy: {
+          createdAt: 'desc'
+        }
+      });
+
+      res.status(200).json({
+        success: true,
+        data: records,
+        count: records.length,
+        message: 'Medical records retrieved successfully',
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * Get lab tests for a doctor
+   * GET /api/v1/healthcare/lab-tests
+   */
+  async getLabTestsForDoctor(req, res, next) {
+    try {
+      const userRole = req.user.role;
+      const doctorId = req.user.id;
+
+      // Only doctors and admins can access this endpoint
+      if (userRole !== 'doctor' && userRole !== 'admin') {
+        return res.status(403).json({
+          success: false,
+          error: 'Only doctors and admins can access lab tests',
+        });
+      }
+
+      // Get lab tests for this doctor
+      const labTests = await getPrismaClient().labTest.findMany({
+        where: {
+          doctorId: doctorId
+        },
+        include: {
+          patient: {
+            select: {
+              id: true,
+              email: true,
+              name: true,
+              walletAddress: true
+            }
+          },
+          lab: {
+            select: {
+              id: true,
+              fullName: true,
+              email: true
+            }
+          }
+        },
+        orderBy: {
+          createdAt: 'desc'
+        }
+      });
+
+      res.status(200).json({
+        success: true,
+        data: labTests,
+        count: labTests.length,
+        message: 'Lab tests retrieved successfully',
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * Get consent requests for a doctor
+   * GET /api/v1/healthcare/consents
+   */
+  async getConsentRequestsForDoctor(req, res, next) {
+    try {
+      const userRole = req.user.role;
+      const doctorId = req.user.id;
+
+      // Only doctors and admins can access this endpoint
+      if (userRole !== 'doctor' && userRole !== 'admin') {
+        return res.status(403).json({
+          success: false,
+          error: 'Only doctors and admins can access consent requests',
+        });
+      }
+
+      // Get consent requests for this doctor
+      const consents = await getPrismaClient().consentRequest.findMany({
+        where: {
+          requesterId: doctorId
+        },
+        include: {
+          patient: {
+            select: {
+              id: true,
+              email: true,
+              name: true,
+              walletAddress: true
+            }
+          }
+        },
+        orderBy: {
+          createdAt: 'desc'
+        }
+      });
+
+      res.status(200).json({
+        success: true,
+        data: consents,
+        count: consents.length,
+        message: 'Consent requests retrieved successfully',
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * Get patient by email for doctors
+   * GET /api/v1/healthcare/patients/search?email=patient@example.com
+   */
+  async getPatientByEmail(req, res, next) {
+    try {
+      const userRole = req.user.role;
+      const { email } = req.query;
+
+      // Only doctors and admins can search for patients
+      if (userRole !== 'doctor' && userRole !== 'admin') {
+        return res.status(403).json({
+          success: false,
+          error: 'Only doctors and admins can search for patients',
+        });
+      }
+
+      if (!email) {
+        return res.status(400).json({
+          error: 'Email parameter is required',
+        });
+      }
+
+      // Find patient by email
+      const patient = await getPrismaClient().patientWalletMapping.findUnique({
+        where: { email },
+        include: {
+          appointments: {
+            include: {
+              doctor: {
+                select: {
+                  id: true,
+                  fullName: true,
+                  email: true
+                }
+              }
+            },
+            orderBy: {
+              scheduledAt: 'desc'
+            },
+            take: 10
+          },
+          prescriptions: {
+            include: {
+              doctor: {
+                select: {
+                  id: true,
+                  fullName: true,
+                  email: true
+                }
+              }
+            },
+            orderBy: {
+              createdAt: 'desc'
+            },
+            take: 10
+          },
+          medicalRecords: {
+            include: {
+              doctor: {
+                select: {
+                  id: true,
+                  fullName: true,
+                  email: true
+                }
+              }
+            },
+            orderBy: {
+              createdAt: 'desc'
+            },
+            take: 10
+          },
+          _count: {
+            select: {
+              appointments: true,
+              prescriptions: true,
+              medicalRecords: true,
+              labTests: true
+            }
+          }
+        }
+      });
+
+      if (!patient) {
+        return res.status(404).json({
+          error: 'Patient not found',
+        });
+      }
+
+      res.status(200).json({
+        success: true,
+        data: patient,
+        message: 'Patient found successfully',
       });
     } catch (error) {
       next(error);

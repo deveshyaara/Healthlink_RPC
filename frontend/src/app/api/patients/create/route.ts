@@ -3,20 +3,18 @@ import { NextRequest, NextResponse } from 'next/server';
 interface CreatePatientRequest {
   email: string;
   name: string;
-  age: number;
-  gender: string;
   walletAddress: string;
 }
 
 export async function POST(request: NextRequest) {
   try {
     const body: CreatePatientRequest = await request.json();
-    const { email, name, age, gender, walletAddress } = body;
+    const { email, name, walletAddress } = body;
 
-    // Validate required fields
-    if (!email || !name || age === undefined || !gender || !walletAddress) {
+    // Validate required fields - only name, email, and walletAddress are required
+    if (!email || !name || !walletAddress) {
       return NextResponse.json(
-        { error: 'Missing required fields: email, name, age, gender, walletAddress' },
+        { error: 'Missing required fields: email, name, walletAddress' },
         { status: 400 }
       );
     }
@@ -26,15 +24,6 @@ export async function POST(request: NextRequest) {
     if (!emailRegex.test(email)) {
       return NextResponse.json(
         { error: 'Invalid email format' },
-        { status: 400 }
-      );
-    }
-
-    // Validate age
-    const parsedAge = parseInt(String(age), 10);
-    if (isNaN(parsedAge) || parsedAge < 0 || parsedAge > 150) {
-      return NextResponse.json(
-        { error: 'Age must be a valid number between 0 and 150' },
         { status: 400 }
       );
     }
@@ -52,8 +41,6 @@ export async function POST(request: NextRequest) {
       body: JSON.stringify({
         patientAddress: walletAddress,
         name,
-        age: parsedAge,
-        gender,
         email,
         ipfsHash: `patient-${email}-${Date.now()}`, // This will be overridden by backend
       }),
@@ -76,14 +63,12 @@ export async function POST(request: NextRequest) {
           id: result.data?.id || walletAddress,
           email,
           name,
-          age: parsedAge,
-          gender,
           walletAddress,
           ipfsHash: result.data?.ipfsHash || '',
           createdAt: new Date().toISOString(),
         },
       },
-      message: 'Patient created successfully',
+      message: 'Patient created successfully with minimal information. Additional details can be added when creating appointments or prescriptions.',
     });
 
   } catch (error) {

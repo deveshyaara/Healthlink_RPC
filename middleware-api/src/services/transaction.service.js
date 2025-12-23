@@ -55,28 +55,26 @@ class TransactionService {
   }
 
   /**
-   * Get patient information
+   * Update patient data with additional information
    * @param {string} patientId - Patient ID
-   * @returns {Promise<Object>} Patient data
+   * @param {Object} updatedData - Updated patient data
+   * @returns {Promise<Object>} Transaction result
    */
-  async getPatient(patientId) {
+  async updatePatientData(patientId, updatedData) {
     try {
       await this.initialize();
-      logger.info('Service: Getting patient', { patientId });
+      logger.info('Service: Updating patient data', { patientId });
 
-      const result = await ethereumService.getPatient(patientId);
+      const result = await ethereumService.updatePatientData(patientId, updatedData);
 
       return {
         success: true,
         data: result,
-        functionName: 'getPatient',
+        functionName: 'updatePatientData',
         timestamp: new Date().toISOString(),
       };
     } catch (error) {
-      logger.error('Service: getPatient failed:', error);
-      if (error.message && error.message.includes('does not exist')) {
-        throw new NotFoundError('Patient');
-      }
+      logger.error('Service: updatePatientData failed:', error);
       throw error;
     }
   }

@@ -298,6 +298,12 @@ class EthereumService {
     };
   }
 
+  async updatePatientData(patientId, updatedData) {
+    const contract = this.getContract('HealthLink');
+    const tx = await contract.updatePatientData(patientId, JSON.stringify(updatedData));
+    return await this.waitForTransaction(tx);
+  }
+
   async createConsent(consentId, patientId, granteeAddress, scope, purpose, validUntil) {
     const contract = this.getContract('HealthLink');
     const tx = await contract.createConsent(

@@ -20,6 +20,10 @@ interface Patient {
   patientId: string;
   name: string;
   email?: string;
+  age?: number;
+  gender?: string;
+  phoneNumber?: string;
+  bloodGroup?: string;
   lastVisit?: string;
   recordCount?: number;
   status?: string;
@@ -53,44 +57,41 @@ function DoctorPatientsPageContent() {
       setError(null);
       setLoading(true);
 
-      // Get all medical records created by this doctor
-      const records = await medicalRecordsApi.getAll();
+      // Use the new API endpoint to get patients created by this doctor
+      const response = await fetch('/api/v1/healthcare/patients', {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
+        },
+      });
 
-      // Extract unique patients from records
-      const patientMap = new Map<string, Patient>();
-
-      if (Array.isArray(records)) {
-        records.forEach((record: { id: string; patientId: string; diagnosis: string; patientName?: string; patientEmail?: string; createdAt?: string; timestamp?: string }) => {
-          const patientId = record.patientId;
-          if (patientId) {
-            if (!patientMap.has(patientId)) {
-              patientMap.set(patientId, {
-                patientId: patientId,
-                name: record.patientName || patientId,
-                email: record.patientEmail,
-                lastVisit: record.createdAt || record.timestamp,
-                recordCount: 1,
-                status: 'Active',
-              });
-            } else {
-              const existing = patientMap.get(patientId)!;
-              existing.recordCount = (existing.recordCount || 0) + 1;
-              // Update last visit if newer
-              if (record.createdAt && (!existing.lastVisit || record.createdAt > existing.lastVisit)) {
-                existing.lastVisit = record.createdAt;
-              }
-            }
-          }
-        });
+      if (!response.ok) {
+        throw new Error(`Failed to fetch patients: ${response.statusText}`);
       }
 
-      const patientList = Array.from(patientMap.values());
-      setPatients(patientList);
-      setFilteredPatients(patientList);
+      const data = await response.json();
+
+      if (data.success && Array.isArray(data.data)) {
+        // Transform the data to match the expected Patient interface
+        const transformedPatients: Patient[] = data.data.map((patient: any) => ({
+          patientId: patient.walletAddress, // Use wallet address as patient ID
+          name: patient.name,
+          email: patient.email,
+          lastVisit: patient.createdAt,
+          recordCount: (patient.appointments?.length || 0) + (patient.prescriptions?.length || 0) + (patient.medicalRecords?.length || 0),
+          status: patient.isActive ? 'Active' : 'Inactive',
+        }));
+
+        setPatients(transformedPatients);
+        setFilteredPatients(transformedPatients);
+      } else {
+        setPatients([]);
+        setFilteredPatients([]);
+      }
     } catch (err) {
-      console.error('Failed to fetch patients:', err);
-      const errorMessage = err instanceof Error ? err.message : 'Failed to load patients';
-      setError(errorMessage);
+      console.error('Error fetching patients:', err);
+      setError(err instanceof Error ? err.message : 'Failed to fetch patients');
       setPatients([]);
       setFilteredPatients([]);
     } finally {
@@ -189,6 +190,10 @@ function DoctorPatientsPageContent() {
                   <TableHead>Patient ID</TableHead>
                   <TableHead>Name</TableHead>
                   <TableHead>Email</TableHead>
+                  <TableHead>Age</TableHead>
+                  <TableHead>Gender</TableHead>
+                  <TableHead>Phone</TableHead>
+                  <TableHead>Blood Group</TableHead>
                   <TableHead>Records</TableHead>
                   <TableHead>Last Visit</TableHead>
                   <TableHead>Status</TableHead>
@@ -206,6 +211,10 @@ function DoctorPatientsPageContent() {
                     </TableCell>
                     <TableCell>{patient.name}</TableCell>
                     <TableCell>{patient.email || '—'}</TableCell>
+                    <TableCell>{patient.age || '—'}</TableCell>
+                    <TableCell>{patient.gender || '—'}</TableCell>
+                    <TableCell>{patient.phoneNumber || '—'}</TableCell>
+                    <TableCell>{patient.bloodGroup || '—'}</TableCell>
                     <TableCell>
                       <Badge variant="outline">{patient.recordCount || 0} records</Badge>
                     </TableCell>

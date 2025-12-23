@@ -13,6 +13,83 @@ datasource db {
 }
 
 // ============================================================================
+// Enums - Type-Safe Status and Type Values
+// ============================================================================
+
+enum Role {
+  PATIENT
+  DOCTOR
+  ADMIN
+  GOVERNMENT
+  LAB
+  
+  @@map("role")
+}
+
+enum DoctorVerificationStatus {
+  PENDING
+  VERIFIED
+  SUSPENDED
+  
+  @@map("doctor_verification_status")
+}
+
+enum InvitationStatus {
+  PENDING
+  ACCEPTED
+  CANCELLED
+  EXPIRED
+  
+  @@map("invitation_status")
+}
+
+enum AppointmentStatus {
+  SCHEDULED
+  COMPLETED
+  CANCELLED
+  NO_SHOW
+  
+  @@map("appointment_status")
+}
+
+enum PrescriptionStatus {
+  ACTIVE
+  COMPLETED
+  CANCELLED
+  
+  @@map("prescription_status")
+}
+
+enum RecordType {
+  DIAGNOSIS
+  TREATMENT
+  PRESCRIPTION
+  LAB_RESULT
+  IMAGING
+  OTHER
+  
+  @@map("record_type")
+}
+
+enum ConsentStatus {
+  PENDING
+  APPROVED
+  DENIED
+  REVOKED
+  
+  @@map("consent_status")
+}
+
+enum LabTestStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+  
+  @@map("lab_test_status")
+}
+
+// ============================================================================
 // User Model - Authentication and Profile Metadata
 // ============================================================================
 model User {
@@ -58,6 +135,19 @@ model User {
   auditLogs UserAuditLog[]
   sentInvitations UserInvitation[] @relation("SentInvitations")
   
+  // Doctor Relations
+  doctorAppointments Appointment[] @relation("DoctorAppointments")
+  doctorPrescriptions Prescription[] @relation("DoctorPrescriptions")
+  doctorRecords MedicalRecord[] @relation("DoctorRecords")
+  doctorLabTests LabTest[] @relation("DoctorLabTests")
+  createdPatientMappings PatientWalletMapping[] @relation("CreatedPatientMappings")
+  
+  // Consent Relations
+  consentRequests ConsentRequest[] @relation("ConsentRequests")
+  
+  // Lab Relations
+  labTests LabTest[] @relation("LabTests")
+  
   @@index([email], name: "idx_users_email")
   @@index([role], name: "idx_users_role")
   @@index([fabricEnrollmentId], name: "idx_users_fabric_enrollment_id")
@@ -87,36 +177,6 @@ model UserAuditLog {
   @@index([userId], name: "idx_audit_user_id")
   @@index([createdAt(sort: Desc)], name: "idx_audit_created_at")
   @@map("user_audit_log")
-}
-
-// ============================================================================
-// Enums - Type-Safe Role and Status Values
-// ============================================================================
-
-enum Role {
-  PATIENT
-  DOCTOR
-  ADMIN
-  GOVERNMENT
-  
-  @@map("role")
-}
-
-enum DoctorVerificationStatus {
-  PENDING
-  VERIFIED
-  SUSPENDED
-  
-  @@map("doctor_verification_status")
-}
-
-enum InvitationStatus {
-  PENDING
-  ACCEPTED
-  CANCELLED
-  EXPIRED
-  
-  @@map("invitation_status")
 }
 
 // ============================================================================
@@ -151,5 +211,207 @@ model UserInvitation {
 }
 
 // ============================================================================
-// Enums - Type-Safe Role and Status Values
+// PatientWalletMapping Model - Email to Wallet Address Mapping
 // ============================================================================
+model PatientWalletMapping {
+  // Primary Key
+  id String @id @default(uuid()) @db.Uuid
+
+  // Patient Email (unique identifier)
+  email String @unique @db.VarChar(255)
+
+  // Blockchain Wallet Address
+  walletAddress String @unique @db.VarChar(42)
+
+  // Patient Basic Info
+  name String @db.VarChar(255)
+
+  // Doctor who created this mapping
+  createdBy String @map("created_by") @db.Uuid
+  createdByUser User @relation("CreatedPatientMappings", fields: [createdBy], references: [id], onDelete: Cascade)
+
+  // Status
+  isActive Boolean @default(true) @map("is_active")
+
+  // Timestamps
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  // Relations
+  appointments Appointment[]
+  prescriptions Prescription[]
+  medicalRecords MedicalRecord[]
+  consentRequests ConsentRequest[]
+  labTests LabTest[]
+
+  @@index([email], name: "idx_patient_wallet_email")
+  @@index([walletAddress], name: "idx_patient_wallet_address")
+  @@index([createdBy], name: "idx_patient_wallet_created_by")
+  @@map("patient_wallet_mappings")
+}
+
+// ============================================================================
+// Appointment Model - Doctor-Patient Appointments
+// ============================================================================
+model Appointment {
+  // Primary Key
+  id String @id @default(uuid()) @db.Uuid
+
+  // Appointment Details
+  appointmentId String @unique @map("appointment_id") @db.VarChar(255)
+  title String @db.VarChar(255)
+  description String? @db.Text
+  scheduledAt DateTime @map("scheduled_at") @db.Timestamptz(6)
+  status AppointmentStatus @default(SCHEDULED)
+
+  // Relationships
+  patientId String @map("patient_id") @db.Uuid
+  patient PatientWalletMapping @relation(fields: [patientId], references: [id], onDelete: Cascade)
+
+  doctorId String @map("doctor_id") @db.Uuid
+  doctor User @relation("DoctorAppointments", fields: [doctorId], references: [id], onDelete: Cascade)
+
+  // Additional Details
+  notes String? @db.Text
+  location String? @db.VarChar(255)
+
+  // Timestamps
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@index([appointmentId], name: "idx_appointments_appointment_id")
+  @@index([patientId], name: "idx_appointments_patient_id")
+  @@index([doctorId], name: "idx_appointments_doctor_id")
+  @@index([scheduledAt], name: "idx_appointments_scheduled_at")
+  @@map("appointments")
+}
+
+// ============================================================================
+// Prescription Model - Doctor-Patient Prescriptions
+// ============================================================================
+model Prescription {
+  // Primary Key
+  id String @id @default(uuid()) @db.Uuid
+
+  // Prescription Details
+  prescriptionId String @unique @map("prescription_id") @db.VarChar(255)
+  medication String @db.VarChar(255)
+  dosage String @db.VarChar(100)
+  instructions String? @db.Text
+  expiryDate DateTime? @map("expiry_date") @db.Timestamptz(6)
+  status PrescriptionStatus @default(ACTIVE)
+
+  // Relationships
+  patientId String @map("patient_id") @db.Uuid
+  patient PatientWalletMapping @relation(fields: [patientId], references: [id], onDelete: Cascade)
+
+  doctorId String @map("doctor_id") @db.Uuid
+  doctor User @relation("DoctorPrescriptions", fields: [doctorId], references: [id], onDelete: Cascade)
+
+  // Timestamps
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@index([prescriptionId], name: "idx_prescriptions_prescription_id")
+  @@index([patientId], name: "idx_prescriptions_patient_id")
+  @@index([doctorId], name: "idx_prescriptions_doctor_id")
+  @@map("prescriptions")
+}
+
+// ============================================================================
+// MedicalRecord Model - Patient Medical Records
+// ============================================================================
+model MedicalRecord {
+  // Primary Key
+  id String @id @default(uuid()) @db.Uuid
+
+  // Record Details
+  recordId String @unique @map("record_id") @db.VarChar(255)
+  title String @db.VarChar(255)
+  description String? @db.Text
+  recordType RecordType @map("record_type")
+  ipfsHash String @map("ipfs_hash") @db.VarChar(255)
+  fileName String? @map("file_name") @db.VarChar(255)
+
+  // Relationships
+  patientId String @map("patient_id") @db.Uuid
+  patient PatientWalletMapping @relation(fields: [patientId], references: [id], onDelete: Cascade)
+
+  doctorId String @map("doctor_id") @db.Uuid
+  doctor User @relation("DoctorRecords", fields: [doctorId], references: [id], onDelete: Cascade)
+
+  // Timestamps
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@index([recordId], name: "idx_medical_records_record_id")
+  @@index([patientId], name: "idx_medical_records_patient_id")
+  @@index([doctorId], name: "idx_medical_records_doctor_id")
+  @@map("medical_records")
+}
+
+// ============================================================================
+// ConsentRequest Model - Patient Consent Requests
+// ============================================================================
+model ConsentRequest {
+  // Primary Key
+  id String @id @default(uuid()) @db.Uuid
+
+  // Consent Details
+  consentId String @unique @map("consent_id") @db.VarChar(255)
+  purpose String @db.Text
+  scope String @db.VarChar(100)
+  status ConsentStatus @default(PENDING)
+  validUntil DateTime @map("valid_until") @db.Timestamptz(6)
+
+  // Relationships
+  patientId String @map("patient_id") @db.Uuid
+  patient PatientWalletMapping @relation(fields: [patientId], references: [id], onDelete: Cascade)
+
+  requesterId String @map("requester_id") @db.Uuid
+  requester User @relation("ConsentRequests", fields: [requesterId], references: [id], onDelete: Cascade)
+
+  // Timestamps
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@index([consentId], name: "idx_consent_requests_consent_id")
+  @@index([patientId], name: "idx_consent_requests_patient_id")
+  @@index([requesterId], name: "idx_consent_requests_requester_id")
+  @@map("consent_requests")
+}
+
+// ============================================================================
+// LabTest Model - Laboratory Test Results
+// ============================================================================
+model LabTest {
+  // Primary Key
+  id String @id @default(uuid()) @db.Uuid
+
+  // Test Details
+  testId String @unique @map("test_id") @db.VarChar(255)
+  testName String @map("test_name") @db.VarChar(255)
+  testType String @map("test_type") @db.VarChar(100)
+  results String? @db.Text
+  status LabTestStatus @default(PENDING)
+  performedAt DateTime? @map("performed_at") @db.Timestamptz(6)
+
+  // Relationships
+  patientId String @map("patient_id") @db.Uuid
+  patient PatientWalletMapping @relation(fields: [patientId], references: [id], onDelete: Cascade)
+
+  doctorId String @map("doctor_id") @db.Uuid
+  doctor User @relation("DoctorLabTests", fields: [doctorId], references: [id], onDelete: Cascade)
+
+  labId String? @map("lab_id") @db.Uuid
+  lab User? @relation("LabTests", fields: [labId], references: [id], onDelete: SetNull)
+
+  // Timestamps
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@index([testId], name: "idx_lab_tests_test_id")
+  @@index([patientId], name: "idx_lab_tests_patient_id")
+  @@index([doctorId], name: "idx_lab_tests_doctor_id")
+  @@map("lab_tests")
+}

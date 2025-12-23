@@ -29,10 +29,18 @@ contract HealthLink is AccessControl {
         bool isActive;
     }
 
+    struct Patient {
+        string patientId;
+        string publicData; // JSON string with patient details
+        bool exists;
+        uint256 createdAt;
+    }
+
     // Storage
     mapping(address => Record[]) private patientRecords;
     mapping(address => Appointment[]) private doctorAppointments;
     mapping(address => Appointment[]) private patientAppointments;
+    mapping(string => Patient) private patients;
 
     uint256 private _appointmentIdCounter;
 
@@ -45,6 +53,73 @@ contract HealthLink is AccessControl {
         address admin = initialAdmin == address(0) ? msg.sender : initialAdmin;
         _grantRole(DEFAULT_ADMIN_ROLE, admin);
         _setRoleAdmin(DOCTOR_ROLE, DEFAULT_ADMIN_ROLE);
+    }
+
+    /**
+     * createPatient
+     * Create a new patient record with minimal information
+     */
+    function createPatient(
+        string calldata _patientId,
+        string calldata _name,
+        uint256 _age,
+        string calldata _gender,
+        string calldata _ipfsHash
+    ) external returns (bool) {
+        require(!patients[_patientId].exists, "HealthLink: patient already exists");
+        require(bytes(_patientId).length > 0, "HealthLink: patient ID required");
+        require(bytes(_name).length > 0, "HealthLink: name required");
+
+        // Create JSON string for public data
+        string memory publicData = string(abi.encodePacked(
+            '{"name":"', _name, '",',
+            '"age":', uint2str(_age), ',',
+            '"gender":"', _gender, '",',
+            '"ipfsHash":"', _ipfsHash, '"}'
+        ));
+
+        patients[_patientId] = Patient({
+            patientId: _patientId,
+            publicData: publicData,
+            exists: true,
+            createdAt: block.timestamp
+        });
+
+        return true;
+    }
+
+    /**
+     * getPatient
+     * Get patient information by ID
+     */
+    function getPatient(string calldata _patientId) external view returns (
+        string memory patientId,
+        string memory publicData,
+        bool exists,
+        uint256 createdAt
+    ) {
+        Patient memory patient = patients[_patientId];
+        return (
+            patient.patientId,
+            patient.publicData,
+            patient.exists,
+            patient.createdAt
+        );
+    }
+
+    /**
+     * updatePatientData
+     * Update patient information (add additional details)
+     */
+    function updatePatientData(
+        string calldata _patientId,
+        string calldata _updatedData
+    ) external {
+        require(patients[_patientId].exists, "HealthLink: patient does not exist");
+        require(hasRole(DEFAULT_ADMIN_ROLE, msg.sender) || hasRole(DOCTOR_ROLE, msg.sender), 
+                "HealthLink: only admin or doctor can update patient data");
+
+        patients[_patientId].publicData = _updatedData;
     }
 
     // Admin function to add doctor role
@@ -186,5 +261,28 @@ contract HealthLink is AccessControl {
     // Required override for AccessControl
     function supportsInterface(bytes4 interfaceId) public view virtual override returns (bool) {
         return super.supportsInterface(interfaceId);
+    }
+
+    // Helper function to convert uint to string
+    function uint2str(uint256 _i) internal pure returns (string memory) {
+        if (_i == 0) {
+            return "0";
+        }
+        uint256 j = _i;
+        uint256 len;
+        while (j != 0) {
+            len++;
+            j /= 10;
+        }
+        bytes memory bstr = new bytes(len);
+        uint256 k = len;
+        while (_i != 0) {
+            k = k - 1;
+            uint8 temp = (48 + uint8(_i - _i / 10 * 10));
+            bytes1 b1 = bytes1(temp);
+            bstr[k] = b1;
+            _i /= 10;
+        }
+        return string(bstr);
     }
 }
