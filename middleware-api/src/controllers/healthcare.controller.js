@@ -78,8 +78,9 @@ class HealthcareController {
 
       if (existingPatient) {
         return res.status(409).json({
+          success: false,
           error: 'Patient with this email already exists',
-          data: {
+          existing: {
             id: existingPatient.id,
             email: existingPatient.email,
             name: existingPatient.name,
@@ -168,15 +169,13 @@ class HealthcareController {
 
       res.status(201).json({
         success: true,
-        data: {
-          id: patientMapping.id,
-          email: patientMapping.email,
-          name: patientMapping.name,
-          walletAddress: patientMapping.walletAddress,
-          ipfsHash,
-          blockchainCreated: !!blockchainResult,
-          createdAt: patientMapping.createdAt,
-        },
+        id: patientMapping.id,
+        email: patientMapping.email,
+        name: patientMapping.name,
+        walletAddress: patientMapping.walletAddress,
+        ipfsHash,
+        blockchainCreated: !!blockchainResult,
+        createdAt: patientMapping.createdAt,
         message: 'Patient created successfully with minimal information. Additional details can be added when creating appointments or prescriptions.',
       });
     } catch (error) {
@@ -289,7 +288,8 @@ class HealthcareController {
 
       res.status(200).json({
         success: true,
-        data: patients,
+        count: patients.length,
+        patients,
         message: 'Patients retrieved successfully',
       });
     } catch (error) {

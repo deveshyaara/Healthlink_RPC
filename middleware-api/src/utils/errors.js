@@ -49,6 +49,58 @@ export class PeerUnavailableError extends BlockchainError {
 }
 
 /**
+ * Web3/Ethereum specific errors
+ */
+export class Web3Error extends BlockchainError {
+  constructor(message, originalError = null, code = null) {
+    super(message, originalError);
+    this.web3Code = code;
+    this.type = 'WEB3_ERROR';
+  }
+}
+
+export class UserRejectedError extends Web3Error {
+  constructor(message = 'User rejected the transaction') {
+    super(message);
+    this.statusCode = 400;
+    this.type = 'USER_REJECTED';
+  }
+}
+
+export class InsufficientFundsError extends Web3Error {
+  constructor(message = 'Insufficient funds for transaction') {
+    super(message);
+    this.statusCode = 400;
+    this.type = 'INSUFFICIENT_FUNDS';
+  }
+}
+
+export class NonceError extends Web3Error {
+  constructor(message = 'Transaction nonce conflict') {
+    super(message);
+    this.statusCode = 409;
+    this.type = 'NONCE_CONFLICT';
+  }
+}
+
+export class ContractRevertError extends Web3Error {
+  constructor(message, reason = null) {
+    super(message);
+    this.statusCode = 400;
+    this.type = 'CONTRACT_REVERT';
+    this.reason = reason;
+  }
+}
+
+export class NetworkError extends BlockchainError {
+  constructor(message = 'Network connection error') {
+    super(message);
+    this.statusCode = 503;
+    this.type = 'NETWORK_ERROR';
+  }
+}
+
+/**
  * Chaincode Error
  */
 export class ChaincodeError extends BlockchainError {

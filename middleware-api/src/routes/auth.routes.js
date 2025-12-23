@@ -1,3 +1,5 @@
+// Fixed by Audit Report Item 1.
+
 /**
  * Authentication Routes
  * JWT-based authentication endpoints

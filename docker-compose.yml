@@ -1,0 +1,64 @@
+version: '3.8'
+
+services:
+  db:
+    image: postgres:15-alpine
+    container_name: healthlink-db
+    environment:
+      POSTGRES_DB: healthlink
+      POSTGRES_USER: healthlink
+      POSTGRES_PASSWORD: healthlink123
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U healthlink -d healthlink"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - healthlink-network
+
+  redis:
+    image: redis:7-alpine
+    container_name: healthlink-redis
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+    networks:
+      - healthlink-network
+
+  app:
+    build:
+      context: ./middleware-api
+      dockerfile: Dockerfile
+    container_name: healthlink-api
+    environment:
+      - NODE_ENV=production
+      - DATABASE_URL=postgresql://healthlink:healthlink123@db:5432/healthlink
+      - REDIS_URL=redis://redis:6379
+      - DB_HOST=db
+      - REDIS_HOST=redis
+      # Add other env vars as needed
+    ports:
+      - "3000:3000"
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - healthlink-network
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+
+networks:
+  healthlink-network:
+    driver: bridge

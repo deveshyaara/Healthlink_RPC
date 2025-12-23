@@ -67,7 +67,8 @@ export const schemas = {
   // User registration schema
   registerUser: Joi.object({
     userId: Joi.string().alphanum().min(3).max(30).required(),
-    role: Joi.string().valid('client', 'admin', 'peer').default('client'),
+    // Allow application roles used by HealthLink and default to patient
+    role: Joi.string().valid('patient', 'doctor', 'admin').default('patient'),
     affiliation: Joi.string().default('org1.department1'),
   }),
 

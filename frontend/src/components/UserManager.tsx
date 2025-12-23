@@ -1,6 +1,6 @@
 'use client';
 import React, { useCallback, useEffect, useState } from 'react';
-import { walletApi, usersApi, doctorsApi } from '../lib/api-client';
+import { usersApi, doctorsApi } from '../lib/api-client';
 
 interface User {
   id?: string;
@@ -18,35 +18,38 @@ export default function UserManager(): JSX.Element {
   const [pageSize] = useState(10);
   const [users, setUsers] = useState<User[]>([]);
   const [_total, setTotal] = useState(0);
-  const [loading, setLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [inviteEmail, setInviteEmail] = useState('');
   const [inviteRole, setInviteRole] = useState<'doctor' | 'patient'>('patient');
-  const endpoint = useCallback(async (r: string | null, s: string, p: number) => {
+  const endpoint = useCallback(async (r: string | null) => {
     // Use doctors API for doctor list
     if (r === 'doctor') {
       const doctors = await doctorsApi.getVerified();
       return { items: doctors, total: doctors.length };
     }
-    // For patients and all, use wallet identities
-    const identities = await walletApi.getIdentities({ page: p, pageSize, search: s });
-    return identities;
-  }, [pageSize]);
+    // For patients and all, use users API
+    const users = await usersApi.getUsers();
+    return { items: users, total: users.length };
+  }, []);
 
   const [refreshTrigger, setRefreshTrigger] = useState(0);
 
   const loadUsers = useCallback(async () => {
-    setLoading(true);
+    setIsLoading(true);
+    setError(null);
     try {
-      const result = await endpoint(roleFilter === 'all' ? null : roleFilter, search, page);
-      setUsers(result.items || result.identities || result || []);
-      setTotal(result.total || (result.items ? result.items.length : result.identities ? result.identities.length : 0));
-    } catch {
+      const result = await endpoint(roleFilter === 'all' ? null : roleFilter);
+      setUsers(result.items || []);
+      setTotal(result.total);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to load users');
       setUsers([]);
       setTotal(0);
     } finally {
-      setLoading(false);
+      setIsLoading(false);
     }
-  }, [roleFilter, search, page, endpoint]);
+  }, [roleFilter, endpoint]);
 
   useEffect(() => {
     loadUsers();
@@ -68,6 +71,7 @@ export default function UserManager(): JSX.Element {
   return (
     <div className="bg-white rounded shadow p-4">
       <h3 className="font-medium mb-3">User Manager</h3>
+      {error && <div className="mb-3 text-red-600">{error}</div>}
       <div className="flex gap-2 mb-3">
         <select value={roleFilter} onChange={(e) => { setRoleFilter(e.target.value as 'all' | 'doctor' | 'patient'); setPage(1); }} className="rounded border px-2 py-1">
           <option value="all">All</option>
@@ -88,8 +92,8 @@ export default function UserManager(): JSX.Element {
             </tr>
           </thead>
           <tbody>
-            {loading && <tr><td colSpan={3} className="py-4">Loading…</td></tr>}
-            {!loading && users.length === 0 && <tr><td colSpan={3} className="py-4">No users</td></tr>}
+            {isLoading && <tr><td colSpan={3} className="py-4">Loading…</td></tr>}
+            {!isLoading && users.length === 0 && <tr><td colSpan={3} className="py-4">No users</td></tr>}
             {users.map((u: User) => (
               <tr key={u.address || u.id} className="border-t">
                 <td className="py-2">{u.address || u.wallet || u.id}</td>

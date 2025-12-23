@@ -18,13 +18,10 @@ class AuthController {
 
       if (!email || !password) {
         return res.status(400).json({
-          status: 'error',
-          statusCode: 400,
-          message: 'Email and password are required',
-          error: {
-            code: 'MISSING_CREDENTIALS',
-            details: 'Both email and password must be provided',
-          },
+          success: false,
+          error: 'Email and password are required',
+          code: 'MISSING_CREDENTIALS',
+          details: 'Both email and password must be provided',
         });
       }
 
@@ -38,18 +35,14 @@ class AuthController {
       const token = authService.generateToken(user);
 
       return res.status(200).json({
-        status: 'success',
-        statusCode: 200,
-        message: 'Login successful',
-        data: {
-          token,
-          user: {
-            id: user.userId,
-            name: user.name,
-            email: user.email,
-            role: user.role,
-            walletAddress: user.fabric_enrollment_id,
-          },
+        success: true,
+        token,
+        user: {
+          id: user.userId,
+          name: user.name,
+          email: user.email,
+          role: user.role,
+          walletAddress: user.fabric_enrollment_id,
         },
       });
     } catch (error) {
@@ -57,24 +50,17 @@ class AuthController {
 
       if (error.message === 'Invalid credentials' || error.message === 'Account is inactive') {
         return res.status(401).json({
-          status: 'error',
-          statusCode: 401,
-          message: error.message,
-          error: {
-            code: 'AUTH_FAILED',
-            details: error.message,
-          },
+          success: false,
+          error: error.message,
+          code: 'AUTH_FAILED',
         });
       }
 
       return res.status(500).json({
-        status: 'error',
-        statusCode: 500,
-        message: 'Login failed',
-        error: {
-          code: 'LOGIN_ERROR',
-          details: error.message,
-        },
+        success: false,
+        error: 'Login failed',
+        code: 'LOGIN_ERROR',
+        details: error.message,
       });
     }
   }
@@ -90,13 +76,10 @@ class AuthController {
 
       if (!name || !email || !password) {
         return res.status(400).json({
-          status: 'error',
-          statusCode: 400,
-          message: 'Name, email, and password are required',
-          error: {
-            code: 'MISSING_FIELDS',
-            details: 'All registration fields must be provided',
-          },
+          success: false,
+          error: 'Name, email, and password are required',
+          code: 'MISSING_FIELDS',
+          details: 'All registration fields must be provided',
         });
       }
 
@@ -104,26 +87,20 @@ class AuthController {
       const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
       if (!emailRegex.test(email)) {
         return res.status(400).json({
-          status: 'error',
-          statusCode: 400,
-          message: 'Invalid email format',
-          error: {
-            code: 'INVALID_EMAIL',
-            details: 'Please provide a valid email address',
-          },
+          success: false,
+          error: 'Invalid email format',
+          code: 'INVALID_EMAIL',
+          details: 'Please provide a valid email address',
         });
       }
 
       // Validate password strength (min 6 characters)
       if (password.length < 6) {
         return res.status(400).json({
-          status: 'error',
-          statusCode: 400,
-          message: 'Password must be at least 6 characters',
-          error: {
-            code: 'WEAK_PASSWORD',
-            details: 'Password must be at least 6 characters long',
-          },
+          success: false,
+          error: 'Password must be at least 6 characters',
+          code: 'WEAK_PASSWORD',
+          details: 'Password must be at least 6 characters long',
         });
       }
 
@@ -134,13 +111,10 @@ class AuthController {
       const existingUser = await authService.getUserById(userId);
       if (existingUser) {
         return res.status(409).json({
-          status: 'error',
-          statusCode: 409,
-          message: 'User already exists',
-          error: {
-            code: 'USER_EXISTS',
-            details: 'An account with this email already exists',
-          },
+          success: false,
+          error: 'User already exists',
+          code: 'USER_EXISTS',
+          details: 'An account with this email already exists',
         });
       }
 
@@ -161,43 +135,33 @@ class AuthController {
       const token = authService.generateToken(user);
 
       return res.status(201).json({
-        status: 'success',
-        statusCode: 201,
-        message: 'Registration successful',
-        data: {
-          token,
-          user: {
-            id: user.userId,
-            name: user.name,
-            email: user.email,
-            role: user.role,
-            walletAddress: user.fabric_enrollment_id,
-          },
+        success: true,
+        token,
+        user: {
+          id: user.userId,
+          name: user.name,
+          email: user.email,
+          role: user.role,
+          walletAddress: user.fabric_enrollment_id,
         },
+        message: 'Registration successful',
       });
     } catch (error) {
       logger.error('Registration error:', error);
 
       if (error.message === 'User already exists') {
         return res.status(409).json({
-          status: 'error',
-          statusCode: 409,
-          message: 'User already exists',
-          error: {
-            code: 'USER_EXISTS',
-            details: error.message,
-          },
+          success: false,
+          error: 'User already exists',
+          code: 'USER_EXISTS',
         });
       }
 
       return res.status(500).json({
-        status: 'error',
-        statusCode: 500,
-        message: 'Registration failed',
-        error: {
-          code: 'REGISTRATION_ERROR',
-          details: error.message,
-        },
+        success: false,
+        error: 'Registration failed',
+        code: 'REGISTRATION_ERROR',
+        details: error.message,
       });
     }
   }
@@ -213,24 +177,17 @@ class AuthController {
       // You could implement token blacklisting here if needed
 
       return res.status(200).json({
-        status: 'success',
-        statusCode: 200,
-        message: 'Logout successful',
-        data: {
-          message: 'Token invalidated on client side',
-        },
+        success: true,
+        message: 'Token invalidated on client side',
       });
     } catch (error) {
       logger.error('Logout error:', error);
 
       return res.status(500).json({
-        status: 'error',
-        statusCode: 500,
-        message: 'Logout failed',
-        error: {
-          code: 'LOGOUT_ERROR',
-          details: error.message,
-        },
+        success: false,
+        error: 'Logout failed',
+        code: 'LOGOUT_ERROR',
+        details: error.message,
       });
     }
   }
@@ -247,41 +204,31 @@ class AuthController {
 
       if (!user) {
         return res.status(404).json({
-          status: 'error',
-          statusCode: 404,
-          message: 'User not found',
-          error: {
-            code: 'USER_NOT_FOUND',
-            details: 'User profile does not exist',
-          },
+          success: false,
+          error: 'User not found',
+          code: 'USER_NOT_FOUND',
+          details: 'User profile does not exist',
         });
       }
 
       return res.status(200).json({
-        status: 'success',
-        statusCode: 200,
-        message: 'User profile retrieved successfully',
-        data: {
-          user: {
-            id: user.userId,
-            name: user.name,
-            email: user.email,
-            role: user.role,
-            walletAddress: user.fabric_enrollment_id,
-          },
+        success: true,
+        user: {
+          id: user.userId,
+          name: user.name,
+          email: user.email,
+          role: user.role,
+          walletAddress: user.fabric_enrollment_id,
         },
       });
     } catch (error) {
       logger.error('Get profile error:', error);
 
       return res.status(500).json({
-        status: 'error',
-        statusCode: 500,
-        message: 'Failed to retrieve profile',
-        error: {
-          code: 'PROFILE_ERROR',
-          details: error.message,
-        },
+        success: false,
+        error: 'Failed to retrieve profile',
+        code: 'PROFILE_ERROR',
+        details: error.message,
       });
     }
   }
@@ -301,24 +248,18 @@ class AuthController {
       const newToken = authService.refreshToken(token);
 
       return res.status(200).json({
-        status: 'success',
-        statusCode: 200,
+        success: true,
+        token: newToken,
         message: 'Token refreshed successfully',
-        data: {
-          token: newToken,
-        },
       });
     } catch (error) {
       logger.error('Token refresh error:', error);
 
       return res.status(401).json({
-        status: 'error',
-        statusCode: 401,
-        message: 'Token refresh failed',
-        error: {
-          code: 'REFRESH_ERROR',
-          details: error.message,
-        },
+        success: false,
+        error: 'Token refresh failed',
+        code: 'REFRESH_ERROR',
+        details: error.message,
       });
     }
   }
@@ -334,61 +275,44 @@ class AuthController {
 
       if (!oldPassword || !newPassword) {
         return res.status(400).json({
-          status: 'error',
-          statusCode: 400,
-          message: 'Old and new passwords are required',
-          error: {
-            code: 'MISSING_PASSWORDS',
-            details: 'Both old and new passwords must be provided',
-          },
+          success: false,
+          error: 'Old and new passwords are required',
+          code: 'MISSING_PASSWORDS',
+          details: 'Both old and new passwords must be provided',
         });
       }
 
       if (newPassword.length < 6) {
         return res.status(400).json({
-          status: 'error',
-          statusCode: 400,
-          message: 'New password must be at least 6 characters',
-          error: {
-            code: 'WEAK_PASSWORD',
-            details: 'Password must be at least 6 characters long',
-          },
+          success: false,
+          error: 'New password must be at least 6 characters',
+          code: 'WEAK_PASSWORD',
+          details: 'Password must be at least 6 characters long',
         });
       }
 
       await authService.changePassword(req.user.userId, oldPassword, newPassword);
 
       return res.status(200).json({
-        status: 'success',
-        statusCode: 200,
+        success: true,
         message: 'Password changed successfully',
-        data: {
-          message: 'Your password has been updated',
-        },
       });
     } catch (error) {
       logger.error('Change password error:', error);
 
       if (error.message === 'Invalid current password') {
         return res.status(400).json({
-          status: 'error',
-          statusCode: 400,
-          message: 'Invalid current password',
-          error: {
-            code: 'INVALID_PASSWORD',
-            details: 'The current password is incorrect',
-          },
+          success: false,
+          error: 'Invalid current password',
+          code: 'INVALID_PASSWORD',
         });
       }
 
       return res.status(500).json({
-        status: 'error',
-        statusCode: 500,
-        message: 'Password change failed',
-        error: {
-          code: 'PASSWORD_CHANGE_ERROR',
-          details: error.message,
-        },
+        success: false,
+        error: 'Password change failed',
+        code: 'PASSWORD_CHANGE_ERROR',
+        details: error.message,
       });
     }
   }
