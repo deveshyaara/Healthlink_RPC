@@ -402,7 +402,7 @@ export const authApi = {
 
   logout: async (): Promise<void> => {
     if (typeof window !== 'undefined') {
-      localStorage.removeItem('auth_token');
+      authUtils.removeToken();
       localStorage.removeItem('user');
     }
   },

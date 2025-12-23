@@ -35,6 +35,7 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Pill, AlertCircle, CheckCircle, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/auth-context';
+import { authUtils } from '@/lib/auth-utils';
 
 export function CreatePrescriptionDialog() {
   const { toast } = useToast();
@@ -122,7 +123,7 @@ export function CreatePrescriptionDialog() {
       console.log('Creating prescription:', prescriptionPayload);
 
       // Call healthcare API to create prescription
-      const token = localStorage.getItem('authToken');
+      const token = authUtils.getToken();
       const response = await fetch('/api/v1/healthcare/prescriptions', {
         method: 'POST',
         headers: {

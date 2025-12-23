@@ -15,6 +15,7 @@ import { medicalRecordsApi } from '@/lib/api-client';
 import { useAuth } from '@/contexts/auth-context';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
+import { authUtils } from '@/lib/auth-utils';
 
 interface MedicalRecord {
   recordId: string;
@@ -113,7 +114,7 @@ export default function RecordsPage() {
       }
 
       // Get auth token
-      const token = localStorage.getItem('auth_token');
+      const token = authUtils.getToken();
       if (!token) {
         toast.error('Authentication Required', {
           description: 'Please login to download files.',

@@ -15,6 +15,7 @@ import Link from 'next/link';
 import { RequireDoctor } from '@/components/auth/RequireRole';
 import { ActionModal } from '@/components/ui/action-modal';
 import { UploadRecordForm } from '@/components/forms/upload-record-form';
+import { authUtils } from '@/lib/auth-utils';
 
 interface Patient {
   patientId: string;
@@ -62,7 +63,7 @@ function DoctorPatientsPageContent() {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
+          'Authorization': `Bearer ${authUtils.getToken()}`,
         },
       });
 

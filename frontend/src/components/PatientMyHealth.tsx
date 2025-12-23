@@ -1,6 +1,7 @@
 'use client';
 import React, { useEffect, useState } from 'react';
 import { MedicalRecord, Appointment } from '@/lib/api-client';
+import { authUtils } from '@/lib/auth-utils';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || '';
 
@@ -15,7 +16,7 @@ export default function PatientMyHealth({ patientAddress }: { patientAddress: st
       setLoading(true);
       try {
         // For current user, use alias endpoints that return current user's data
-        const token = localStorage.getItem('auth_token');
+        const token = authUtils.getToken();
         const headers: Record<string, string> = {};
         if (token) {
           headers['Authorization'] = `Bearer ${token}`;
