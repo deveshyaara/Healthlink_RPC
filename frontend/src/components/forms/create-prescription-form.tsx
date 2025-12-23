@@ -55,7 +55,7 @@ interface CreatePrescriptionFormProps {
  */
 export function CreatePrescriptionForm({
   doctorId,
-  defaultPatientId,
+  defaultPatientId: _defaultPatientId,
   onSuccess,
   onCancel: _onCancel,
   onSubmitting,
@@ -157,7 +157,7 @@ export function CreatePrescriptionForm({
         throw new Error(errorData.message || 'Failed to create prescription');
       }
 
-      const result = await response.json();
+      const _result = await response.json();
 
       // Import toast dynamically
       const { toast } = await import('sonner');

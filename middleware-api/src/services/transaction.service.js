@@ -265,7 +265,8 @@ class TransactionService {
       const parsedExpiry = expiryTimestamp ? Number(expiryTimestamp) : 0;
       const expiry = parsedExpiry > now ? parsedExpiry : defaultExpiry;
 
-      const result = await ethereumService.createPrescription(
+      // Use safe wrapper to avoid on-chain calls when identifiers are not valid Ethereum addresses
+      const result = await ethereumService.createPrescriptionSafe(
         prescriptionId, patientId, doctorAddress, medication, dosage, instructions, expiry,
       );
 

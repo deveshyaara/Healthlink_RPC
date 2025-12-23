@@ -329,13 +329,25 @@ export function ScheduleAppointmentDialog({
       // Add patient details if provided
       if (formData.includePatientDetails) {
         const patientDetails: any = {};
-        
-        if (formData.patientAge) patientDetails.age = parseInt(formData.patientAge);
-        if (formData.patientGender) patientDetails.gender = formData.patientGender;
-        if (formData.patientPhone) patientDetails.phoneNumber = formData.patientPhone;
-        if (formData.patientEmergencyContact) patientDetails.emergencyContact = formData.patientEmergencyContact;
-        if (formData.patientBloodGroup) patientDetails.bloodGroup = formData.patientBloodGroup;
-        if (formData.patientDateOfBirth) patientDetails.dateOfBirth = formData.patientDateOfBirth;
+
+        if (formData.patientAge) {
+          patientDetails.age = parseInt(formData.patientAge);
+        }
+        if (formData.patientGender) {
+          patientDetails.gender = formData.patientGender;
+        }
+        if (formData.patientPhone) {
+          patientDetails.phoneNumber = formData.patientPhone;
+        }
+        if (formData.patientEmergencyContact) {
+          patientDetails.emergencyContact = formData.patientEmergencyContact;
+        }
+        if (formData.patientBloodGroup) {
+          patientDetails.bloodGroup = formData.patientBloodGroup;
+        }
+        if (formData.patientDateOfBirth) {
+          patientDetails.dateOfBirth = formData.patientDateOfBirth;
+        }
 
         if (Object.keys(patientDetails).length > 0) {
           appointmentPayload.patientDetails = patientDetails;
