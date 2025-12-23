@@ -29,7 +29,8 @@ const app = express();
 const httpServer = createServer(app);
 
 // Trust proxy for accurate IP detection behind reverse proxies (e.g., Render)
-app.set('trust proxy', true);
+// Set to 1 to trust only the immediate proxy, not all proxies in the chain
+app.set('trust proxy', 1);
 
 // ======================
 // Security Middleware
@@ -148,11 +149,8 @@ app.post('/api/appointments', authenticateJWT, requireDoctor, healthcareControll
 app.get('/api/prescriptions', authenticateJWT, healthcareController.getCurrentUserPrescriptions);
 app.post('/api/prescriptions', authenticateJWT, requireDoctor, healthcareController.createPrescription);
 
-// Mount consents routes (aliased for frontend compatibility)
-app.use('/api/consents', healthcareRoutes);
-
-// Mount patients routes (aliased for frontend compatibility)
-app.use('/api/patients', healthcareRoutes);
+// Note: consents and patients endpoints are provided by the healthcare router
+// mounted under the API version and via explicit alias routes where needed.
 
 // Mount user management routes
 app.use('/api/users', userRoutes);

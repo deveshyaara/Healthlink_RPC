@@ -92,8 +92,15 @@ export const authenticateJWT = async (req, res, next) => {
     }
 
     // Note: Blockchain operations now use admin identity
-    // User wallet identity check is no longer required
+    // Normalize user fields so downstream code can rely on `id`, `userId`, and `walletAddress`
     try {
+      // Normalize id fields
+      user.userId = user.userId || user.id || user.fabric_enrollment_id || user.user_id;
+      user.id = user.id || user.userId;
+
+      // Normalize wallet address (fabric enrollment id used for on-chain wallet/address mapping)
+      user.walletAddress = user.walletAddress || user.fabric_enrollment_id || user.fabricEnrollmentId || null;
+
       // Attach user to request (Fabric identity will be admin)
       req.user = user;
       req.fabricIdentity = {
@@ -102,8 +109,8 @@ export const authenticateJWT = async (req, res, next) => {
         type: 'X.509',
       };
 
-      // Add wallet address for permission checks
-      req.user.walletAddress = user.fabric_enrollment_id;
+      // Ensure req.user.walletAddress is available for permission checks
+      req.user.walletAddress = req.user.walletAddress || req.user.fabric_enrollment_id || null;
 
       next();
     } catch (error) {
