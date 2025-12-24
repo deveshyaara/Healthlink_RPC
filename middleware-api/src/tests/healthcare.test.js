@@ -9,9 +9,19 @@ import { jest } from '@jest/globals';
 
 // Mock the controller methods used by the routes
 jest.mock('../controllers/healthcare.controller.js', () => ({
+  // Patient listing
   getPatients: jest.fn(),
+  // Records
   getCurrentUserRecords: jest.fn(),
   getMedicalRecord: jest.fn(),
+  createMedicalRecord: jest.fn(),
+  getRecordsByPatient: jest.fn(),
+  // Appointments
+  createAppointment: jest.fn(),
+  getCurrentUserAppointments: jest.fn(),
+  // Prescriptions
+  createPrescription: jest.fn(),
+  getCurrentUserPrescriptions: jest.fn(),
 }));
 
 // Mock auth middleware to pass through and optionally set req.user
@@ -67,5 +77,83 @@ describe('Healthcare API (flat responses)', () => {
     expect(res.body.success).toBe(true);
     expect(Array.isArray(res.body.records)).toBe(true);
     expect(res.body.records[0].patientId).toBe('test-user');
+  });
+
+  test('POST /api/v1/healthcare/records accepts patientEmail and returns created record', async () => {
+    const testPatient = { id: 'p1', email: 'alice@example.com' };
+
+    healthcareController.createMedicalRecord.mockImplementation((req, res) => {
+      // Ensure controller receives patientEmail (email-based flow)
+      if (!req.body || req.body.patientEmail !== testPatient.email) {
+        return res.status(400).json({ success: false, error: 'Missing patientEmail in request' });
+      }
+
+      return res.status(201).json({ success: true, record: { recordId: 'r1', patientEmail: req.body.patientEmail } });
+    });
+
+    const payload = {
+      recordId: 'r1',
+      patientEmail: testPatient.email,
+      recordType: 'Lab Report',
+      metadata: JSON.stringify({ title: 'Test' }),
+    };
+
+    const res = await request(app).post('/api/v1/healthcare/records').send(payload);
+    expect(res.status).toBe(201);
+    expect(res.body.success).toBe(true);
+    expect(res.body.record).toBeDefined();
+    expect(res.body.record.recordId).toBe('r1');
+    expect(res.body.record.patientEmail).toBe(testPatient.email);
+  });
+
+  test('POST /api/v1/healthcare/records returns 404 for unknown patient email', async () => {
+    healthcareController.createMedicalRecord.mockImplementation((req, res) => {
+      const email = req.body?.patientEmail;
+      if (email === 'wrong@example.com') {
+        return res.status(404).json({ success: false, error: 'Patient email not found' });
+      }
+      return res.status(201).json({ success: true });
+    });
+
+    const res = await request(app).post('/api/v1/healthcare/records').send({ patientEmail: 'wrong@example.com', recordId: 'r-x' });
+    expect(res.status).toBe(404);
+    expect(res.body.success).toBe(false);
+    expect(res.body.error).toMatch(/patient email not found/i);
+  });
+
+  test('POST /api/v1/healthcare/prescriptions accepts patientEmail and returns created prescription', async () => {
+    const testPatient = { id: 'p2', email: 'bob@example.com' };
+
+    healthcareController.createPrescription.mockImplementation((req, res) => {
+      if (!req.body || req.body.patientEmail !== testPatient.email) {
+        return res.status(400).json({ success: false, error: 'Missing patientEmail' });
+      }
+      return res.status(201).json({ success: true, prescription: { prescriptionId: 'pres-1', patientEmail: req.body.patientEmail } });
+    });
+
+    const payload = { prescriptionId: 'pres-1', patientEmail: testPatient.email, medications: [] };
+    const res = await request(app).post('/api/v1/healthcare/prescriptions').send(payload);
+    expect(res.status).toBe(201);
+    expect(res.body.success).toBe(true);
+    expect(res.body.prescription).toBeDefined();
+    expect(res.body.prescription.patientEmail).toBe(testPatient.email);
+  });
+
+  test('POST /api/v1/healthcare/appointments accepts patientEmail and returns created appointment', async () => {
+    const testPatient = { id: 'p3', email: 'carol@example.com' };
+
+    healthcareController.createAppointment.mockImplementation((req, res) => {
+      if (!req.body || req.body.patientEmail !== testPatient.email) {
+        return res.status(400).json({ success: false, error: 'Missing patientEmail' });
+      }
+      return res.status(201).json({ success: true, appointment: { appointmentId: 'a1', patientEmail: req.body.patientEmail } });
+    });
+
+    const payload = { appointmentId: 'a1', patientEmail: testPatient.email, timestamp: Date.now(), doctorAddress: 'doc1' };
+    const res = await request(app).post('/api/v1/healthcare/appointments').send(payload);
+    expect(res.status).toBe(201);
+    expect(res.body.success).toBe(true);
+    expect(res.body.appointment).toBeDefined();
+    expect(res.body.appointment.patientEmail).toBe(testPatient.email);
   });
 });

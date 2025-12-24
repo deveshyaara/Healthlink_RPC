@@ -49,7 +49,8 @@ export default function DoctorTools({ doctorAddress }: { doctorAddress: string }
       if (token) {
         headers['Authorization'] = `Bearer ${token}`;
       }
-      await fetch(endpoint, { method: 'POST', headers, body: JSON.stringify({ appointmentId: `appt-${Date.now()}`, patientId: patientAddress, doctorAddress, timestamp: unix, reason: details, notes: '' }) });
+      // send patientEmail (backend resolves patientId from email)
+      await fetch(endpoint, { method: 'POST', headers, body: JSON.stringify({ appointmentId: `appt-${Date.now()}`, patientEmail: patientAddress, doctorAddress, timestamp: unix, reason: details, notes: '' }) });
       setNotice('Appointment scheduled');
     } catch (err: unknown) {
       const errorMessage = err instanceof Error ? err.message : 'Error';
@@ -73,7 +74,7 @@ export default function DoctorTools({ doctorAddress }: { doctorAddress: string }
       <div className="bg-white rounded shadow p-4">
         <h4 className="font-medium">Schedule (Doctor)</h4>
         <form onSubmit={scheduleForSelf} className="space-y-2 mt-3">
-          <input name="patient" placeholder="Patient address" className="w-full rounded border px-2 py-1" />
+          <input name="patient" placeholder="Patient email" className="w-full rounded border px-2 py-1" />
           <input name="time" type="datetime-local" className="w-full rounded border px-2 py-1" />
           <input name="details" placeholder="Notes" className="w-full rounded border px-2 py-1" />
           <div><button className="px-3 py-1 bg-indigo-600 text-white rounded" disabled={loading}>{loading ? 'Scheduling...' : 'Schedule'}</button></div>

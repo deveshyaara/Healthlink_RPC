@@ -19,7 +19,7 @@ interface Identity {
 export default function AdminDashboard(): JSX.Element {
   const { toast } = useToast();
 
-  const [patients, setPatients] = useState<Array<{ address: string; label?: string }>>([]);
+  const [patients, setPatients] = useState<Array<{ address: string; email?: string; label?: string }>>([]);
   const [doctors, setDoctors] = useState<Array<{ address: string; label?: string }>>([]);
   const [_loading, setLoading] = useState(false);
   const _endpointPatients = API_BASE ? `${API_BASE}/api/v1/wallet/identities` : '/api/v1/wallet/identities';
@@ -38,6 +38,7 @@ export default function AdminDashboard(): JSX.Element {
           const identities = pRes?.identities || pRes || [];
           setPatients(identities.map((x: Identity) => ({
             address: x.address || x.wallet || x.id,
+            email: x.email,
             label: x.name || x.address || x.email
           })));
           setDoctors((dRes || []).map((x: Identity) => ({
@@ -82,7 +83,8 @@ export default function AdminDashboard(): JSX.Element {
               }
               try {
                 const unix = Math.floor(new Date(time).getTime() / 1000);
-                await appointmentsApi.create({ appointmentId: `appt-${Date.now()}`, patientId: patientAddress, doctorAddress, timestamp: unix, reason: details, notes: '' });
+                // send patientEmail to backend which resolves patientId internally
+                await appointmentsApi.create({ appointmentId: `appt-${Date.now()}`, patientEmail: patientAddress, doctorAddress, timestamp: unix, reason: details, notes: '' });
                 toast({ title: 'Appointment created', description: 'Proxy appointment created successfully' });
               } catch (err) {
                 console.error('Failed to create appointment (admin proxy):', err);
@@ -144,7 +146,8 @@ export default function AdminDashboard(): JSX.Element {
                 // upload file to storage
                 const uploadResult = await storageApi.upload(file);
                 const ipfsHash = uploadResult?.hash || '';
-                await medicalRecordsApi.create({ patientAddress, ipfsHash, fileName: file.name, doctorAddress });
+                // send patientEmail to backend; fall back to address if email missing
+                await medicalRecordsApi.create({ patientEmail: patientAddress, ipfsHash, fileName: file.name, doctorAddress });
                 toast({ title: 'Record uploaded', description: 'Record uploaded successfully' });
               } catch (err) {
                 console.error('Failed to upload admin proxy record:', err);
@@ -158,7 +161,7 @@ export default function AdminDashboard(): JSX.Element {
               <select name="patient" className="mt-1 block w-full rounded-md border-gray-300 px-2 py-2">
                 <option value="">Select patient</option>
                 {(Array.isArray(patients) ? patients : []).map((p) => (
-                  <option key={p.address} value={p.address}>{p.label || p.address}</option>
+                  <option key={p.address} value={p.email || p.address}>{p.label || p.address}</option>
                 ))}
               </select>
             </div>

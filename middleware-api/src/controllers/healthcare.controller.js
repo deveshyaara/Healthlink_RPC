@@ -45,6 +45,18 @@ function resolvePatientModel(db) {
  * Handles HTTP requests for Ethereum healthcare smart contract operations
  */
 class HealthcareController {
+  // Resolve patient id by email (supports Prisma client or in-memory fallback)
+  async resolvePatientId(email) {
+    if (!email) return null;
+    const db = getPrismaClient();
+    const patientsModel = resolvePatientModel(db);
+    const patient = patientsModel && typeof patientsModel.findUnique === 'function'
+      ? await patientsModel.findUnique({ where: { email } })
+      : await db.findUniqueByEmail?.(email);
+
+    return patient ? patient.id : null;
+  }
+
   /**
    * Create a new patient
    * POST /api/v1/healthcare/patients
@@ -318,14 +330,20 @@ class HealthcareController {
    */
   async createMedicalRecord(req, res, next) {
     try {
-      const { recordId, patientId, doctorId, recordType, ipfsHash, metadata } = req.body;
+      const { recordId, patientEmail, doctorId, recordType, ipfsHash, metadata } = req.body;
 
-      // Validate patientId is provided (required for attaching record)
-      if (!patientId) {
+      // Validate patientEmail is provided
+      if (!patientEmail) {
         return res.status(400).json({
           success: false,
-          error: 'Missing required field: patientId',
+          error: 'Missing required field: patientEmail',
         });
+      }
+
+      // Resolve patientId from email
+      const patientId = await this.resolvePatientId(patientEmail);
+      if (!patientId) {
+        return res.status(404).json({ success: false, error: 'Patient email not found' });
       }
 
       const result = await transactionService.createMedicalRecord(
@@ -591,18 +609,18 @@ class HealthcareController {
         });
       }
 
-      // Find patient by email
+      // Resolve patientId from email
+      const patientId = await this.resolvePatientId(patientEmail);
+      if (!patientId) {
+        return res.status(404).json({ success: false, error: 'Patient email not found' });
+      }
+
+      // Fetch full patient record for walletAddress when available
       const db = getPrismaClient();
       const patientsModel2 = resolvePatientModel(db);
       const patient = patientsModel2 && typeof patientsModel2.findUnique === 'function'
-        ? await patientsModel2.findUnique({ where: { email: patientEmail } })
-        : await db.findUniqueByEmail?.(patientEmail);
-
-      if (!patient2) {
-        return res.status(404).json({
-          error: 'Patient not found. Please create the patient first.',
-        });
-      }
+        ? await patientsModel2.findUnique({ where: { id: patientId } })
+        : await db.patientWalletMapping?.get(patientId) || null;
 
       // Create appointment in database
       const appointment = await getPrismaClient().appointment.create({
@@ -612,7 +630,7 @@ class HealthcareController {
           description: description || reason || notes,
           scheduledAt: new Date(scheduledAt),
           status: 'SCHEDULED',
-          patientId: patient2.id,
+          patientId: patientId,
           doctorId: doctorUserId,
           notes: notes || reason,
         },
@@ -640,7 +658,7 @@ class HealthcareController {
       try {
         const result = await transactionService.createAppointment(
           appointment.appointmentId,
-          patient.walletAddress,
+          (patient && patient.walletAddress) || patientId,
           doctorAddress || doctorId || '',
           Math.floor(new Date(scheduledAt).getTime() / 1000),
           title,
@@ -658,10 +676,10 @@ class HealthcareController {
           // Update patient data on blockchain if blockchain is available
           if (blockchainResult) {
             const updatedData = {
-              name: patient.name,
-              email: patient.email,
+              name: patient?.name,
+              email: patient?.email || patientEmail,
               ...patientDetails,
-              walletAddress: patient.walletAddress,
+              walletAddress: patient?.walletAddress,
               updatedAt: new Date().toISOString(),
             };
 
@@ -800,18 +818,17 @@ class HealthcareController {
         });
       }
 
-      // Find patient by email
+      // Resolve patientId from email and fetch patient record
+      const patientId = await this.resolvePatientId(patientEmail);
+      if (!patientId) {
+        return res.status(404).json({ success: false, error: 'Patient email not found' });
+      }
+
       const db2 = getPrismaClient();
       const patientsModel3 = resolvePatientModel(db2);
-      const patient2 = patientsModel3 && typeof patientsModel3.findUnique === 'function'
-        ? await patientsModel3.findUnique({ where: { email: patientEmail } })
-        : await db2.findUniqueByEmail?.(patientEmail);
-
-      if (!patient) {
-        return res.status(404).json({
-          error: 'Patient not found. Please create the patient first.',
-        });
-      }
+      const patient = patientsModel3 && typeof patientsModel3.findUnique === 'function'
+        ? await patientsModel3.findUnique({ where: { id: patientId } })
+        : await db2.findUniqueByEmail?.(patientEmail) || null;
 
       // Normalize medication input: prefer explicit `medication`, then `medications` array
       let med = medication || '';
@@ -830,7 +847,7 @@ class HealthcareController {
           instructions,
           expiryDate: expiryDate ? new Date(expiryDate) : null,
           status: 'ACTIVE',
-          patientId: patient2.id,
+          patientId: patient.id,
           doctorId: doctorUserId,
         },
         include: {
@@ -859,7 +876,7 @@ class HealthcareController {
 
         // Prefer explicit on-chain wallet addresses. Use patient.walletAddress when available,
         // otherwise fall back to patient.id for local/in-memory flows. For doctor, prefer req.user.walletAddress.
-        const patientOnchainId = patient2.walletAddress || patient2.id || '';
+        const patientOnchainId = (patient && (patient.walletAddress || patient.id)) || '';
         const doctorOnchainId = (req.user && req.user.walletAddress) || doctorAddress || '';
 
         if (!patientOnchainId || !doctorOnchainId) {
@@ -887,14 +904,14 @@ class HealthcareController {
           // Update patient data on blockchain if blockchain is available
           if (blockchainResult) {
             const updatedData = {
-              name: patient2.name,
-              email: patient2.email,
+              name: patient?.name,
+              email: patient?.email || patientEmail,
               ...patientDetails,
-              walletAddress: patient2.walletAddress,
+              walletAddress: patient?.walletAddress,
               updatedAt: new Date().toISOString(),
             };
 
-            await transactionService.updatePatientData(patient2.walletAddress, updatedData);
+            await transactionService.updatePatientData(patient?.walletAddress || patientId, updatedData);
 
             // Update IPFS with new data
             const PinataSDK = (await import('@pinata/sdk')).default;
