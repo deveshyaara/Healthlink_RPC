@@ -65,12 +65,14 @@ export default function RecordsPage() {
         // Normalize response to array
         let recordsData: MedicalRecord[] = [];
         if (Array.isArray(response)) {
-          recordsData = response;
+          recordsData = response as unknown as MedicalRecord[];
         } else if (response && typeof response === 'object') {
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           recordsData = Array.isArray((response as any).data) ? (response as any).data : (Array.isArray((response as any).records) ? (response as any).records : []);
         }
-        setRecords(recordsData);
+        // Normalize records to ensure `recordId` is always a string
+        const normalized = recordsData.map((r: any) => ({ ...r, recordId: String(r.recordId ?? r.id ?? '') }));
+        setRecords(normalized as MedicalRecord[]);
       } else {
         const response = await medicalRecordsApi.getAll();
 
@@ -78,7 +80,7 @@ export default function RecordsPage() {
         let recordsData: MedicalRecord[] = [];
 
         if (Array.isArray(response)) {
-          recordsData = response;
+          recordsData = response as unknown as MedicalRecord[];
         } else if (response && typeof response === 'object') {
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           if ('data' in response && Array.isArray((response as any).data)) {
@@ -91,7 +93,9 @@ export default function RecordsPage() {
           }
         }
 
-        setRecords(recordsData);
+        // Normalize records to ensure `recordId` is always a string
+        const normalized = recordsData.map((r: any) => ({ ...r, recordId: String(r.recordId ?? r.id ?? '') }));
+        setRecords(normalized as MedicalRecord[]);
       }
     } catch {
       toast.error('Failed to Load Records', {

@@ -210,10 +210,10 @@ class HealthcareController {
     try {
       const { patientId } = req.params;
       const userRole = req.user.role;
-      const userWalletAddress = req.user.walletAddress;
+      const userIdentifier = req.user.userId || req.user.id || req.user.walletAddress;
 
-      // Check permissions
-      if (userRole === 'patient' && userWalletAddress !== patientId) {
+      // Check permissions - allow patient to access their own data by id or walletAddress
+      if (userRole === 'patient' && userIdentifier !== patientId && req.user.walletAddress !== patientId) {
         return res.status(403).json({
           success: false,
           error: {
@@ -406,7 +406,7 @@ class HealthcareController {
   async getMedicalRecord(req, res, next) {
     try {
       const { recordId } = req.params;
-      const userId = req.user.userId || req.user.id;
+      const userIdentifier = req.user.userId || req.user.id || req.user.walletAddress;
       const userRole = req.user.role;
 
       // First get the record to check ownership
@@ -423,8 +423,8 @@ class HealthcareController {
         });
       }
 
-      // Check permissions
-      if (userRole === 'patient' && record.data.patientId !== userId) {
+      // Check permissions: patients may only access their own records (match by id or wallet)
+      if (userRole === 'patient' && record.data.patientId !== userIdentifier && record.data.patientId !== req.user.walletAddress) {
         return res.status(403).json({
           success: false,
           error: {
@@ -452,11 +452,11 @@ class HealthcareController {
   async getRecordsByPatient(req, res, next) {
     try {
       const { patientId } = req.params;
-      const userId = req.user.userId || req.user.id;
+      const userIdentifier = req.user.userId || req.user.id || req.user.walletAddress;
       const userRole = req.user.role;
 
       // Check permissions
-      if (userRole === 'patient' && userId !== patientId) {
+      if (userRole === 'patient' && userIdentifier !== patientId && req.user.walletAddress !== patientId) {
         return res.status(403).json({
           success: false,
           error: {
@@ -470,8 +470,9 @@ class HealthcareController {
       // Doctors need consent to access patient records
       if (userRole === 'doctor') {
         const consents = await transactionService.getConsentsByPatient(patientId);
-        const hasConsent = consents.data.some((consent) =>
-          consent.granteeAddress === userId && // doctor's wallet address
+        const doctorIdentifier = req.user.walletAddress || userIdentifier;
+        const hasConsent = (consents.data || []).some((consent) =>
+          (consent.granteeAddress === doctorIdentifier || consent.granteeAddress === req.user.id) && // doctor's wallet or id
           consent.status === 0 && // active status
           consent.validUntil > Math.floor(Date.now() / 1000), // not expired
         );
@@ -504,10 +505,10 @@ class HealthcareController {
    */
   async getCurrentUserRecords(req, res, next) {
     try {
-      const userId = req.user.userId || req.user.id;
+      const userIdentifier = req.user.userId || req.user.id || req.user.walletAddress;
       const userRole = req.user.role;
 
-      if (!userId) {
+      if (!userIdentifier) {
         return res.status(400).json({
           success: false,
           error: {
@@ -524,15 +525,30 @@ class HealthcareController {
 
       if (userRole === 'patient') {
         // Patients can only see their own records
-        const result = await transactionService.getRecordsByPatient(userId);
+        const result = await transactionService.getRecordsByPatient(userIdentifier);
         records = result?.data || [];
       } else if (userRole === 'doctor') {
-        // Doctors can see records of patients who have granted consent
-        // For now, return empty array - will implement consent checking later
-        records = [];
+        // Doctors can see records they've authored/are associated with
+        try {
+          const db = getPrismaClient();
+          if (db && db.medicalRecord && typeof db.medicalRecord.findMany === 'function') {
+            records = await db.medicalRecord.findMany({
+              where: { doctorId: req.user.id },
+              include: {
+                patient: { select: { id: true, email: true, name: true, walletAddress: true } },
+              },
+              orderBy: { createdAt: 'desc' },
+            }) || [];
+          } else {
+            // Fallback if Prisma not available
+            records = [];
+          }
+        } catch (err) {
+          logger.warn('Failed to fetch doctor records from DB:', err);
+          records = [];
+        }
       } else if (userRole === 'admin') {
-        // Admins can see all records (for audit purposes)
-        // This would need a different method to get all records
+        // Admins can see all records (for audit purposes) - implement if needed
         records = [];
       } else {
         return res.status(403).json({
@@ -740,6 +756,17 @@ class HealthcareController {
         return res.status(404).json({ success: false, error: 'Appointment not found' });
       }
 
+      // Authorization: patients can only access their own appointments
+      const userIdentifier = req.user.userId || req.user.id || req.user.walletAddress;
+      const userRole = req.user.role;
+
+      if (userRole === 'patient') {
+        const patientIdOnRecord = result.data.patientId || result.data.patient?.id || result.data.patientId;
+        if (patientIdOnRecord !== userIdentifier && patientIdOnRecord !== req.user.walletAddress) {
+          return res.status(403).json({ success: false, error: 'Patients can only access their own appointments' });
+        }
+      }
+
       res.status(200).json(result);
     } catch (error) {
       next(error);
@@ -758,6 +785,17 @@ class HealthcareController {
 
       if (!result || !result.data) {
         return res.status(404).json({ success: false, error: 'Prescription not found' });
+      }
+
+      // Authorization: patients can only access their own prescriptions
+      const userIdentifier = req.user.userId || req.user.id || req.user.walletAddress;
+      const userRole = req.user.role;
+
+      if (userRole === 'patient') {
+        const patientIdOnRecord = result.data.patientId || result.data.patient?.id || result.data.patientId;
+        if (patientIdOnRecord !== userIdentifier && patientIdOnRecord !== req.user.walletAddress) {
+          return res.status(403).json({ success: false, error: 'Patients can only access their own prescriptions' });
+        }
       }
 
       res.status(200).json(result);
@@ -1059,23 +1097,23 @@ class HealthcareController {
    */
   async getCurrentUserConsents(req, res, next) {
     try {
-      const userId = req.user.userId || req.user.id;
+      const userIdentifier = req.user.userId || req.user.id || req.user.walletAddress;
       const userRole = req.user.role;
 
-      if (!userId) {
+      if (!userIdentifier) {
         return res.status(400).json({
           success: false,
           error: 'User ID not found',
         });
       }
 
-      logger.info(`Fetching consents for user: ${userId} with role: ${userRole}`);
+      logger.info(`Fetching consents for user: ${userIdentifier} with role: ${userRole}`);
 
       let consents = [];
 
       if (userRole === 'patient') {
         // Patients can see consents they've granted
-        const result = await transactionService.getConsentsByPatient(userId);
+        const result = await transactionService.getConsentsByPatient(userIdentifier);
         consents = result.data || [];
       } else if (userRole === 'doctor') {
         // Doctors can see consents granted to them
@@ -1125,27 +1163,27 @@ class HealthcareController {
    */
   async getCurrentUserPrescriptions(req, res, next) {
     try {
-      const userId = req.user.userId || req.user.id;
+      const userIdentifier = req.user.userId || req.user.id || req.user.walletAddress;
       const userRole = req.user.role;
 
-      if (!userId) {
+      if (!userIdentifier) {
         return res.status(400).json({
           success: false,
           error: 'User ID not found',
         });
       }
 
-      logger.info(`Fetching prescriptions for user: ${userId} with role: ${userRole}`);
+      logger.info(`Fetching prescriptions for user: ${userIdentifier} with role: ${userRole}`);
 
       let prescriptions = [];
 
       if (userRole === 'patient') {
         // Patients can see prescriptions issued to them
-        const result = await transactionService.getPrescriptionsByPatient(userId);
+        const result = await transactionService.getPrescriptionsByPatient(userIdentifier);
         prescriptions = result.data || [];
       } else if (userRole === 'doctor') {
         // Doctors can see prescriptions they've issued
-        const result = await transactionService.getPrescriptionsByDoctor(userId);
+        const result = await transactionService.getPrescriptionsByDoctor(req.user.id || userIdentifier);
         prescriptions = result.data || [];
       } else if (userRole === 'admin') {
         // Admins can see all prescriptions (implementation needed)
@@ -1168,27 +1206,27 @@ class HealthcareController {
    */
   async getCurrentUserAppointments(req, res, next) {
     try {
-      const userId = req.user.userId || req.user.id;
+      const userIdentifier = req.user.userId || req.user.id || req.user.walletAddress;
       const userRole = req.user.role;
 
-      if (!userId) {
+      if (!userIdentifier) {
         return res.status(400).json({
           success: false,
           error: 'User ID not found',
         });
       }
 
-      logger.info(`Fetching appointments for user: ${userId} with role: ${userRole}`);
+      logger.info(`Fetching appointments for user: ${userIdentifier} with role: ${userRole}`);
 
       let appointments = [];
 
       if (userRole === 'patient') {
         // Patients can see their appointments
-        const result = await transactionService.getAppointmentsByPatient(userId);
+        const result = await transactionService.getAppointmentsByPatient(userIdentifier);
         appointments = result.data || [];
       } else if (userRole === 'doctor') {
         // Doctors can see appointments they've scheduled
-        const result = await transactionService.getAppointmentsByDoctor(userId);
+        const result = await transactionService.getAppointmentsByDoctor(req.user.id || userIdentifier);
         appointments = result.data || [];
       } else if (userRole === 'admin') {
         // Admins can see all appointments (implementation needed)

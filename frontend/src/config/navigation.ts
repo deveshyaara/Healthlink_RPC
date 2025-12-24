@@ -135,81 +135,60 @@ export const patientRoutes: NavRoute[] = [
  * Admin views have system-wide access to everything
  */
 export const adminRoutes: NavRoute[] = [
+  // Top-level admin console overview
   {
-    href: '/dashboard',
+    href: '/dashboard/admin',
     icon: LayoutDashboard,
     label: 'Dashboard',
-    description: 'System overview',
+    description: 'System management console',
     roles: ['admin'],
   },
+
+  // User Management grouping and specific pages
   {
-    href: '/dashboard/doctor',
-    icon: LayoutDashboard,
-    label: 'Doctor Dashboard',
-    description: 'Doctor portal view',
-    roles: ['admin'],
-  },
-  {
-    href: '/dashboard/patient',
-    icon: LayoutDashboard,
-    label: 'Patient Dashboard',
-    description: 'Patient portal view',
-    roles: ['admin'],
-  },
-  {
-    href: '/dashboard/doctor/patients',
+    href: '/dashboard/admin/users',
     icon: Users,
-    label: 'All Patients',
-    description: 'Manage all patients',
+    label: 'User Management',
+    description: 'Manage doctors, patients and verifications',
     roles: ['admin'],
   },
   {
-    href: '/dashboard/doctor/records',
-    icon: FileText,
-    label: 'Doctor Records',
-    description: 'Search patient records',
+    href: '/dashboard/admin/users/doctors',
+    icon: Users,
+    label: 'Doctors',
+    description: 'Manage registered doctors',
     roles: ['admin'],
   },
   {
-    href: '/dashboard/records',
-    icon: FileText,
-    label: 'All Records',
-    description: 'All medical records',
+    href: '/dashboard/admin/users/patients',
+    icon: Users,
+    label: 'Patients',
+    description: 'Manage registered patients',
     roles: ['admin'],
   },
   {
-    href: '/dashboard/appointments',
-    icon: Calendar,
-    label: 'All Appointments',
-    description: 'System-wide appointments',
-    roles: ['admin'],
-  },
-  {
-    href: '/dashboard/prescriptions',
-    icon: Pill,
-    label: 'All Prescriptions',
-    description: 'All prescriptions',
-    roles: ['admin'],
-  },
-  {
-    href: '/dashboard/lab-tests',
-    icon: TestTube,
-    label: 'All Lab Tests',
-    description: 'All laboratory results',
-    roles: ['admin'],
-  },
-  {
-    href: '/dashboard/consent',
+    href: '/dashboard/admin/users/pending',
     icon: ShieldCheck,
-    label: 'All Consents',
-    description: 'All consent records',
+    label: 'Pending Verifications',
+    description: 'Approve or reject pending doctor verifications',
     roles: ['admin'],
   },
+
+  // System logs and audit
   {
     href: '/dashboard/audit-trail',
     icon: History,
-    label: 'Audit Trail',
-    description: 'System activity log',
+    label: 'System Logs',
+    description: 'Audit trails and access logs',
+    roles: ['admin'],
+  },
+
+  // System health and misc
+  {
+    href: '/dashboard/system-health',
+    icon: FileText,
+    label: 'System Health',
+    description: 'Monitoring and connectivity status',
     roles: ['admin'],
   },
 ];

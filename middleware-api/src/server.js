@@ -334,7 +334,19 @@ const startServer = async () => {
   }
 };
 
-// Start the server
-startServer();
+// Start the server only when not running tests or when explicitly allowed
+if (process.env.NODE_ENV !== 'test' && process.env.SKIP_AUTO_START !== 'true') {
+  startServer();
+}
 
+// Export the app for testing (ESM)
 export default app;
+
+// Provide CommonJS compatibility when this file is transpiled to CJS
+try {
+  if (typeof module !== 'undefined' && module.exports) {
+    module.exports = app;
+  }
+} catch (e) {
+  // ignore in strict ESM environments
+}

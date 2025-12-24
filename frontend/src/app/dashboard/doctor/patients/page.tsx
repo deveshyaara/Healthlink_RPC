@@ -268,7 +268,7 @@ function DoctorPatientsPageContent() {
         onClose={() => {
           setShowUploadDialog(false);
           setIsSubmittingForm(false);
-          setSelectedPatientId('');
+          setSelectedPatientEmail('');
         }}
         title="Upload Medical Record"
         description={`Upload a new medical record for patient: ${selectedPatientEmail || 'Unknown'}`}

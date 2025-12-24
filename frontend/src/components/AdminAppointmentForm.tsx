@@ -32,7 +32,7 @@ export default function AdminAppointmentForm(): JSX.Element {
       setLoading(true);
       await appointmentsApi.create(payload);
       setNotice('Appointment scheduled');
-      setPatientAddress('');
+      setPatientEmail('');
       setDoctorAddress('');
       setTime('');
       setDetails('');
