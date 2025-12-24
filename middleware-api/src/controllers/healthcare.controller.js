@@ -539,7 +539,7 @@ class HealthcareController {
         });
       }
 
-      logger.info(`Fetching records for user: ${userId} with role: ${userRole}`);
+      logger.info(`Fetching records for user: ${userIdentifier} with role: ${userRole}`);
 
       let records = [];
 
@@ -746,7 +746,7 @@ class HealthcareController {
               updatedAt: new Date().toISOString(),
             };
 
-            await transactionService.updatePatientData(patient.walletAddress, updatedData);
+            await transactionService.updatePatientData(patient?.walletAddress || patientId, updatedData);
 
             // Update IPFS with new data
             const PinataSDK = (await import('@pinata/sdk')).default;
@@ -766,7 +766,7 @@ class HealthcareController {
 
             // Update the patient record with new IPFS hash
             updatedData.ipfsHash = pinataResult.IpfsHash;
-            await transactionService.updatePatientData(patient.walletAddress, updatedData);
+            await transactionService.updatePatientData(patient?.walletAddress || patientId, updatedData);
           }
         } catch (updateError) {
           logger.warn('Failed to update patient details during appointment creation:', updateError);
@@ -923,36 +923,72 @@ class HealthcareController {
         med = medications.map((m) => (typeof m === 'string' ? m : JSON.stringify(m))).join('|');
       }
 
-      // Create prescription in database
-      const prescription = await getPrismaClient().prescription.create({
-        data: {
+      // Create prescription in database (with graceful fallback when Prisma not configured)
+      let prescription;
+      try {
+        const dbInstance = getPrismaClient();
+        if (dbInstance && dbInstance.prescription && typeof dbInstance.prescription.create === 'function') {
+          prescription = await dbInstance.prescription.create({
+            data: {
+              prescriptionId,
+              medication: med,
+              dosage,
+              instructions,
+              expiryDate: expiryDate ? new Date(expiryDate) : null,
+              status: 'ACTIVE',
+              patientId: patient.id || patientId,
+              doctorId: doctorUserId,
+            },
+            include: {
+              patient: {
+                select: {
+                  id: true,
+                  email: true,
+                  name: true,
+                  walletAddress: true,
+                },
+              },
+              doctor: {
+                select: {
+                  id: true,
+                  fullName: true,
+                  email: true,
+                },
+              },
+            },
+          });
+        } else {
+          // In-memory fallback when DB not available
+          prescription = {
+            prescriptionId,
+            medication: med,
+            dosage,
+            instructions,
+            expiryDate: expiryDate ? new Date(expiryDate).toISOString() : null,
+            status: 'ACTIVE',
+            patientId: patient?.id || patientId,
+            doctorId: doctorUserId,
+            patient: patient ? { id: patient.id, email: patient.email, name: patient.name, walletAddress: patient.walletAddress } : null,
+            doctor: { id: doctorUserId, fullName: null, email: null },
+            createdAt: new Date().toISOString(),
+          };
+        }
+      } catch (dbErr) {
+        logger.warn('Failed to persist prescription to DB, using in-memory fallback:', dbErr);
+        prescription = {
           prescriptionId,
           medication: med,
           dosage,
           instructions,
-          expiryDate: expiryDate ? new Date(expiryDate) : null,
+          expiryDate: expiryDate ? new Date(expiryDate).toISOString() : null,
           status: 'ACTIVE',
-          patientId: patient.id,
+          patientId: patient?.id || patientId,
           doctorId: doctorUserId,
-        },
-        include: {
-          patient: {
-            select: {
-              id: true,
-              email: true,
-              name: true,
-              walletAddress: true,
-            },
-          },
-          doctor: {
-            select: {
-              id: true,
-              fullName: true,
-              email: true,
-            },
-          },
-        },
-      });
+          patient: patient ? { id: patient.id, email: patient.email, name: patient.name, walletAddress: patient.walletAddress } : null,
+          doctor: { id: doctorUserId, fullName: null, email: null },
+          createdAt: new Date().toISOString(),
+        };
+      }
 
       // Try to create prescription on blockchain only when we have usable on-chain addresses
       let blockchainResult = null;

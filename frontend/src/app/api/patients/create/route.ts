@@ -29,7 +29,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Call the backend API to create the patient
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
     const backendUrl = `${apiUrl}/api/v1/healthcare/patients`;
 
     const backendResponse = await fetch(backendUrl, {

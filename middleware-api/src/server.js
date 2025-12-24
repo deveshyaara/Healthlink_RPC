@@ -225,8 +225,41 @@ app.get(`/api/${API_VERSION}`, (req, res) => {
   });
 });
 
-// Handle 404
+// Debug: list registered routes (for diagnosing missing endpoints)
+app.get(`/api/${API_VERSION}/debug/routes`, (req, res) => {
+  try {
+    const routes = [];
+    app._router.stack.forEach((layer) => {
+      if (layer.route && layer.route.path) {
+        routes.push({
+          path: layer.route.path,
+          methods: Object.keys(layer.route.methods),
+        });
+      } else if (layer.name === 'router' && layer.handle && layer.handle.stack) {
+        layer.handle.stack.forEach((l) => {
+          if (l.route && l.route.path) {
+            routes.push({
+              path: l.route.path,
+              methods: Object.keys(l.route.methods),
+            });
+          }
+        });
+      }
+    });
+
+    // Filter duplicates and sort
+    const uniqueRoutes = Array.from(new Map(routes.map(r => [r.path + ':' + r.methods.join(','), r])).values());
+
+    res.status(200).json({ success: true, routes: uniqueRoutes });
+  } catch (err) {
+    logger.error('Failed to list routes:', err);
+    res.status(500).json({ success: false, error: 'Failed to list routes' });
+  }
+});
+
+// Handle 404 - improved logging
 app.use((req, res) => {
+  logger.warn('404 Not Found', { path: req.originalUrl, method: req.method, host: req.hostname });
   const errorResponse = {
     success: false,
     error: 'Endpoint not found',
@@ -238,6 +271,7 @@ app.use((req, res) => {
     errorResponse.details = {
       path: req.originalUrl,
       method: req.method,
+      host: req.hostname,
     };
   }
 
