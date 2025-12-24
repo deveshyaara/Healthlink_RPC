@@ -287,8 +287,8 @@ router.get('/doctors/verified', healthcareController.getVerifiedDoctors);
 /**
  * @route   GET /api/v1/healthcare/audit
  * @desc    Get audit records
- * @access  Admin only (should be protected in production)
+ * @access  Admin only
  */
-router.get('/audit', healthcareController.getAuditRecords);
+router.get('/audit', authenticateJWT, requireAdmin, healthcareController.getAuditRecords);
 
 export default router;

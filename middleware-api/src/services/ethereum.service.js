@@ -732,6 +732,24 @@ class EthereumService {
     return { transactionHash: `local-update-apt-${appointmentId}-${apt.updatedAt}`, blockNumber: 0, gasUsed: '0', status: 'success' };
   }
 
+  async updateAppointmentNotes(appointmentId, notes) {
+    const contract = this.getContract('Appointments');
+    if (contract) {
+      return await this.sendTransaction(
+        contract.updateAppointmentNotes,
+        appointmentId,
+        notes || ''
+      );
+    }
+
+    const apt = this._stores.appointments.get(appointmentId);
+    if (!apt) {throw new Error('Appointment not found');}
+    apt.notes = notes || apt.notes;
+    apt.updatedAt = Date.now();
+    this._stores.appointments.set(appointmentId, apt);
+    return { transactionHash: `local-update-apt-notes-${appointmentId}-${apt.updatedAt}`, blockNumber: 0, gasUsed: '0', status: 'success' };
+  }
+
   // ====== Prescriptions Contract Methods ======
 
   async createPrescription(prescriptionId, patientId, doctorId, medication, dosage, instructions, expiryDate) {
