@@ -57,10 +57,11 @@ const nextConfig: NextConfig = {
 
   // Backend API proxy configuration (keep for middleware communication)
   async rewrites() {
+    const apiBase = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
     return [
       {
         source: '/api/:path*',
-        destination: 'http://localhost:3001/api/:path*',
+        destination: `${apiBase}/api/:path*`,
       },
     ];
   },

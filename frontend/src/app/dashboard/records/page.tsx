@@ -147,7 +147,7 @@ export default function RecordsPage() {
       }
 
       // Construct API URL for storage endpoint
-      const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+      const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
       const downloadUrl = `${apiBaseUrl}/api/storage/${record.ipfsHash}`;
 
       // Fetch file from storage API

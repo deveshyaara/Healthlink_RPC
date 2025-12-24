@@ -2,8 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 
 export async function GET(_request: NextRequest) {
   try {
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
-    const backendUrl = `${apiUrl}/api/health`;
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+    const backendUrl = `${apiUrl}/api/health`; 
 
     const backendResponse = await fetch(backendUrl, {
       method: 'GET',

@@ -4,8 +4,8 @@ export async function GET(request: NextRequest) {
   try {
     const token = request.headers.get('authorization')?.replace('Bearer ', '');
 
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
-    const backendUrl = `${apiUrl}/api/appointments`;
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+    const backendUrl = `${apiUrl}/api/appointments`; 
 
     const backendResponse = await fetch(backendUrl, {
       method: 'GET',
