@@ -7,9 +7,54 @@ import { useAuth } from '@/contexts/auth-context';
 import Link from 'next/link';
 import { PatientStats } from '@/components/dashboard/PatientStats';
 import { PatientProfile } from '@/components/PatientProfile';
+import { useState, useEffect } from 'react';
+import { appointmentsApi, medicalRecordsApi } from '@/lib/api-client';
 
 export default function PatientDashboard() {
   const { user } = useAuth();
+
+  const [appointments, setAppointments] = useState<any[]>([]);
+  const [appointmentsLoading, setAppointmentsLoading] = useState(true);
+  const [appointmentsError, setAppointmentsError] = useState<string | null>(null);
+
+  const [recentRecords, setRecentRecords] = useState<any[]>([]);
+  const [recordsLoading, setRecordsLoading] = useState(true);
+  const [recordsError, setRecordsError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let mounted = true;
+    const load = async () => {
+      setAppointmentsLoading(true);
+      setRecordsLoading(true);
+      try {
+        const [apptsRes, recsRes] = await Promise.allSettled([
+          appointmentsApi.getAll(),
+          medicalRecordsApi.getAll(),
+        ]);
+
+        const appts = apptsRes.status === 'fulfilled' && Array.isArray(apptsRes.value) ? apptsRes.value : [];
+        const recs = recsRes.status === 'fulfilled' && Array.isArray(recsRes.value) ? recsRes.value : [];
+
+        if (!mounted) return;
+        setAppointments(appts);
+        setRecentRecords(recs.slice(0, 5));
+      } catch (err) {
+        console.error('Failed to load patient dashboard data:', err);
+        if (mounted) {
+          setAppointments([]);
+          setRecentRecords([]);
+        }
+      } finally {
+        if (mounted) {
+          setAppointmentsLoading(false);
+          setRecordsLoading(false);
+        }
+      }
+    };
+
+    load();
+    return () => { mounted = false; };
+  }, []);
 
   return (
     <div className="space-y-6">
@@ -43,22 +88,26 @@ export default function PatientDashboard() {
             <CardDescription>Your scheduled visits</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="space-y-4">
-              <div className="flex items-center justify-between border-b pb-2">
-                <div>
-                  <p className="font-medium">Dr. Sarah Johnson</p>
-                  <p className="text-sm text-muted-foreground">Tomorrow, 10:00 AM - Checkup</p>
-                </div>
-                <Button variant="outline" size="sm">Details</Button>
+            {appointmentsLoading ? (
+              <div className="text-center py-6">Loading appointments...</div>
+            ) : Array.isArray(appointments) && appointments.length > 0 ? (
+              <div className="space-y-4">
+                {appointments.slice(0, 3).map((a) => (
+                  <div key={a.appointmentId || `${a.patientId}-${a.appointmentDate}`} className="flex items-center justify-between border-b pb-2">
+                    <div>
+                      <p className="font-medium">{a.doctorName || a.doctorId || 'Doctor'}</p>
+                      <p className="text-sm text-muted-foreground">{new Date(a.appointmentDate).toLocaleString()} - {a.type || 'Visit'}</p>
+                    </div>
+                    <Button variant="outline" size="sm">Details</Button>
+                  </div>
+                ))}
               </div>
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="font-medium">Dr. Michael Chen</p>
-                  <p className="text-sm text-muted-foreground">Dec 15, 2:00 PM - Follow-up</p>
-                </div>
-                <Button variant="outline" size="sm">Details</Button>
+            ) : (
+              <div className="text-center py-6">
+                <p className="text-sm text-muted-foreground">No upcoming appointments found.</p>
               </div>
-            </div>
+            )}
+
             <Link href="/dashboard/appointments">
               <Button className="w-full mt-4" variant="secondary">View All Appointments</Button>
             </Link>
@@ -76,27 +125,24 @@ export default function PatientDashboard() {
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              <div className="flex gap-3">
-                <div className="mt-1 h-2 w-2 rounded-full bg-blue-500" />
-                <div className="flex-1">
-                  <p className="text-sm font-medium">New lab results available</p>
-                  <p className="text-xs text-muted-foreground">Blood test - 1 day ago</p>
+              {/* Recent records summary (safe rendering) */}
+              {recordsLoading ? (
+                <div className="text-center py-4">Loading recent activity...</div>
+              ) : Array.isArray(recentRecords) && recentRecords.length > 0 ? (
+                recentRecords.map((r) => (
+                  <div key={r.recordId || r.id} className="flex gap-3">
+                    <div className="mt-1 h-2 w-2 rounded-full bg-blue-500" />
+                    <div className="flex-1">
+                      <p className="text-sm font-medium">{r.description || r.fileName || 'New record uploaded'}</p>
+                      <p className="text-xs text-muted-foreground">{r.createdAt ? new Date(r.createdAt).toLocaleDateString() : 'Recently'}</p>
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <div className="text-center py-4">
+                  <p className="text-sm text-muted-foreground">No recent activity.</p>
                 </div>
-              </div>
-              <div className="flex gap-3">
-                <div className="mt-1 h-2 w-2 rounded-full bg-green-500" />
-                <div className="flex-1">
-                  <p className="text-sm font-medium">Prescription refilled</p>
-                  <p className="text-xs text-muted-foreground">Medication ABC - 3 days ago</p>
-                </div>
-              </div>
-              <div className="flex gap-3">
-                <div className="mt-1 h-2 w-2 rounded-full bg-purple-500" />
-                <div className="flex-1">
-                  <p className="text-sm font-medium">Consent granted</p>
-                  <p className="text-xs text-muted-foreground">To Dr. Johnson - 1 week ago</p>
-                </div>
-              </div>
+              )}
             </div>
           </CardContent>
         </Card>

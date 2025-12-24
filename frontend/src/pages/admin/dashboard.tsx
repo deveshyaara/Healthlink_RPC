@@ -4,6 +4,7 @@ import AdminAppointmentForm from '../../components/AdminAppointmentForm';
 import UserManager from '../../components/UserManager';
 import DoctorVerification from '../../components/DoctorVerification';
 import { appointmentsApi, storageApi, medicalRecordsApi, walletApi, doctorsApi } from '../../lib/api-client';
+import { useToast } from '@/hooks/use-toast';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || '';
 
@@ -16,6 +17,8 @@ interface Identity {
 }
 
 export default function AdminDashboard(): JSX.Element {
+  const { toast } = useToast();
+
   const [patients, setPatients] = useState<Array<{ address: string; label?: string }>>([]);
   const [doctors, setDoctors] = useState<Array<{ address: string; label?: string }>>([]);
   const [_loading, setLoading] = useState(false);
@@ -73,9 +76,18 @@ export default function AdminDashboard(): JSX.Element {
               const doctorAddress = String(form.get('doctor') || '');
               const time = String(form.get('time') || '');
               const details = String(form.get('details') || '');
-              if (!patientAddress || !doctorAddress || !time) {return;}
-              const unix = Math.floor(new Date(time).getTime() / 1000);
-              await appointmentsApi.create({ appointmentId: `appt-${Date.now()}`, patientId: patientAddress, doctorAddress, timestamp: unix, reason: details, notes: '' });
+              if (!patientAddress || !doctorAddress || !time) {
+                toast({ title: 'Missing fields', description: 'Please select patient, doctor and time', variant: 'destructive' });
+                return;
+              }
+              try {
+                const unix = Math.floor(new Date(time).getTime() / 1000);
+                await appointmentsApi.create({ appointmentId: `appt-${Date.now()}`, patientId: patientAddress, doctorAddress, timestamp: unix, reason: details, notes: '' });
+                toast({ title: 'Appointment created', description: 'Proxy appointment created successfully' });
+              } catch (err) {
+                console.error('Failed to create appointment (admin proxy):', err);
+                toast({ title: 'Failed to create appointment', description: err instanceof Error ? err.message : 'Unknown error', variant: 'destructive' });
+              }
             }}
             className="space-y-3"
           >
@@ -124,11 +136,20 @@ export default function AdminDashboard(): JSX.Element {
               const patientAddress = String(form.get('patient') || '');
               const doctorAddress = String(form.get('doctor') || '');
               const file = form.get('file') as File | null;
-              if (!patientAddress || !doctorAddress || !file) {return;}
-              // upload file to storage
-              const uploadResult = await storageApi.upload(file);
-              const ipfsHash = uploadResult?.hash || '';
-              await medicalRecordsApi.create({ patientAddress, ipfsHash, fileName: file.name, doctorAddress });
+              if (!patientAddress || !doctorAddress || !file) {
+                toast({ title: 'Missing fields', description: 'Please select patient, doctor and file', variant: 'destructive' });
+                return;
+              }
+              try {
+                // upload file to storage
+                const uploadResult = await storageApi.upload(file);
+                const ipfsHash = uploadResult?.hash || '';
+                await medicalRecordsApi.create({ patientAddress, ipfsHash, fileName: file.name, doctorAddress });
+                toast({ title: 'Record uploaded', description: 'Record uploaded successfully' });
+              } catch (err) {
+                console.error('Failed to upload admin proxy record:', err);
+                toast({ title: 'Upload failed', description: err instanceof Error ? err.message : 'Unknown error', variant: 'destructive' });
+              }
             }}
             className="space-y-3"
           >
@@ -136,7 +157,7 @@ export default function AdminDashboard(): JSX.Element {
               <label className="block text-sm font-medium">Patient</label>
               <select name="patient" className="mt-1 block w-full rounded-md border-gray-300 px-2 py-2">
                 <option value="">Select patient</option>
-                {patients.map((p) => (
+                {(Array.isArray(patients) ? patients : []).map((p) => (
                   <option key={p.address} value={p.address}>{p.label || p.address}</option>
                 ))}
               </select>
@@ -146,7 +167,7 @@ export default function AdminDashboard(): JSX.Element {
               <label className="block text-sm font-medium">Attending Doctor</label>
               <select name="doctor" className="mt-1 block w-full rounded-md border-gray-300 px-2 py-2">
                 <option value="">Select doctor</option>
-                {doctors.map((d) => (
+                {(Array.isArray(doctors) ? doctors : []).map((d) => (
                   <option key={d.address} value={d.address}>{d.label || d.address}</option>
                 ))}
               </select>

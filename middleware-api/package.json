@@ -46,6 +46,8 @@
     "prisma": "^7.1.0",
     "redis": "^4.6.11",
     "socket.io": "^4.6.2",
+    "swagger-jsdoc": "^6.2.8",
+    "swagger-ui-express": "^5.0.1",
     "uuid": "^9.0.1",
     "winston": "^3.11.0"
   },

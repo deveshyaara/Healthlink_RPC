@@ -45,7 +45,7 @@ export function RequireRole({
   fallback,
   redirectTo = '/access-denied',
 }: RequireRoleProps) {
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const router = useRouter();
   const [hasRole, setHasRole] = useState<boolean | null>(null);
   const [loading, setLoading] = useState(true);
@@ -56,6 +56,11 @@ export function RequireRole({
 
     async function checkRole() {
       // Admin users always have access
+      // If auth context is still loading, skip role checks until it finishes
+      if (authLoading) {
+        return;
+      }
+
       if (user?.role?.toLowerCase() === 'admin') {
         if (mounted) {
           setHasRole(true);
@@ -65,8 +70,11 @@ export function RequireRole({
       }
 
       if (!user) {
-        setLoading(false);
-        setHasRole(false);
+        // No authenticated user after auth finished
+        if (mounted) {
+          setHasRole(false);
+          setLoading(false);
+        }
         return;
       }
 
@@ -119,11 +127,6 @@ export function RequireRole({
         }
 
         setHasRole(Boolean(hasRequiredRole));
-
-        // Redirect if no access
-        if (!hasRequiredRole && redirectTo) {
-          router.push(redirectTo);
-        }
       } catch (err) {
         console.error('❌ Role check failed:', err);
         if (!mounted) {
@@ -145,8 +148,8 @@ export function RequireRole({
     };
   }, [user, requiredRole, router, redirectTo]);
 
-  // Loading state
-  if (loading) {
+  // Show auth loading first to avoid flashing redirects
+  if (authLoading || loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <Card className="w-full max-w-md">
