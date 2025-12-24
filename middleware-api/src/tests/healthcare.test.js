@@ -6,6 +6,8 @@ import { jest } from '@jest/globals';
 import request from 'supertest';
 import express from 'express';
 
+// Note: tests use dynamic import for mocked modules to allow ESM mocking
+
 // Ensure server doesn't auto-start and environment is test for ESM behavior
 process.env.SKIP_AUTO_START = 'true';
 process.env.NODE_ENV = 'test';

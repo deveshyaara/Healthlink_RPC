@@ -9,7 +9,7 @@ import logger from './utils/logger.js';
 import { validateEnvironment } from './utils/validateEnv.js';
 import errorHandler from './middleware/errorHandler.js';
 import healthcareRoutes from './routes/healthcare.routes.js';
-import healthcareController from './controllers/healthcare.controller.js';
+import HealthcareController from './controllers/healthcare.controller.js';
 import { authenticateJWT, requireDoctor } from './middleware/auth.middleware.js';
 import transactionRoutes from './routes/transaction.routes.js';
 import walletRoutes from './routes/wallet.routes.js';
@@ -17,6 +17,7 @@ import authRoutes from './routes/auth.routes.js';
 import userRoutes from './routes/user.routes.js';
 import storageRoutes from './routes/storage.routes.js';
 import chatRoutes from './routes/chat.routes.js';
+import adminRoutes from './routes/admin.routes.js';
 import swaggerUi from 'swagger-ui-express';
 import swaggerSpec from './config/swagger.js';
 import ethereumService from './services/ethereum.service.js';
@@ -29,6 +30,17 @@ import StorageService from './services/storage.service.js';
 
 const app = express();
 const httpServer = createServer(app);
+
+// Instantiate healthcare controller
+const healthcareController = new HealthcareController();
+
+// Bind all prototype methods to the controller instance to ensure `this` is preserved
+// when handlers are passed directly to Express (avoids "Cannot read properties of undefined" errors)
+Object.getOwnPropertyNames(Object.getPrototypeOf(healthcareController)).forEach((name) => {
+  if (name !== 'constructor' && typeof healthcareController[name] === 'function') {
+    healthcareController[name] = healthcareController[name].bind(healthcareController);
+  }
+});
 
 // Trust proxy for accurate IP detection behind reverse proxies (e.g., Render)
 // Set to 1 to trust only the immediate proxy, not all proxies in the chain
@@ -170,6 +182,9 @@ app.post('/api/prescriptions', authenticateJWT, requireDoctor, healthcareControl
 
 // Mount user management routes
 app.use('/api/users', userRoutes);
+
+// Mount admin routes
+app.use('/api/v1/admin', adminRoutes);
 
 // Mount legacy transaction routes (for backward compatibility)
 app.use(`/api/${API_VERSION}`, transactionRoutes);

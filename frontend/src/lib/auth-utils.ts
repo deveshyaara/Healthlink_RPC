@@ -6,6 +6,7 @@
 import { safeStorage } from './safe-storage';
 
 const AUTH_TOKEN_KEY = 'auth_token';
+const USER_KEY = 'user';
 
 export const authUtils = {
   /**
@@ -46,5 +47,48 @@ export const authUtils = {
   getAuthHeader(): HeadersInit {
     const token = this.getToken();
     return token ? { Authorization: `Bearer ${token}` } : {};
-  }
+  },
+
+  /**
+   * User storage helpers
+   */
+  setUser(user: Record<string, any> | null): boolean {
+    if (typeof window === 'undefined') return false;
+    try {
+      if (user === null) {
+        localStorage.removeItem(USER_KEY);
+        return true;
+      }
+      localStorage.setItem(USER_KEY, JSON.stringify(user));
+      return true;
+    } catch (error) {
+      return false;
+    }
+  },
+
+  getUser(): Record<string, any> | null {
+    if (typeof window === 'undefined') return null;
+    try {
+      const stored = localStorage.getItem(USER_KEY);
+      return stored ? JSON.parse(stored) : null;
+    } catch (error) {
+      return null;
+    }
+  },
+
+  removeUser(): boolean {
+    if (typeof window === 'undefined') return false;
+    try {
+      localStorage.removeItem(USER_KEY);
+      return true;
+    } catch (error) {
+      return false;
+    }
+  },
+
+  getUserId(): string | null {
+    const user = this.getUser();
+    if (!user) return null;
+    return user.id || user.userId || null;
+  },
 };

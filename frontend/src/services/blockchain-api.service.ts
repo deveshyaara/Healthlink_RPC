@@ -47,15 +47,23 @@ class BlockchainApiService {
   private async request<T>(
     endpoint: string,
     options: RequestInit = {},
+    userId?: string,
   ): Promise<ApiResponse<T>> {
     try {
+      const headers: any = {
+        'Content-Type': 'application/json',
+        ...options.headers,
+      };
+
+      // Add userId to headers if provided
+      if (userId) {
+        headers['X-User-ID'] = userId;
+      }
+
       const url = `${this.baseUrl}${endpoint}`;
       const response = await fetch(url, {
         ...options,
-        headers: {
-          'Content-Type': 'application/json',
-          ...options.headers,
-        },
+        headers,
         signal: AbortSignal.timeout(API_CONFIG.TIMEOUT),
       });
 

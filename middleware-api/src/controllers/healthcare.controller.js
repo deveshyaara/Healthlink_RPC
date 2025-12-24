@@ -346,6 +346,11 @@ class HealthcareController {
         return res.status(404).json({ success: false, error: 'Patient email not found' });
       }
 
+      if (!transactionService || typeof transactionService.createMedicalRecord !== 'function') {
+        logger.warn('Transaction service unavailable when attempting to create medical record');
+        return res.status(503).json({ success: false, error: 'Blockchain transaction service is temporarily unavailable' });
+      }
+
       const result = await transactionService.createMedicalRecord(
         recordId, patientId, doctorId, recordType, ipfsHash, metadata || '',
       );
@@ -410,6 +415,16 @@ class HealthcareController {
       const userRole = req.user.role;
 
       // First get the record to check ownership
+      if (!transactionService || typeof transactionService.getMedicalRecord !== 'function') {
+        logger.warn('Transaction service unavailable when attempting to fetch medical record');
+        return res.status(503).json({ success: false, error: 'Blockchain transaction service is temporarily unavailable' });
+      }
+
+      if (!transactionService || typeof transactionService.getMedicalRecord !== 'function') {
+        logger.warn('Transaction service unavailable when attempting to fetch medical record');
+        return res.status(503).json({ success: false, error: 'Blockchain transaction service is temporarily unavailable' });
+      }
+
       const record = await transactionService.getMedicalRecord(recordId);
 
       if (!record.data || !record.data.exists) {
@@ -469,6 +484,11 @@ class HealthcareController {
 
       // Doctors need consent to access patient records
       if (userRole === 'doctor') {
+        if (!transactionService || typeof transactionService.getConsentsByPatient !== 'function') {
+          logger.warn('Transaction service unavailable when attempting to fetch consents');
+          return res.status(503).json({ success: false, error: 'Blockchain transaction service is temporarily unavailable' });
+        }
+
         const consents = await transactionService.getConsentsByPatient(patientId);
         const doctorIdentifier = req.user.walletAddress || userIdentifier;
         const hasConsent = (consents.data || []).some((consent) =>
@@ -580,6 +600,11 @@ class HealthcareController {
     try {
       const { consentId, patientId, doctorAddress, validityDays } = req.body;
 
+      if (!transactionService || typeof transactionService.createConsent !== 'function') {
+        logger.warn('Transaction service unavailable when attempting to create consent');
+        return res.status(503).json({ success: false, error: 'Blockchain transaction service is temporarily unavailable' });
+      }
+
       const result = await transactionService.createConsent(
         consentId, patientId, doctorAddress, validityDays,
       );
@@ -638,9 +663,42 @@ class HealthcareController {
         ? await patientsModel2.findUnique({ where: { id: patientId } })
         : await db.patientWalletMapping?.get(patientId) || null;
 
-      // Create appointment in database
-      const appointment = await getPrismaClient().appointment.create({
-        data: {
+      // Create appointment in database (Prisma or in-memory fallback)
+      const dbInstance = getPrismaClient();
+      let appointment;
+      if (dbInstance && dbInstance.appointment && typeof dbInstance.appointment.create === 'function') {
+        appointment = await dbInstance.appointment.create({
+          data: {
+            appointmentId: appointmentId || uuidv4(),
+            title,
+            description: description || reason || notes,
+            scheduledAt: new Date(scheduledAt),
+            status: 'SCHEDULED',
+            patientId: patientId,
+            doctorId: doctorUserId,
+            notes: notes || reason,
+          },
+          include: {
+            patient: {
+              select: {
+                id: true,
+                email: true,
+                name: true,
+                walletAddress: true,
+              },
+            },
+            doctor: {
+              select: {
+                id: true,
+                fullName: true,
+                email: true,
+              },
+            },
+          },
+        });
+      } else {
+        // Fallback to a lightweight in-memory appointment representation
+        appointment = {
           appointmentId: appointmentId || uuidv4(),
           title,
           description: description || reason || notes,
@@ -649,38 +707,27 @@ class HealthcareController {
           patientId: patientId,
           doctorId: doctorUserId,
           notes: notes || reason,
-        },
-        include: {
-          patient: {
-            select: {
-              id: true,
-              email: true,
-              name: true,
-              walletAddress: true,
-            },
-          },
-          doctor: {
-            select: {
-              id: true,
-              fullName: true,
-              email: true,
-            },
-          },
-        },
-      });
+          patient: patient ? { id: patient.id, email: patient.email, name: patient.name, walletAddress: patient.walletAddress } : null,
+          doctor: { id: doctorUserId, fullName: null, email: null },
+        };
+      }
 
       // Try to create appointment on blockchain
       let blockchainResult = null;
       try {
-        const result = await transactionService.createAppointment(
-          appointment.appointmentId,
-          (patient && patient.walletAddress) || patientId,
-          doctorAddress || doctorId || '',
-          Math.floor(new Date(scheduledAt).getTime() / 1000),
-          title,
-          description || notes || '',
-        );
-        blockchainResult = result;
+        if (!transactionService || typeof transactionService.createAppointment !== 'function') {
+          logger.warn('Transaction service unavailable when attempting to create appointment on blockchain');
+        } else {
+          const result = await transactionService.createAppointment(
+            appointment.appointmentId,
+            (patient && patient.walletAddress) || patientId,
+            doctorAddress || doctorId || '',
+            Math.floor(new Date(scheduledAt).getTime() / 1000),
+            title,
+            description || notes || '',
+          );
+          blockchainResult = result;
+        }
       } catch (blockchainError) {
         logger.error('Failed to create appointment on blockchain:', blockchainError);
         // Continue with database creation even if blockchain fails
@@ -920,16 +967,20 @@ class HealthcareController {
         if (!patientOnchainId || !doctorOnchainId) {
           logger.warn('Skipping blockchain prescription creation - missing patient or doctor on-chain address', { patientOnchainId, doctorOnchainId });
         } else {
-          const result = await transactionService.createPrescription(
-            prescriptionId,
-            patientOnchainId,
-            doctorOnchainId,
-            med,
-            dosage,
-            instructions,
-            expiryTimestamp,
-          );
-          blockchainResult = result;
+          if (!transactionService || typeof transactionService.createPrescription !== 'function') {
+            logger.warn('Transaction service unavailable when attempting to create prescription on blockchain');
+          } else {
+            const result = await transactionService.createPrescription(
+              prescriptionId,
+              patientOnchainId,
+              doctorOnchainId,
+              med,
+              dosage,
+              instructions,
+              expiryTimestamp,
+            );
+            blockchainResult = result;
+          }
         }
       } catch (blockchainError) {
         logger.error('Failed to create prescription on blockchain:', blockchainError);
@@ -1593,4 +1644,4 @@ class HealthcareController {
   }
 }
 
-export default new HealthcareController();
+export default HealthcareController;

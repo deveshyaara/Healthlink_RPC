@@ -6,6 +6,7 @@
 
 import { jest } from '@jest/globals';
 import request from 'supertest';
+
 import express from 'express';
 
 // Ensure server doesn't auto-start and environment is test for ESM behavior

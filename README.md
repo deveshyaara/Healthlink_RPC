@@ -113,27 +113,53 @@ The system consists of four main components:
 
 ### Environment Variables
 
-Create `.env` files in respective directories with the following variables:
+Create `.env` files in the respective directories. Example template files are provided:
 
-#### Middleware API (.env)
+- `middleware-api/.env.example` (copy to `middleware-api/.env` and populate)
+- `frontend/.env.local.example` (copy to `frontend/.env.local` and populate)
+
+The project uses several environment values; below are the most commonly required keys (additionally check the example files for a fuller list):
+
+#### Middleware API (`middleware-api/.env`)
 ```
-DATABASE_URL=postgresql://...
-SUPABASE_URL=...
-SUPABASE_ANON_KEY=...
-GOOGLE_AI_API_KEY=...
-PINATA_API_KEY=...
-PINATA_SECRET_API_KEY=...
-JWT_SECRET=...
-REDIS_URL=redis://localhost:6379
-ETHEREUM_RPC_URL=http://localhost:8545
+# Database
+DATABASE_URL=postgresql://user:password@localhost:5432/healthlink
+
+# Optional Supabase (if used)
+SUPABASE_URL=https://your-supabase-url.supabase.co
+SUPABASE_SERVICE_KEY=your-service-key
+
+# JWT
+JWT_SECRET=replace-with-a-secure-secret
+JWT_EXPIRY=24h
+
+# Ethereum / Blockchain
+ETHEREUM_RPC_URL=https://rpc.sepolia.org
+PRIVATE_KEY=0xYOUR_PRIVATE_KEY
+
+# Pinata (IPFS)
+PINATA_API_KEY=your-pinata-api-key
+PINATA_SECRET_API_KEY=your-pinata-secret
+
+# Uploads & encryption
+UPLOADS_DIR=./uploads
+TEMP_DIR=./temp
+ENCRYPTION_KEY=base64-32-byte-key
+ENCRYPTION_ALGORITHM=aes-256-gcm
 ```
 
-#### Frontend (.env.local)
+#### Frontend (`frontend/.env.local`)
 ```
-NEXT_PUBLIC_SUPABASE_URL=...
-NEXT_PUBLIC_SUPABASE_ANON_KEY=...
-NEXT_PUBLIC_API_URL=http://localhost:3001
+NEXT_PUBLIC_API_URL=http://localhost:4000
+NEXT_PUBLIC_WS_URL=ws://localhost:4001
+NEXT_PUBLIC_ETHEREUM_RPC_URL=http://127.0.0.1:8545
+NEXT_PUBLIC_CHAIN_ID=1337
+NEXT_PUBLIC_HEALTHLINK_CONTRACT_ADDRESS=0xYourContractAddress
+NEXT_PUBLIC_SUPABASE_URL=https://your-supabase-url.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
 ```
+
+> Note: Do NOT commit real `.env` files with secrets to version control. Use the example files as templates and keep secrets secure (e.g., use a secrets store for production).
 
 ## 🏃‍♂️ Usage
 

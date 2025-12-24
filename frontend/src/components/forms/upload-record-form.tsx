@@ -65,6 +65,9 @@ export function UploadRecordForm({
     reset,
   } = useForm<UploadRecordFormData>({
     resolver: zodResolver(uploadRecordSchema),
+    defaultValues: {
+      recordType: '', // Initialize as empty string to ensure controlled Select component
+    },
   });
 
   // Access control: Ensure user has DOCTOR_ROLE
@@ -170,7 +173,7 @@ export function UploadRecordForm({
                     Record Type <span className="text-red-500">*</span>
         </Label>
         <Select
-          value={recordType}
+          value={recordType ?? ''}
           onValueChange={(value) => setValue('recordType', value as typeof recordType)}
           disabled={isSubmitting}
         >

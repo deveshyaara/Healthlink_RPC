@@ -266,6 +266,21 @@ async function fetchApi<T>(
     defaultHeaders['Authorization'] = `Bearer ${token}`;
   }
 
+  // Warn when there's no auth token for requests that are likely protected
+  if (!token && !endpoint.startsWith('/api/auth') && !endpoint.startsWith('/api/storage') && !endpoint.startsWith('/api/public')) {
+    logger.warn(`[API Client] No auth token present for request to ${endpoint}`);
+  }
+
+  // Add user id header if available (used by blockchain endpoints and middleware)
+  try {
+    const userId = authUtils.getUserId ? authUtils.getUserId() : null;
+    if (userId) {
+      defaultHeaders['X-User-ID'] = userId;
+    }
+  } catch (_e) {
+    // ignore if localStorage not available
+  }
+
   const config: RequestInit = {
     ...options,
     headers: {
