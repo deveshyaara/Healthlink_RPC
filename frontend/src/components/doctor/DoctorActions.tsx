@@ -116,6 +116,15 @@ export function AddPatientDialog() {
         description: `Patient ${formData.name} has been added successfully. Wallet address: ${result.data?.walletAddress || 'Auto-generated'}`,
       });
 
+      // Surface blockchain errors if present
+      if (result.blockchainError || result.data?.blockchainError) {
+        toast({
+          title: 'On-chain Warning',
+          description: String(result.blockchainError || result.data?.blockchainError),
+          variant: 'destructive',
+        });
+      }
+
       // Reset form and close dialog
       resetForm();
       setOpen(false);
@@ -378,6 +387,15 @@ export function ScheduleAppointmentDialog({
         title: 'Appointment Scheduled',
         description: `Appointment scheduled for ${new Date(formData.scheduledAt).toLocaleString()}`,
       });
+
+      // Surface blockchain errors if present
+      if (result.blockchainError || result.data?.blockchainError) {
+        toast({
+          title: 'On-chain Warning',
+          description: String(result.blockchainError || result.data?.blockchainError),
+          variant: 'destructive',
+        });
+      }
 
       resetForm();
       setOpen(false);
