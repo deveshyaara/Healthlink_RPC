@@ -294,7 +294,7 @@ class HealthcareController {
         orderBy: {
           createdAt: 'desc',
         },
-      });
+      }) : [];
 
       res.status(200).json({
         success: true,
@@ -1519,7 +1519,7 @@ class HealthcareController {
             },
           },
         },
-      });
+      }) : null;
 
       if (!patient) {
         return res.status(404).json({

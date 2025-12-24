@@ -143,6 +143,7 @@ export default function PatientDashboard() {
                   <p className="text-sm text-muted-foreground">No recent activity.</p>
                 </div>
               )}
+            </div>
           </CardContent>
         </Card>
       </div>
