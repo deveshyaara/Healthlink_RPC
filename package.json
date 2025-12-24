@@ -7,7 +7,8 @@
     "init-identities": "node initialize_identities.js",
     "validate": "node scripts/validate-deployment.js",
     "setup-db": "cd supabase && (./setup.sh 2>/dev/null || setup.bat)",
-    "deploy-check": "npm run validate && echo '✅ Ready for deployment!'"
+    "deploy-check": "npm run validate && echo '✅ Ready for deployment!'",
+    "debug:chain": "node scripts/debug-chain-revert.mjs --createPatient=true"
   },
   "dependencies": {
     "@google/generative-ai": "^0.24.1",

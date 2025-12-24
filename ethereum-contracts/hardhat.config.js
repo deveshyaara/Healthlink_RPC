@@ -21,8 +21,14 @@ export default {
       accounts: {
         count: 20,
         accountsBalance: "10000000000000000000000"
-      }
+      },
+      // Optional forking (activated when SEPOLIA_RPC_URL or ETHEREUM_RPC_URL is set)
+      forking: process.env.SEPOLIA_RPC_URL || process.env.ETHEREUM_RPC_URL ? {
+        url: process.env.SEPOLIA_RPC_URL || process.env.ETHEREUM_RPC_URL,
+        // blockNumber: undefined // optionally pin a block number
+      } : undefined
     },
+
     localhost: {
       url: "http://127.0.0.1:8545",
       chainId: 1337
