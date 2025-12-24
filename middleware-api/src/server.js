@@ -17,6 +17,8 @@ import authRoutes from './routes/auth.routes.js';
 import userRoutes from './routes/user.routes.js';
 import storageRoutes from './routes/storage.routes.js';
 import chatRoutes from './routes/chat.routes.js';
+import swaggerUi from 'swagger-ui-express';
+import swaggerSpec from './config/swagger.js';
 import ethereumService from './services/ethereum.service.js';
 import StorageService from './services/storage.service.js';
 
@@ -174,6 +176,9 @@ app.use(`/api/${API_VERSION}`, transactionRoutes);
 
 // Mount wallet routes
 app.use(`/api/${API_VERSION}/wallet`, walletRoutes);
+
+// Serve API documentation (Swagger UI) at /api-docs
+app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
 // API documentation endpoint
 app.get(`/api/${API_VERSION}`, (req, res) => {

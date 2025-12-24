@@ -42,17 +42,21 @@ export function DoctorStats() {
         // Calculate stats from fetched data
         // Extract unique patient IDs from appointments and prescriptions
         const patientIds = new Set<string>();
-        appointments.forEach((apt: { patientId?: string }) => {
-          if (apt.patientId) {patientIds.add(apt.patientId);}
-        });
-        prescriptions.forEach((rx: { patientId?: string }) => {
-          if (rx.patientId) {patientIds.add(rx.patientId);}
-        });
+        if (Array.isArray(appointments)) {
+          appointments.forEach((apt: any) => {
+            if (apt && apt.patientId) { patientIds.add(apt.patientId); }
+          });
+        }
+        if (Array.isArray(prescriptions)) {
+          prescriptions.forEach((rx: any) => {
+            if (rx && rx.patientId) { patientIds.add(rx.patientId); }
+          });
+        }
 
         // Count consultations (completed appointments)
-        const completedAppointments = appointments.filter(
-          (apt: { status?: string }) => apt.status === 'Completed'
-        );
+        const completedAppointments = Array.isArray(appointments)
+          ? appointments.filter((apt: any) => apt && (apt.status === 'Completed' || apt.status === 'COMPLETED' || apt.status === 'completed'))
+          : [];
 
         // Update stats
         setStats({

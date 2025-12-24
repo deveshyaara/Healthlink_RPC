@@ -15,18 +15,90 @@ import { authLimiter } from '../middleware/rateLimiter.middleware.js';
 const router = express.Router();
 
 /**
- * @route   POST /api/auth/register
- * @desc    Register new user with password and blockchain identity
- * @access  Public
- * @security Rate limited (5 attempts per 15 min)
+ * @openapi
+ * /auth/register:
+ *   post:
+ *     tags:
+ *       - Auth
+ *     summary: Register a new user with password and blockchain identity
+ *     description: Create a new user account. Returns a standardized flat JSON response.
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               email:
+ *                 type: string
+ *                 format: email
+ *               password:
+ *                 type: string
+ *               name:
+ *                 type: string
+ *     responses:
+ *       '200':
+ *         description: User registered successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/StandardResponse'
+ *       '400':
+ *         description: Bad request (validation error)
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/StandardResponse'
+ *       '401':
+ *         description: Unauthorized
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/StandardResponse'
+ *     security: []
  */
 router.post('/register', authLimiter, authController.register.bind(authController));
 
 /**
- * @route   POST /api/auth/login
- * @desc    Authenticate user and return JWT token
- * @access  Public
- * @security Rate limited (5 attempts per 15 min)
+ * @openapi
+ * /auth/login:
+ *   post:
+ *     tags:
+ *       - Auth
+ *     summary: Authenticate user and return JWT token
+ *     description: Login with email and password. Returns standardized flat JSON response with token in `message` or `data` as implemented.
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               email:
+ *                 type: string
+ *                 format: email
+ *               password:
+ *                 type: string
+ *     responses:
+ *       '200':
+ *         description: Authentication successful
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/StandardResponse'
+ *       '400':
+ *         description: Bad request (validation error)
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/StandardResponse'
+ *       '401':
+ *         description: Unauthorized (invalid credentials)
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/StandardResponse'
+ *     security: []
  */
 router.post('/login', authLimiter, authController.login.bind(authController));
 

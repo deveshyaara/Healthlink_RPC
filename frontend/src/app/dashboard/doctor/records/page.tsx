@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { ActionModal } from '@/components/ui/action-modal';
+import UploadRecordModal from '@/components/dashboard/UploadRecordModal';
 import { UploadRecordForm } from '@/components/forms/upload-record-form';
 import { useState, useEffect } from 'react';
 import { medicalRecordsApi, storageApi } from '@/lib/api-client';
@@ -267,25 +268,14 @@ function DoctorRecordsPageContent() {
         </CardContent>
       </Card>
 
-      {/* Upload Record Modal */}
-      <ActionModal
-        title="Upload Patient Record"
-        description="Upload a medical record for one of your patients"
+      {/* Upload Record Modal (uses patient select) */}
+      <UploadRecordModal
         isOpen={showUploadDialog}
-        onClose={() => setShowUploadDialog(false)}
-        isSubmitting={isSubmittingForm}
-        maxWidth="lg"
-      >
-        <UploadRecordForm
-          patientId={user?.id || ''}
-          onSuccess={() => {
-            setShowUploadDialog(false);
-            fetchRecords();
-          }}
-          onCancel={() => setShowUploadDialog(false)}
-          onSubmitting={setIsSubmittingForm}
-        />
-      </ActionModal>
+        onClose={() => {
+          setShowUploadDialog(false);
+          fetchRecords();
+        }}
+      />
     </div>
   );
 }

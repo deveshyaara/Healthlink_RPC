@@ -34,6 +34,12 @@ function getPrismaClient() {
   return _inMemory;
 }
 
+// Helper to resolve the patient mapping model across possible prisma client naming
+function resolvePatientModel(db) {
+  if (!db) return null;
+  return db.patientWalletMapping || db.PatientWalletMapping || db.patient || db.patientWalletMappings || null;
+}
+
 /**
  * HealthcareController
  * Handles HTTP requests for Ethereum healthcare smart contract operations
@@ -70,8 +76,9 @@ class HealthcareController {
       // Check if patient already exists (supports Prisma or in-memory fallback)
       const db = getPrismaClient();
       let existingPatient = null;
-      if (db.patientWalletMapping && typeof db.patientWalletMapping.findUnique === 'function') {
-        existingPatient = await db.patientWalletMapping.findUnique({ where: { email } });
+      const patientsModel = resolvePatientModel(db);
+      if (patientsModel && typeof patientsModel.findUnique === 'function') {
+        existingPatient = await patientsModel.findUnique({ where: { email } });
       } else if (typeof db.findUniqueByEmail === 'function') {
         existingPatient = await db.findUniqueByEmail(email);
       }
@@ -102,8 +109,8 @@ class HealthcareController {
       // Create patient wallet mapping in database
       // Create patient mapping (Prisma or in-memory)
       let patientMapping;
-      if (db.patientWalletMapping && typeof db.patientWalletMapping.create === 'function') {
-        patientMapping = await db.patientWalletMapping.create({
+      if (patientsModel && typeof patientsModel.create === 'function') {
+        patientMapping = await patientsModel.create({
           data: {
             email,
             name,
@@ -233,12 +240,15 @@ class HealthcareController {
       }
 
       // Get patients created by this doctor
-      const patients = await getPrismaClient().patientWalletMapping.findMany({
-        where: {
-          createdBy: doctorId,
-          isActive: true,
-        },
-        select: {
+      const db = getPrismaClient();
+      const patientsModel = resolvePatientModel(db);
+      const patients = patientsModel && typeof patientsModel.findMany === 'function'
+        ? await patientsModel.findMany({
+          where: {
+            createdBy: doctorId,
+            isActive: true,
+          },
+          select: {
           id: true,
           email: true,
           name: true,
@@ -297,6 +307,11 @@ class HealthcareController {
     }
   }
 
+  // Alias for routes that expect `getPatients`
+  async getPatients(req, res, next) {
+    return this.getPatientsForDoctor(req, res, next);
+  }
+
   /**
    * Create a medical record
    * POST /api/v1/healthcare/records
@@ -305,9 +320,60 @@ class HealthcareController {
     try {
       const { recordId, patientId, doctorId, recordType, ipfsHash, metadata } = req.body;
 
+      // Validate patientId is provided (required for attaching record)
+      if (!patientId) {
+        return res.status(400).json({
+          success: false,
+          error: 'Missing required field: patientId',
+        });
+      }
+
       const result = await transactionService.createMedicalRecord(
         recordId, patientId, doctorId, recordType, ipfsHash, metadata || '',
       );
+
+      // Persist a reference in the off-chain database when Prisma is available
+      try {
+        const db = getPrismaClient();
+        // Only attempt DB write when using Prisma client that exposes `medicalRecord`
+        if (db && db.medicalRecord && typeof db.medicalRecord.create === 'function') {
+          // Map incoming recordType strings to Prisma enum values where possible
+          const mapRecordTypeToEnum = (rt) => {
+            if (!rt) return 'OTHER';
+            const normalized = String(rt).toUpperCase().replace(/[^A-Z0-9]/g, '_');
+            const allowed = ['DIAGNOSIS','TREATMENT','PRESCRIPTION','LAB_RESULT','IMAGING','OTHER'];
+            return allowed.includes(normalized) ? normalized : 'OTHER';
+          };
+
+          // Try to extract fileName from metadata when metadata is a JSON string
+          let fileName = null;
+          let description = null;
+          let metaObj = null;
+          try {
+            metaObj = typeof metadata === 'string' ? JSON.parse(metadata) : (metadata || {});
+            fileName = metaObj.fileName || null;
+            description = metaObj.description || null;
+          } catch (e) {
+            // ignore parse errors
+            metaObj = {};
+          }
+
+          await db.medicalRecord.create({
+            data: {
+              recordId: recordId || `rec-${Date.now()}`,
+              title: metaObj?.title || 'Uploaded Record',
+              description: description || null,
+              recordType: mapRecordTypeToEnum(recordType),
+              ipfsHash: ipfsHash || null,
+              fileName,
+              patientId,
+              doctorId: doctorId || null,
+            },
+          });
+        }
+      } catch (dbErr) {
+        logger.warn('Failed to persist medical record to DB:', dbErr);
+      }
 
       res.status(201).json(result);
     } catch (error) {
@@ -526,11 +592,13 @@ class HealthcareController {
       }
 
       // Find patient by email
-      const patient = await getPrismaClient().patientWalletMapping.findUnique({
-        where: { email: patientEmail },
-      });
+      const db = getPrismaClient();
+      const patientsModel2 = resolvePatientModel(db);
+      const patient = patientsModel2 && typeof patientsModel2.findUnique === 'function'
+        ? await patientsModel2.findUnique({ where: { email: patientEmail } })
+        : await db.findUniqueByEmail?.(patientEmail);
 
-      if (!patient) {
+      if (!patient2) {
         return res.status(404).json({
           error: 'Patient not found. Please create the patient first.',
         });
@@ -544,7 +612,7 @@ class HealthcareController {
           description: description || reason || notes,
           scheduledAt: new Date(scheduledAt),
           status: 'SCHEDULED',
-          patientId: patient.id,
+          patientId: patient2.id,
           doctorId: doctorUserId,
           notes: notes || reason,
         },
@@ -733,9 +801,11 @@ class HealthcareController {
       }
 
       // Find patient by email
-      const patient = await getPrismaClient().patientWalletMapping.findUnique({
-        where: { email: patientEmail },
-      });
+      const db2 = getPrismaClient();
+      const patientsModel3 = resolvePatientModel(db2);
+      const patient2 = patientsModel3 && typeof patientsModel3.findUnique === 'function'
+        ? await patientsModel3.findUnique({ where: { email: patientEmail } })
+        : await db2.findUniqueByEmail?.(patientEmail);
 
       if (!patient) {
         return res.status(404).json({
@@ -760,7 +830,7 @@ class HealthcareController {
           instructions,
           expiryDate: expiryDate ? new Date(expiryDate) : null,
           status: 'ACTIVE',
-          patientId: patient.id,
+          patientId: patient2.id,
           doctorId: doctorUserId,
         },
         include: {
@@ -789,7 +859,7 @@ class HealthcareController {
 
         // Prefer explicit on-chain wallet addresses. Use patient.walletAddress when available,
         // otherwise fall back to patient.id for local/in-memory flows. For doctor, prefer req.user.walletAddress.
-        const patientOnchainId = patient.walletAddress || patient.id || '';
+        const patientOnchainId = patient2.walletAddress || patient2.id || '';
         const doctorOnchainId = (req.user && req.user.walletAddress) || doctorAddress || '';
 
         if (!patientOnchainId || !doctorOnchainId) {
@@ -817,14 +887,14 @@ class HealthcareController {
           // Update patient data on blockchain if blockchain is available
           if (blockchainResult) {
             const updatedData = {
-              name: patient.name,
-              email: patient.email,
+              name: patient2.name,
+              email: patient2.email,
               ...patientDetails,
-              walletAddress: patient.walletAddress,
+              walletAddress: patient2.walletAddress,
               updatedAt: new Date().toISOString(),
             };
 
-            await transactionService.updatePatientData(patient.walletAddress, updatedData);
+            await transactionService.updatePatientData(patient2.walletAddress, updatedData);
 
             // Update IPFS with new data
             const PinataSDK = (await import('@pinata/sdk')).default;
@@ -835,7 +905,7 @@ class HealthcareController {
 
             const pinataResult = await pinata.pinJSONToIPFS(updatedData, {
               pinataMetadata: {
-                name: `patient-${patient.email}-${Date.now()}`,
+                name: `patient-${patient2.email}-${Date.now()}`,
               },
               pinataOptions: {
                 cidVersion: 1,
@@ -844,7 +914,7 @@ class HealthcareController {
 
             // Update the patient record with new IPFS hash
             updatedData.ipfsHash = pinataResult.IpfsHash;
-            await transactionService.updatePatientData(patient.walletAddress, updatedData);
+            await transactionService.updatePatientData(patient2.walletAddress, updatedData);
           }
         } catch (updateError) {
           logger.warn('Failed to update patient details during prescription creation:', updateError);
@@ -1389,9 +1459,12 @@ class HealthcareController {
       }
 
       // Find patient by email
-      const patient = await getPrismaClient().patientWalletMapping.findUnique({
-        where: { email },
-        include: {
+      const db3 = getPrismaClient();
+      const patientsModel4 = resolvePatientModel(db3);
+      const patient = patientsModel4 && typeof patientsModel4.findUnique === 'function'
+        ? await patientsModel4.findUnique({
+          where: { email },
+          include: {
           appointments: {
             include: {
               doctor: {
