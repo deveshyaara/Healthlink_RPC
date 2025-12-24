@@ -1011,7 +1011,7 @@ class HealthcareController {
 
             const pinataResult = await pinata.pinJSONToIPFS(updatedData, {
               pinataMetadata: {
-                name: `patient-${patient2.email}-${Date.now()}`,
+                name: `patient-${patient.email}-${Date.now()}`,
               },
               pinataOptions: {
                 cidVersion: 1,
@@ -1020,7 +1020,7 @@ class HealthcareController {
 
             // Update the patient record with new IPFS hash
             updatedData.ipfsHash = pinataResult.IpfsHash;
-            await transactionService.updatePatientData(patient2.walletAddress, updatedData);
+            await transactionService.updatePatientData(patient.walletAddress || patientId, updatedData);
           }
         } catch (updateError) {
           logger.warn('Failed to update patient details during prescription creation:', updateError);
