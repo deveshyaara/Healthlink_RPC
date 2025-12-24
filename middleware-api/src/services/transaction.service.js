@@ -492,6 +492,58 @@ class TransactionService {
   }
 
   /**
+   * Update appointment (notes/status). This wraps lower-level ethereum service calls.
+   */
+  async updateAppointment(appointmentId, updateData = {}) {
+    try {
+      await this.initialize();
+      logger.info('Service: Updating appointment', { appointmentId, updateData });
+
+      const results = {};
+
+      if (Object.prototype.hasOwnProperty.call(updateData, 'status')) {
+        results.status = await ethereumService.updateAppointmentStatus(appointmentId, updateData.status);
+      }
+
+      if (Object.prototype.hasOwnProperty.call(updateData, 'notes')) {
+        results.notes = await ethereumService.updateAppointmentNotes(appointmentId, updateData.notes);
+      }
+
+      return {
+        success: true,
+        data: results,
+        functionName: 'updateAppointment',
+        timestamp: new Date().toISOString(),
+      };
+    } catch (error) {
+      logger.error('Service: updateAppointment failed:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Cancel an appointment (set status to CANCELLED)
+   */
+  async cancelAppointment(appointmentId) {
+    try {
+      await this.initialize();
+      logger.info('Service: Cancelling appointment', { appointmentId });
+
+      const result = await ethereumService.updateAppointmentStatus(appointmentId, 'CANCELLED');
+
+      return {
+        success: true,
+        data: result,
+        functionName: 'cancelAppointment',
+        timestamp: new Date().toISOString(),
+      };
+    } catch (error) {
+      logger.error('Service: cancelAppointment failed:', error);
+      throw error;
+    }
+  }
+
+  /**
    * Get consent by ID
    * @param {string} consentId - Consent ID
    * @returns {Promise<Object>} Consent data

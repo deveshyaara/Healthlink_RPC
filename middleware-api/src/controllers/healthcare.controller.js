@@ -1157,9 +1157,143 @@ class HealthcareController {
   async updateAppointment(req, res, next) {
     try {
       const { appointmentId } = req.params;
-      const updateData = req.body;
-      // Return success for now - implement with smart contract call
-      res.status(200).json({ success: true, appointmentId, ...updateData });
+      const updateData = req.body || {};
+
+      // Load existing appointment for authorization checks
+      let existing;
+      try {
+        existing = await transactionService.getAppointment(appointmentId);
+      } catch (err) {
+        // If on-chain appointment is missing or the call fails, attempt DB fallback so updates can be performed when on-chain isn't available
+        logger.warn('On-chain getAppointment failed; trying DB fallback:', err && err.message ? err.message : err);
+        const db = getPrismaClient();
+        // Log dbService readiness info to help debug why Prisma models may be missing
+        try {
+          logger.info('dbService readiness at fallback', {
+            dbServiceReady: dbService && typeof dbService.isReady === 'function' ? dbService.isReady() : 'unknown',
+            hasPrismaClient: !!(dbService && dbService.prisma),
+          });
+        } catch (e) {
+          // ignore
+        }
+
+        // Attempt to initialize Prisma client lazily if it's not ready
+        try {
+          if (dbService && typeof dbService.initialize === 'function' && !(dbService.isReady && dbService.isReady())) {
+            logger.info('Prisma client not ready - attempting lazy initialize');
+            await dbService.initialize();
+          }
+        } catch (initErr) {
+          logger.warn('Prisma client lazy initialize failed at fallback', { message: initErr.message });
+        }
+
+        // Refresh `db` reference after attempting init
+        const refreshedDb = getPrismaClient();
+
+        // Try various possible Prisma model names to be resilient to generated client differences
+        const appointmentModel = (refreshedDb && (refreshedDb.appointment || refreshedDb.Appointment || refreshedDb.appointments || refreshedDb.Appointments || refreshedDb.appointmentModel)) || null;
+        try {
+          logger.info('Prisma appointment model check', { availableKeys: refreshedDb ? Object.keys(refreshedDb) : [], foundModel: !!appointmentModel });
+        } catch (e) {
+          // ignore logging errors
+        }
+
+        if (appointmentModel && typeof appointmentModel.findUnique === 'function') {
+          const dbApt = await appointmentModel.findUnique({ where: { appointmentId } });
+          if (dbApt) {
+            logger.info('DB fallback found appointment', { appointmentId, dbAptId: dbApt.id });
+            existing = { success: true, data: dbApt };
+          } else {
+            logger.warn('DB fallback did NOT find appointment by appointmentId', { appointmentId });
+            existing = null;
+          }
+        } else {
+          logger.warn('DB client or Appointment model not available for fallback', { hasDb: !!db, modelCandidates: ['appointment','Appointment','appointments','Appointments','appointmentModel'], availableKeys: db ? Object.keys(db) : [] });
+          existing = null;
+        }
+      }
+
+      if (!existing || !existing.data) {
+        return res.status(404).json({ success: false, error: 'Appointment not found' });
+      }
+
+      const appointment = existing.data;
+      const userRole = req.user?.role;
+      const userIdentifier = req.user?.userId || req.user?.id || req.user?.walletAddress;
+
+      // Authorization: doctors and admins may update any appointment; patients can only update notes
+      if (userRole === 'patient') {
+        const patientIdOnRecord = appointment.patientId || appointment.patient?.id;
+        if (patientIdOnRecord !== userIdentifier && patientIdOnRecord !== req.user?.walletAddress) {
+          return res.status(403).json({ success: false, error: 'Patients can only modify their own appointments' });
+        }
+
+        // Only allow patients to change notes (reschedule or status changes must be done by a doctor/admin)
+        const allowedForPatient = ['notes'];
+        const attempted = Object.keys(updateData);
+        const unauthorized = attempted.filter(k => !allowedForPatient.includes(k));
+        if (unauthorized.length > 0) {
+          return res.status(403).json({ success: false, error: 'Patients can only update notes' });
+        }
+      }
+
+      // Persist to DB when available
+      try {
+        const db = getPrismaClient();
+        if (db && db.appointment && typeof db.appointment.update === 'function') {
+          const updated = await db.appointment.update({
+            where: { appointmentId },
+            data: {
+              ...(updateData.title ? { title: updateData.title } : {}),
+              ...(updateData.description ? { description: updateData.description } : {}),
+              ...(updateData.notes ? { notes: updateData.notes } : {}),
+              ...(updateData.scheduledAt ? { scheduledAt: new Date(updateData.scheduledAt) } : {}),
+              ...(updateData.status ? { status: updateData.status.toUpperCase() } : {}),
+            },
+          });
+
+          // Attempt on-chain update where applicable
+          try {
+            if (transactionService && typeof transactionService.updateAppointment === 'function') {
+              await transactionService.updateAppointment(appointmentId, updateData);
+            }
+          } catch (chainErr) {
+            logger.warn('Failed to update appointment on-chain:', chainErr);
+          }
+
+          // Log audit event (non-blocking)
+          try {
+            const actorId = req.user?.id || req.user?.userId || null;
+            logger.info('Attempting to log audit event for appointment update', { actorId, appointmentId, updateFields: Object.keys(updateData) });
+            dbService.logAuditEvent && await dbService.logAuditEvent(actorId, 'appointment.updated', {
+              appointmentId,
+              updateFields: Object.keys(updateData),
+              ipAddress: req.ip,
+              userAgent: req.get('user-agent'),
+            });
+          } catch (auditErr) {
+            logger.warn('Failed to log audit event for appointment update:', auditErr.message || auditErr);
+          }
+
+          return res.status(200).json({ success: true, data: updated });
+        }
+      } catch (dbErr) {
+        // If Prisma update fails, allow the error to propagate to the standard error handler after logging.
+        logger.warn('DB update failed for appointment; continuing with on-chain where possible:', dbErr.message);
+      }
+
+      // Fallback: attempt on-chain update and synthesize response
+      try {
+        if (transactionService && typeof transactionService.updateAppointment === 'function') {
+          await transactionService.updateAppointment(appointmentId, updateData);
+        }
+
+        // Return merged object
+        const merged = { ...appointment, ...updateData };
+        return res.status(200).json({ success: true, data: merged });
+      } catch (err) {
+        return res.status(500).json({ success: false, error: 'Failed to update appointment' });
+      }
     } catch (error) {
       next(error);
     }
@@ -1172,8 +1306,70 @@ class HealthcareController {
   async cancelAppointment(req, res, next) {
     try {
       const { appointmentId } = req.params;
-      // Return success for now - implement with smart contract call
-      res.status(200).json({ success: true, appointmentId, status: 'cancelled' });
+
+      // Load existing appointment
+      const existing = await transactionService.getAppointment(appointmentId);
+      if (!existing || !existing.data) {
+        return res.status(404).json({ success: false, error: 'Appointment not found' });
+      }
+
+      const appointment = existing.data;
+      const userRole = req.user?.role;
+      const userIdentifier = req.user?.userId || req.user?.id || req.user?.walletAddress;
+
+      // Authorization: patients can cancel their own appointments; doctors/admins can cancel any
+      if (userRole === 'patient') {
+        const patientIdOnRecord = appointment.patientId || appointment.patient?.id;
+        if (patientIdOnRecord !== userIdentifier && patientIdOnRecord !== req.user?.walletAddress) {
+          return res.status(403).json({ success: false, error: 'Patients can only cancel their own appointments' });
+        }
+      }
+
+      // Update DB status if available
+      try {
+        const db = getPrismaClient();
+        if (db && db.appointment && typeof db.appointment.update === 'function') {
+          const updated = await db.appointment.update({
+            where: { appointmentId },
+            data: { status: 'CANCELLED' },
+          });
+
+          try {
+            if (transactionService && typeof transactionService.cancelAppointment === 'function') {
+              await transactionService.cancelAppointment(appointmentId);
+            }
+          } catch (chainErr) {
+            logger.warn('Failed to cancel appointment on-chain:', chainErr);
+          }
+
+          // Log audit event for cancellation
+          try {
+            const actorId = req.user?.id || req.user?.userId || null;
+            dbService.logAuditEvent && await dbService.logAuditEvent(actorId, 'appointment.cancelled', {
+              appointmentId,
+              ipAddress: req.ip,
+              userAgent: req.get('user-agent'),
+            });
+          } catch (auditErr) {
+            logger.warn('Failed to log audit event for appointment cancel:', auditErr.message || auditErr);
+          }
+
+          return res.status(200).json({ success: true, data: updated });
+        }
+      } catch (dbErr) {
+        logger.warn('DB update failed for cancel; continuing with on-chain where possible:', dbErr.message);
+      }
+
+      // Fallback: call on-chain cancel
+      try {
+        if (transactionService && typeof transactionService.cancelAppointment === 'function') {
+          await transactionService.cancelAppointment(appointmentId);
+        }
+        const merged = { ...appointment, status: 'CANCELLED' };
+        return res.status(200).json({ success: true, data: merged });
+      } catch (err) {
+        return res.status(500).json({ success: false, error: 'Failed to cancel appointment' });
+      }
     } catch (error) {
       next(error);
     }
