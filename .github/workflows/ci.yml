@@ -1,0 +1,51 @@
+name: CI
+
+on:
+  push:
+    branches: [ main, master, 'fix/*', 'chore/*', '**' ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  unit-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Use Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+      - name: Install dependencies
+        run: |
+          cd middleware-api
+          npm ci
+      - name: Run unit tests
+        run: |
+          cd middleware-api
+          npm test --silent
+
+  integration:
+    needs: unit-tests
+    runs-on: ubuntu-latest
+    if: ${{ secrets.INTEGRATION_DATABASE_URL != '' }}
+    env:
+      INTEGRATION_DATABASE_URL: ${{ secrets.INTEGRATION_DATABASE_URL }}
+      JWT_SECRET: ${{ secrets.JWT_SECRET || 'healthlink-production-secret-change-this-to-secure-random-string' }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Use Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+      - name: Install dependencies
+        run: |
+          cd middleware-api
+          npm ci
+      - name: Run DB enum migration
+        run: |
+          cd middleware-api
+          node scripts/create-db-enums.mjs
+      - name: Run integration appointment script
+        run: |
+          cd middleware-api
+          node scripts/integration-appointment-run.mjs

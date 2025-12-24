@@ -16,13 +16,13 @@ beforeAll(async () => {
   }
 
   // Lazy-import dbService to avoid Jest module resolution errors when suite is skipped
-  dbService = (await import('../../src/services/db.service.prisma.js')).default;
+  dbService = (await import('../../services/db.service.prisma.js')).default;
 
   process.env.DATABASE_URL = INTEGRATION_DB;
   await dbService.initialize();
 
   // Ensure we use real routes
-  const routesMod = await import('../../src/routes/healthcare.routes.js');
+  const routesMod = await import('../../routes/healthcare.routes.js');
   router = routesMod.default || routesMod;
 
   app = express();

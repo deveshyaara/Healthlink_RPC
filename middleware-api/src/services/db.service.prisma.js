@@ -573,11 +573,31 @@ class DatabaseService {
    * });
    */
   async logAuditEvent(userId, action, metadata = {}) {
-    if (!this.isReady()) {
+    // Validate actor id
+    if (!userId) {
+      logger.warn('Audit logging skipped - missing userId (actor unknown)', { action, metadata });
       return;
     }
 
+    // Ensure DB client is ready; attempt to initialize if not
+    if (!this.isReady()) {
+      try {
+        // Try to initialize lazily to avoid losing audit events when DB becomes available later
+        await this.initialize();
+      } catch (initErr) {
+        logger.warn('Audit logging skipped - database not ready', { userId, action, error: initErr.message });
+        return;
+      }
+
+      if (!this.isReady()) {
+        logger.warn('Audit logging skipped - database still not ready after init attempt', { userId, action });
+        return;
+      }
+    }
+
     try {
+      logger.info('Logging audit event', { userId, action, metadata });
+
       await this.prisma.userAuditLog.create({
         data: {
           userId,
@@ -586,8 +606,10 @@ class DatabaseService {
           userAgent: metadata.userAgent || null,
         },
       });
+
+      logger.info('Audit event logged', { userId, action });
     } catch (error) {
-      console.error('Failed to log audit event:', error);
+      logger.error('Failed to log audit event:', { userId, action, message: error.message });
       // Don't throw - audit logging should not break main flow
     }
   }

@@ -1160,7 +1160,59 @@ class HealthcareController {
       const updateData = req.body || {};
 
       // Load existing appointment for authorization checks
-      const existing = await transactionService.getAppointment(appointmentId);
+      let existing;
+      try {
+        existing = await transactionService.getAppointment(appointmentId);
+      } catch (err) {
+        // If on-chain appointment is missing or the call fails, attempt DB fallback so updates can be performed when on-chain isn't available
+        logger.warn('On-chain getAppointment failed; trying DB fallback:', err && err.message ? err.message : err);
+        const db = getPrismaClient();
+        // Log dbService readiness info to help debug why Prisma models may be missing
+        try {
+          logger.info('dbService readiness at fallback', {
+            dbServiceReady: dbService && typeof dbService.isReady === 'function' ? dbService.isReady() : 'unknown',
+            hasPrismaClient: !!(dbService && dbService.prisma),
+          });
+        } catch (e) {
+          // ignore
+        }
+
+        // Attempt to initialize Prisma client lazily if it's not ready
+        try {
+          if (dbService && typeof dbService.initialize === 'function' && !(dbService.isReady && dbService.isReady())) {
+            logger.info('Prisma client not ready - attempting lazy initialize');
+            await dbService.initialize();
+          }
+        } catch (initErr) {
+          logger.warn('Prisma client lazy initialize failed at fallback', { message: initErr.message });
+        }
+
+        // Refresh `db` reference after attempting init
+        const refreshedDb = getPrismaClient();
+
+        // Try various possible Prisma model names to be resilient to generated client differences
+        const appointmentModel = (refreshedDb && (refreshedDb.appointment || refreshedDb.Appointment || refreshedDb.appointments || refreshedDb.Appointments || refreshedDb.appointmentModel)) || null;
+        try {
+          logger.info('Prisma appointment model check', { availableKeys: refreshedDb ? Object.keys(refreshedDb) : [], foundModel: !!appointmentModel });
+        } catch (e) {
+          // ignore logging errors
+        }
+
+        if (appointmentModel && typeof appointmentModel.findUnique === 'function') {
+          const dbApt = await appointmentModel.findUnique({ where: { appointmentId } });
+          if (dbApt) {
+            logger.info('DB fallback found appointment', { appointmentId, dbAptId: dbApt.id });
+            existing = { success: true, data: dbApt };
+          } else {
+            logger.warn('DB fallback did NOT find appointment by appointmentId', { appointmentId });
+            existing = null;
+          }
+        } else {
+          logger.warn('DB client or Appointment model not available for fallback', { hasDb: !!db, modelCandidates: ['appointment','Appointment','appointments','Appointments','appointmentModel'], availableKeys: db ? Object.keys(db) : [] });
+          existing = null;
+        }
+      }
+
       if (!existing || !existing.data) {
         return res.status(404).json({ success: false, error: 'Appointment not found' });
       }
@@ -1212,6 +1264,7 @@ class HealthcareController {
           // Log audit event (non-blocking)
           try {
             const actorId = req.user?.id || req.user?.userId || null;
+            logger.info('Attempting to log audit event for appointment update', { actorId, appointmentId, updateFields: Object.keys(updateData) });
             dbService.logAuditEvent && await dbService.logAuditEvent(actorId, 'appointment.updated', {
               appointmentId,
               updateFields: Object.keys(updateData),
@@ -1225,6 +1278,7 @@ class HealthcareController {
           return res.status(200).json({ success: true, data: updated });
         }
       } catch (dbErr) {
+        // If Prisma update fails, allow the error to propagate to the standard error handler after logging.
         logger.warn('DB update failed for appointment; continuing with on-chain where possible:', dbErr.message);
       }
 
