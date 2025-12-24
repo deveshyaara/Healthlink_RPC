@@ -175,9 +175,26 @@ export const authenticateJWT = async (req, res, next) => {
  */
 export const optionalAuth = async (req, res, next) => {
   const authHeader = req.headers.authorization;
+  const headerUserId = req.headers['x-user-id'] || req.headers['x-user-id'];
 
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    // No token, continue without user context
+    // If client provided X-User-ID header, inject a minimal user object as a fallback.
+    // WARNING: This should only be used for trusted, internal clients (e.g., server-to-server).
+    if (headerUserId) {
+      req.user = {
+        userId: headerUserId,
+        id: headerUserId,
+        email: `${headerUserId}@healthlink.local`,
+        role: 'patient',
+        name: headerUserId,
+        isActive: true,
+      };
+      req.fabricIdentity = null;
+      logger.warn('Optional auth: using X-User-ID header to set req.user; ensure this is intended for trusted clients');
+      return next();
+    }
+
+    // No token and no header, continue without user context
     req.user = null;
     req.fabricIdentity = null;
     return next();

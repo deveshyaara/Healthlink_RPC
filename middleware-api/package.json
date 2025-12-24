@@ -8,7 +8,7 @@
     "start": "node src/server.js",
     "start:prod": "NODE_ENV=production node src/server.js",
     "dev": "nodemon src/server.js",
-    "test": "npx jest",
+    "test": "node --experimental-vm-modules ./node_modules/jest/bin/jest.js --config=jest.config.cjs",
     "lint": "eslint src/**/*.js",
     "migrate": "node run_migration.js",
     "validate": "node scripts/validate-deployment.js",

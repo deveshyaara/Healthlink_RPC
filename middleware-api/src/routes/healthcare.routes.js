@@ -1,8 +1,11 @@
 import express from 'express';
-import healthcareController from '../controllers/healthcare.controller.js';
+import HealthcareController from '../controllers/healthcare.controller.js';
 import { authenticateJWT, requireDoctor, requirePatient, requireAdmin } from '../middleware/auth.middleware.js';
 
 const router = express.Router();
+
+// Instantiate controller
+const healthcareController = new HealthcareController();
 
 // Sanity checks: ensure controller methods exist to avoid obscure Express errors
 const expectedHandlers = [
@@ -20,6 +23,8 @@ expectedHandlers.forEach((h) => {
   if (typeof healthcareController[h] !== 'function') {
     throw new Error(`healthcare.controller missing required handler: ${h}`);
   }
+  // Bind method to the controller instance to preserve `this` when used as Express handlers
+  healthcareController[h] = healthcareController[h].bind(healthcareController);
 });
 
 // ======================

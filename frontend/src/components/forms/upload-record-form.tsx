@@ -65,6 +65,8 @@ export function UploadRecordForm({
     reset,
   } = useForm<UploadRecordFormData>({
     resolver: zodResolver(uploadRecordSchema),
+    // Intentionally do not set `recordType` here to avoid a TS mismatch with the Zod enum
+    // The Select is controlled by `watch('recordType')` and we pass a fallback value when rendering
   });
 
   // Access control: Ensure user has DOCTOR_ROLE
@@ -170,8 +172,8 @@ export function UploadRecordForm({
                     Record Type <span className="text-red-500">*</span>
         </Label>
         <Select
-          value={recordType}
-          onValueChange={(value) => setValue('recordType', value as typeof recordType)}
+          value={recordType ?? ''}
+          onValueChange={(value) => setValue('recordType', value as UploadRecordFormData['recordType'])}
           disabled={isSubmitting}
         >
           <SelectTrigger id="recordType">

@@ -100,9 +100,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             }
             if (userData) {
               setUser(userData);
+              authUtils.setUser(userData);
               setToken(storedToken);
             } else {
               clearStoredToken();
+              authUtils.removeUser();
             }
           } else {
             // Token is invalid, clear it
@@ -129,6 +131,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         storeToken(response.token);
         setToken(response.token);
         setUser(response.user);
+        authUtils.setUser(response.user);
 
         logger.log('[Auth Context] Token stored, user set');
 
@@ -171,6 +174,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         storeToken(response.token);
         setToken(response.token);
         setUser(response.user);
+        authUtils.setUser(response.user);
 
         logger.log('[Auth Context] Token stored, user set');
 
@@ -210,6 +214,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       console.error('Logout API call failed:', error);
     } finally {
       clearStoredToken();
+      authUtils.removeUser();
       setUser(null);
       setToken(null);
       toast({
