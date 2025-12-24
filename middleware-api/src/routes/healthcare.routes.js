@@ -187,6 +187,13 @@ router.patch('/consents/:consentId/revoke', authenticateJWT, healthcareControlle
 router.get('/appointments', authenticateJWT, healthcareController.getCurrentUserAppointments);
 
 /**
+ * @route   GET /api/v1/healthcare/records
+ * @desc    Get all medical records for current authenticated user (patient or doctor)
+ * @access  Protected
+ */
+router.get('/records', authenticateJWT, healthcareController.getCurrentUserRecords);
+
+/**
  * @route   POST /api/v1/healthcare/appointments
  * @desc    Create a new appointment
  * @access  Protected (Doctor or Admin)

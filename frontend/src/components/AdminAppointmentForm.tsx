@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 import { appointmentsApi } from '../lib/api-client';
 
 export default function AdminAppointmentForm(): JSX.Element {
-  const [patientAddress, setPatientAddress] = useState('');
+  const [patientEmail, setPatientEmail] = useState('');
   const [doctorAddress, setDoctorAddress] = useState('');
   const [time, setTime] = useState('');
   const [details, setDetails] = useState('');
@@ -13,7 +13,7 @@ export default function AdminAppointmentForm(): JSX.Element {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setNotice(null);
-    if (!patientAddress || !doctorAddress || !time) {
+    if (!patientEmail || !doctorAddress || !time) {
       setNotice('Please fill patient, doctor and date/time.');
       return;
     }
@@ -21,7 +21,7 @@ export default function AdminAppointmentForm(): JSX.Element {
     const unix = Math.floor(new Date(time).getTime() / 1000);
     const payload = {
       appointmentId: `appt-${Date.now()}`,
-      patientId: patientAddress,
+      patientEmail: patientEmail,
       doctorAddress,
       timestamp: unix,
       reason: details,
@@ -32,7 +32,7 @@ export default function AdminAppointmentForm(): JSX.Element {
       setLoading(true);
       await appointmentsApi.create(payload);
       setNotice('Appointment scheduled');
-      setPatientAddress('');
+      setPatientEmail('');
       setDoctorAddress('');
       setTime('');
       setDetails('');
@@ -49,11 +49,12 @@ export default function AdminAppointmentForm(): JSX.Element {
       <h4 className="text-lg font-semibold mb-4">Book Appointment (Admin)</h4>
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
-          <label className="block text-sm font-medium text-gray-700">Patient Address</label>
+          <label className="block text-sm font-medium text-gray-700">Patient Email</label>
           <input
-            value={patientAddress}
-            onChange={(e) => setPatientAddress(e.target.value)}
-            placeholder="0x..."
+            value={patientEmail}
+            onChange={(e) => setPatientEmail(e.target.value)}
+            placeholder="patient@example.com"
+            type="email"
             className="mt-1 block w-full rounded-md border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
           />
         </div>

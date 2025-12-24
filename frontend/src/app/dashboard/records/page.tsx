@@ -1,4 +1,4 @@
-'use client';
+ 'use client';
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -11,6 +11,7 @@ import { UploadRecordForm } from '@/components/forms/upload-record-form';
 import { Badge } from '@/components/ui/badge';
 import { MoreHorizontal, Search, UploadCloud, Download, Eye, Share2 } from 'lucide-react';
 import { useState, useEffect } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { medicalRecordsApi } from '@/lib/api-client';
 import { useAuth } from '@/contexts/auth-context';
 import { format } from 'date-fns';
@@ -46,6 +47,7 @@ export default function RecordsPage() {
   const [loadingDetails, setLoadingDetails] = useState(false);
   const [showUploadDialog, setShowUploadDialog] = useState(false);
   const [isSubmittingForm, setIsSubmittingForm] = useState(false);
+  const searchParams = useSearchParams();
 
   // Check if user can upload records (patients can upload their own records)
   const canUploadRecords = user?.role === 'patient' || user?.role === 'doctor' || user?.role === 'admin';
@@ -54,26 +56,47 @@ export default function RecordsPage() {
   const fetchRecords = async () => {
     setLoading(true);
     try {
-      const response = await medicalRecordsApi.getAll();
+      const patientEmailParam = searchParams?.get('patientEmail');
 
-      // Handle different response formats
-      let recordsData: MedicalRecord[] = [];
-
-      if (Array.isArray(response)) {
-        recordsData = response;
-      } else if (response && typeof response === 'object') {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        if ('data' in response && Array.isArray((response as any).data)) {
+      // If a patientEmail query param is present, fetch records for that patient (fallback to patientId when email absent)
+      if (patientEmailParam) {
+        const lookup = decodeURIComponent(patientEmailParam);
+        const response = await medicalRecordsApi.getByPatient(lookup);
+        // Normalize response to array
+        let recordsData: MedicalRecord[] = [];
+        if (Array.isArray(response)) {
+          recordsData = response as unknown as MedicalRecord[];
+        } else if (response && typeof response === 'object') {
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          recordsData = (response as any).data;
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        } else if ('records' in response && Array.isArray((response as any).records)) {
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          recordsData = (response as any).records;
+          recordsData = Array.isArray((response as any).data) ? (response as any).data : (Array.isArray((response as any).records) ? (response as any).records : []);
         }
-      }
+        // Normalize records to ensure `recordId` is always a string
+        const normalized = recordsData.map((r: any) => ({ ...r, recordId: String(r.recordId ?? r.id ?? '') }));
+        setRecords(normalized as MedicalRecord[]);
+      } else {
+        const response = await medicalRecordsApi.getAll();
 
-      setRecords(recordsData);
+        // Handle different response formats
+        let recordsData: MedicalRecord[] = [];
+
+        if (Array.isArray(response)) {
+          recordsData = response as unknown as MedicalRecord[];
+        } else if (response && typeof response === 'object') {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          if ('data' in response && Array.isArray((response as any).data)) {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            recordsData = (response as any).data;
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          } else if ('records' in response && Array.isArray((response as any).records)) {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            recordsData = (response as any).records;
+          }
+        }
+
+        // Normalize records to ensure `recordId` is always a string
+        const normalized = recordsData.map((r: any) => ({ ...r, recordId: String(r.recordId ?? r.id ?? '') }));
+        setRecords(normalized as MedicalRecord[]);
+      }
     } catch {
       toast.error('Failed to Load Records', {
         description: 'Unable to connect to the server. Please check your connection.',
@@ -86,7 +109,8 @@ export default function RecordsPage() {
 
   useEffect(() => {
     fetchRecords();
-  }, []);
+    // Re-run when query params change
+  }, [searchParams]);
 
   const handleViewDetails = async (record: MedicalRecord) => {
     setLoadingDetails(true);
@@ -439,7 +463,7 @@ export default function RecordsPage() {
         maxWidth="lg"
       >
         <UploadRecordForm
-          patientId={user?.id || ''}
+          patientEmail={(user as any)?.email || ''}
           onSuccess={handleUploadSuccess}
           onCancel={() => setShowUploadDialog(false)}
           onSubmitting={setIsSubmittingForm}

@@ -50,7 +50,7 @@ function DoctorPatientsPageContent() {
   const [searchQuery, setSearchQuery] = useState('');
   const [showUploadDialog, setShowUploadDialog] = useState(false);
   const [_isSubmittingForm, setIsSubmittingForm] = useState(false);
-  const [selectedPatientId, setSelectedPatientId] = useState<string>('');
+  const [selectedPatientEmail, setSelectedPatientEmail] = useState<string>('');
 
   const fetchPatients = async () => {
     try {
@@ -235,7 +235,7 @@ function DoctorPatientsPageContent() {
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center gap-2">
-                        <Link href={`/dashboard/records?patientId=${patient.patientId}`}>
+                        <Link href={`/dashboard/records?patientEmail=${encodeURIComponent(patient.email || patient.patientId)}`}>
                           <Button variant="outline" size="sm">
                             <Eye className="mr-2 h-4 w-4" />
                             View Records
@@ -245,7 +245,7 @@ function DoctorPatientsPageContent() {
                           variant="default"
                           size="sm"
                           onClick={() => {
-                            setSelectedPatientId(patient.patientId);
+                              setSelectedPatientEmail(patient.email || patient.patientId);
                             setShowUploadDialog(true);
                           }}
                         >
@@ -268,18 +268,18 @@ function DoctorPatientsPageContent() {
         onClose={() => {
           setShowUploadDialog(false);
           setIsSubmittingForm(false);
-          setSelectedPatientId('');
+          setSelectedPatientEmail('');
         }}
         title="Upload Medical Record"
-        description={`Upload a new medical record for patient: ${selectedPatientId || 'Unknown'}`}
+        description={`Upload a new medical record for patient: ${selectedPatientEmail || 'Unknown'}`}
       >
-        {selectedPatientId && (
+        {selectedPatientEmail && (
           <UploadRecordForm
-            patientId={selectedPatientId}
+            patientEmail={selectedPatientEmail}
             onSuccess={() => {
               setShowUploadDialog(false);
               setIsSubmittingForm(false);
-              setSelectedPatientId('');
+              setSelectedPatientEmail('');
               // Refresh the patients list properly
               fetchPatients();
             }}

@@ -29,7 +29,7 @@ const uploadRecordSchema = z.object({
 type UploadRecordFormData = z.infer<typeof uploadRecordSchema>;
 
 interface UploadRecordFormProps {
-    patientId: string;
+  patientEmail: string;
     onSuccess: () => void;
     onCancel?: () => void;
     onSubmitting?: (isSubmitting: boolean) => void;
@@ -47,7 +47,7 @@ interface UploadRecordFormProps {
  * @param onSubmitting - Callback to notify parent of submission state
  */
 export function UploadRecordForm({
-  patientId,
+  patientEmail,
   onSuccess,
   onCancel,
   onSubmitting,
@@ -109,7 +109,7 @@ export function UploadRecordForm({
 
       const recordPayload = {
         recordId: (typeof crypto !== 'undefined' && crypto.randomUUID) ? crypto.randomUUID() : `rec-${Date.now()}-${Math.floor(Math.random()*10000)}`,
-        patientId,
+        patientEmail,
         // `User` type defines `id` only — prefer that instead of non-standard `userId`
         doctorId: user?.role === 'doctor' ? user.id : '',
         recordType: data.recordType,

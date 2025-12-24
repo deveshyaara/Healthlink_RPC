@@ -139,7 +139,9 @@ export interface Appointment {
 
 export interface CreateAppointmentRequest {
   appointmentId: string;
-  patientId: string;
+  // Either a patient wallet ID or their email. Backend resolves email to patientId.
+  patientId?: string;
+  patientEmail?: string;
   doctorAddress: string;
   timestamp: number;
   reason?: string;

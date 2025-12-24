@@ -2,7 +2,7 @@
 
 import { UserNav } from '@/components/user-nav';
 import {
-  Sidebar,
+  Sidebar as UISidebar,
   SidebarContent,
   SidebarHeader,
   SidebarMenu,
@@ -12,6 +12,7 @@ import {
   SidebarInset,
   SidebarTrigger,
 } from '@/components/ui/sidebar';
+import AdminSidebar from '@/components/dashboard/Sidebar';
 import {
   Bell,
   Shield,
@@ -38,40 +39,44 @@ export default function DashboardLayout({
 
   return (
     <SidebarProvider>
-      <Sidebar className="border-r-2 border-government-saffron/30">
-        <SidebarHeader className="border-b border-neutral-200 dark:border-neutral-800">
-          <Link href="/" className="flex items-center gap-3 p-4">
-            <div className="h-10 w-10 bg-government-blue rounded-full flex items-center justify-center flex-shrink-0">
-              <Shield className="h-5 w-5 text-white" />
-            </div>
-            <div className="group-data-[collapsible=icon]:hidden">
-              <div className="font-bold text-base text-government-navy dark:text-white">
-                                HealthLink Pro
+      {user.role?.toLowerCase() === 'admin' ? (
+        <AdminSidebar />
+      ) : (
+        <UISidebar className="border-r-2 border-government-saffron/30">
+          <SidebarHeader className="border-b border-neutral-200 dark:border-neutral-800">
+            <Link href="/" className="flex items-center gap-3 p-4">
+              <div className="h-10 w-10 bg-government-blue rounded-full flex items-center justify-center flex-shrink-0">
+                <Shield className="h-5 w-5 text-white" />
               </div>
-              <div className="text-xs text-neutral-600 dark:text-neutral-400">
-                                Digital Health Exchange
+              <div className="group-data-[collapsible=icon]:hidden">
+                <div className="font-bold text-base text-government-navy dark:text-white">
+                                  HealthLink Pro
+                </div>
+                <div className="text-xs text-neutral-600 dark:text-neutral-400">
+                                  Digital Health Exchange
+                </div>
+                <div className="text-xs text-government-blue font-medium capitalize">
+                  {user.role} Portal
+                </div>
               </div>
-              <div className="text-xs text-government-blue font-medium capitalize">
-                {user.role} Portal
-              </div>
-            </div>
-          </Link>
-        </SidebarHeader>
-        <SidebarContent className="px-2 py-4">
-          <SidebarMenu>
-            {menuItems.map((item) => (
-              <SidebarMenuItem key={item.href}>
-                <SidebarMenuButton asChild tooltip={item.label} className="hover:bg-government-blue/10 hover:text-government-blue">
-                  <Link href={item.href}>
-                    <item.icon className="h-5 w-5" />
-                    <span>{item.label}</span>
-                  </Link>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-            ))}
-          </SidebarMenu>
-        </SidebarContent>
-      </Sidebar>
+            </Link>
+          </SidebarHeader>
+          <SidebarContent className="px-2 py-4">
+            <SidebarMenu>
+              {menuItems.map((item) => (
+                <SidebarMenuItem key={item.href}>
+                  <SidebarMenuButton asChild tooltip={item.label} className="hover:bg-government-blue/10 hover:text-government-blue">
+                    <Link href={item.href}>
+                      <item.icon className="h-5 w-5" />
+                      <span>{item.label}</span>
+                    </Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              ))}
+            </SidebarMenu>
+          </SidebarContent>
+        </UISidebar>
+      )}
       <SidebarInset>
         <header className="sticky top-0 z-10 flex h-16 items-center justify-between border-b-2 border-government-saffron/30 bg-white/80 dark:bg-neutral-900/80 px-4 backdrop-blur-md sm:px-8 shadow-sm">
           <div className="flex items-center gap-4">

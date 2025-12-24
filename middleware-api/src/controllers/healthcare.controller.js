@@ -45,6 +45,18 @@ function resolvePatientModel(db) {
  * Handles HTTP requests for Ethereum healthcare smart contract operations
  */
 class HealthcareController {
+  // Resolve patient id by email (supports Prisma client or in-memory fallback)
+  async resolvePatientId(email) {
+    if (!email) return null;
+    const db = getPrismaClient();
+    const patientsModel = resolvePatientModel(db);
+    const patient = patientsModel && typeof patientsModel.findUnique === 'function'
+      ? await patientsModel.findUnique({ where: { email } })
+      : await db.findUniqueByEmail?.(email);
+
+    return patient ? patient.id : null;
+  }
+
   /**
    * Create a new patient
    * POST /api/v1/healthcare/patients
@@ -198,10 +210,10 @@ class HealthcareController {
     try {
       const { patientId } = req.params;
       const userRole = req.user.role;
-      const userWalletAddress = req.user.walletAddress;
+      const userIdentifier = req.user.userId || req.user.id || req.user.walletAddress;
 
-      // Check permissions
-      if (userRole === 'patient' && userWalletAddress !== patientId) {
+      // Check permissions - allow patient to access their own data by id or walletAddress
+      if (userRole === 'patient' && userIdentifier !== patientId && req.user.walletAddress !== patientId) {
         return res.status(403).json({
           success: false,
           error: {
@@ -318,14 +330,20 @@ class HealthcareController {
    */
   async createMedicalRecord(req, res, next) {
     try {
-      const { recordId, patientId, doctorId, recordType, ipfsHash, metadata } = req.body;
+      const { recordId, patientEmail, doctorId, recordType, ipfsHash, metadata } = req.body;
 
-      // Validate patientId is provided (required for attaching record)
-      if (!patientId) {
+      // Validate patientEmail is provided
+      if (!patientEmail) {
         return res.status(400).json({
           success: false,
-          error: 'Missing required field: patientId',
+          error: 'Missing required field: patientEmail',
         });
+      }
+
+      // Resolve patientId from email
+      const patientId = await this.resolvePatientId(patientEmail);
+      if (!patientId) {
+        return res.status(404).json({ success: false, error: 'Patient email not found' });
       }
 
       const result = await transactionService.createMedicalRecord(
@@ -388,7 +406,7 @@ class HealthcareController {
   async getMedicalRecord(req, res, next) {
     try {
       const { recordId } = req.params;
-      const userId = req.user.userId || req.user.id;
+      const userIdentifier = req.user.userId || req.user.id || req.user.walletAddress;
       const userRole = req.user.role;
 
       // First get the record to check ownership
@@ -405,8 +423,8 @@ class HealthcareController {
         });
       }
 
-      // Check permissions
-      if (userRole === 'patient' && record.data.patientId !== userId) {
+      // Check permissions: patients may only access their own records (match by id or wallet)
+      if (userRole === 'patient' && record.data.patientId !== userIdentifier && record.data.patientId !== req.user.walletAddress) {
         return res.status(403).json({
           success: false,
           error: {
@@ -434,11 +452,11 @@ class HealthcareController {
   async getRecordsByPatient(req, res, next) {
     try {
       const { patientId } = req.params;
-      const userId = req.user.userId || req.user.id;
+      const userIdentifier = req.user.userId || req.user.id || req.user.walletAddress;
       const userRole = req.user.role;
 
       // Check permissions
-      if (userRole === 'patient' && userId !== patientId) {
+      if (userRole === 'patient' && userIdentifier !== patientId && req.user.walletAddress !== patientId) {
         return res.status(403).json({
           success: false,
           error: {
@@ -452,8 +470,9 @@ class HealthcareController {
       // Doctors need consent to access patient records
       if (userRole === 'doctor') {
         const consents = await transactionService.getConsentsByPatient(patientId);
-        const hasConsent = consents.data.some((consent) =>
-          consent.granteeAddress === userId && // doctor's wallet address
+        const doctorIdentifier = req.user.walletAddress || userIdentifier;
+        const hasConsent = (consents.data || []).some((consent) =>
+          (consent.granteeAddress === doctorIdentifier || consent.granteeAddress === req.user.id) && // doctor's wallet or id
           consent.status === 0 && // active status
           consent.validUntil > Math.floor(Date.now() / 1000), // not expired
         );
@@ -486,10 +505,10 @@ class HealthcareController {
    */
   async getCurrentUserRecords(req, res, next) {
     try {
-      const userId = req.user.userId || req.user.id;
+      const userIdentifier = req.user.userId || req.user.id || req.user.walletAddress;
       const userRole = req.user.role;
 
-      if (!userId) {
+      if (!userIdentifier) {
         return res.status(400).json({
           success: false,
           error: {
@@ -506,15 +525,30 @@ class HealthcareController {
 
       if (userRole === 'patient') {
         // Patients can only see their own records
-        const result = await transactionService.getRecordsByPatient(userId);
+        const result = await transactionService.getRecordsByPatient(userIdentifier);
         records = result?.data || [];
       } else if (userRole === 'doctor') {
-        // Doctors can see records of patients who have granted consent
-        // For now, return empty array - will implement consent checking later
-        records = [];
+        // Doctors can see records they've authored/are associated with
+        try {
+          const db = getPrismaClient();
+          if (db && db.medicalRecord && typeof db.medicalRecord.findMany === 'function') {
+            records = await db.medicalRecord.findMany({
+              where: { doctorId: req.user.id },
+              include: {
+                patient: { select: { id: true, email: true, name: true, walletAddress: true } },
+              },
+              orderBy: { createdAt: 'desc' },
+            }) || [];
+          } else {
+            // Fallback if Prisma not available
+            records = [];
+          }
+        } catch (err) {
+          logger.warn('Failed to fetch doctor records from DB:', err);
+          records = [];
+        }
       } else if (userRole === 'admin') {
-        // Admins can see all records (for audit purposes)
-        // This would need a different method to get all records
+        // Admins can see all records (for audit purposes) - implement if needed
         records = [];
       } else {
         return res.status(403).json({
@@ -591,18 +625,18 @@ class HealthcareController {
         });
       }
 
-      // Find patient by email
+      // Resolve patientId from email
+      const patientId = await this.resolvePatientId(patientEmail);
+      if (!patientId) {
+        return res.status(404).json({ success: false, error: 'Patient email not found' });
+      }
+
+      // Fetch full patient record for walletAddress when available
       const db = getPrismaClient();
       const patientsModel2 = resolvePatientModel(db);
       const patient = patientsModel2 && typeof patientsModel2.findUnique === 'function'
-        ? await patientsModel2.findUnique({ where: { email: patientEmail } })
-        : await db.findUniqueByEmail?.(patientEmail);
-
-      if (!patient2) {
-        return res.status(404).json({
-          error: 'Patient not found. Please create the patient first.',
-        });
-      }
+        ? await patientsModel2.findUnique({ where: { id: patientId } })
+        : await db.patientWalletMapping?.get(patientId) || null;
 
       // Create appointment in database
       const appointment = await getPrismaClient().appointment.create({
@@ -612,7 +646,7 @@ class HealthcareController {
           description: description || reason || notes,
           scheduledAt: new Date(scheduledAt),
           status: 'SCHEDULED',
-          patientId: patient2.id,
+          patientId: patientId,
           doctorId: doctorUserId,
           notes: notes || reason,
         },
@@ -640,7 +674,7 @@ class HealthcareController {
       try {
         const result = await transactionService.createAppointment(
           appointment.appointmentId,
-          patient.walletAddress,
+          (patient && patient.walletAddress) || patientId,
           doctorAddress || doctorId || '',
           Math.floor(new Date(scheduledAt).getTime() / 1000),
           title,
@@ -658,10 +692,10 @@ class HealthcareController {
           // Update patient data on blockchain if blockchain is available
           if (blockchainResult) {
             const updatedData = {
-              name: patient.name,
-              email: patient.email,
+              name: patient?.name,
+              email: patient?.email || patientEmail,
               ...patientDetails,
-              walletAddress: patient.walletAddress,
+              walletAddress: patient?.walletAddress,
               updatedAt: new Date().toISOString(),
             };
 
@@ -722,6 +756,17 @@ class HealthcareController {
         return res.status(404).json({ success: false, error: 'Appointment not found' });
       }
 
+      // Authorization: patients can only access their own appointments
+      const userIdentifier = req.user.userId || req.user.id || req.user.walletAddress;
+      const userRole = req.user.role;
+
+      if (userRole === 'patient') {
+        const patientIdOnRecord = result.data.patientId || result.data.patient?.id || result.data.patientId;
+        if (patientIdOnRecord !== userIdentifier && patientIdOnRecord !== req.user.walletAddress) {
+          return res.status(403).json({ success: false, error: 'Patients can only access their own appointments' });
+        }
+      }
+
       res.status(200).json(result);
     } catch (error) {
       next(error);
@@ -740,6 +785,17 @@ class HealthcareController {
 
       if (!result || !result.data) {
         return res.status(404).json({ success: false, error: 'Prescription not found' });
+      }
+
+      // Authorization: patients can only access their own prescriptions
+      const userIdentifier = req.user.userId || req.user.id || req.user.walletAddress;
+      const userRole = req.user.role;
+
+      if (userRole === 'patient') {
+        const patientIdOnRecord = result.data.patientId || result.data.patient?.id || result.data.patientId;
+        if (patientIdOnRecord !== userIdentifier && patientIdOnRecord !== req.user.walletAddress) {
+          return res.status(403).json({ success: false, error: 'Patients can only access their own prescriptions' });
+        }
       }
 
       res.status(200).json(result);
@@ -800,18 +856,17 @@ class HealthcareController {
         });
       }
 
-      // Find patient by email
+      // Resolve patientId from email and fetch patient record
+      const patientId = await this.resolvePatientId(patientEmail);
+      if (!patientId) {
+        return res.status(404).json({ success: false, error: 'Patient email not found' });
+      }
+
       const db2 = getPrismaClient();
       const patientsModel3 = resolvePatientModel(db2);
-      const patient2 = patientsModel3 && typeof patientsModel3.findUnique === 'function'
-        ? await patientsModel3.findUnique({ where: { email: patientEmail } })
-        : await db2.findUniqueByEmail?.(patientEmail);
-
-      if (!patient) {
-        return res.status(404).json({
-          error: 'Patient not found. Please create the patient first.',
-        });
-      }
+      const patient = patientsModel3 && typeof patientsModel3.findUnique === 'function'
+        ? await patientsModel3.findUnique({ where: { id: patientId } })
+        : await db2.findUniqueByEmail?.(patientEmail) || null;
 
       // Normalize medication input: prefer explicit `medication`, then `medications` array
       let med = medication || '';
@@ -830,7 +885,7 @@ class HealthcareController {
           instructions,
           expiryDate: expiryDate ? new Date(expiryDate) : null,
           status: 'ACTIVE',
-          patientId: patient2.id,
+          patientId: patient.id,
           doctorId: doctorUserId,
         },
         include: {
@@ -859,7 +914,7 @@ class HealthcareController {
 
         // Prefer explicit on-chain wallet addresses. Use patient.walletAddress when available,
         // otherwise fall back to patient.id for local/in-memory flows. For doctor, prefer req.user.walletAddress.
-        const patientOnchainId = patient2.walletAddress || patient2.id || '';
+        const patientOnchainId = (patient && (patient.walletAddress || patient.id)) || '';
         const doctorOnchainId = (req.user && req.user.walletAddress) || doctorAddress || '';
 
         if (!patientOnchainId || !doctorOnchainId) {
@@ -887,14 +942,14 @@ class HealthcareController {
           // Update patient data on blockchain if blockchain is available
           if (blockchainResult) {
             const updatedData = {
-              name: patient2.name,
-              email: patient2.email,
+              name: patient?.name,
+              email: patient?.email || patientEmail,
               ...patientDetails,
-              walletAddress: patient2.walletAddress,
+              walletAddress: patient?.walletAddress,
               updatedAt: new Date().toISOString(),
             };
 
-            await transactionService.updatePatientData(patient2.walletAddress, updatedData);
+            await transactionService.updatePatientData(patient?.walletAddress || patientId, updatedData);
 
             // Update IPFS with new data
             const PinataSDK = (await import('@pinata/sdk')).default;
@@ -1042,23 +1097,23 @@ class HealthcareController {
    */
   async getCurrentUserConsents(req, res, next) {
     try {
-      const userId = req.user.userId || req.user.id;
+      const userIdentifier = req.user.userId || req.user.id || req.user.walletAddress;
       const userRole = req.user.role;
 
-      if (!userId) {
+      if (!userIdentifier) {
         return res.status(400).json({
           success: false,
           error: 'User ID not found',
         });
       }
 
-      logger.info(`Fetching consents for user: ${userId} with role: ${userRole}`);
+      logger.info(`Fetching consents for user: ${userIdentifier} with role: ${userRole}`);
 
       let consents = [];
 
       if (userRole === 'patient') {
         // Patients can see consents they've granted
-        const result = await transactionService.getConsentsByPatient(userId);
+        const result = await transactionService.getConsentsByPatient(userIdentifier);
         consents = result.data || [];
       } else if (userRole === 'doctor') {
         // Doctors can see consents granted to them
@@ -1108,27 +1163,27 @@ class HealthcareController {
    */
   async getCurrentUserPrescriptions(req, res, next) {
     try {
-      const userId = req.user.userId || req.user.id;
+      const userIdentifier = req.user.userId || req.user.id || req.user.walletAddress;
       const userRole = req.user.role;
 
-      if (!userId) {
+      if (!userIdentifier) {
         return res.status(400).json({
           success: false,
           error: 'User ID not found',
         });
       }
 
-      logger.info(`Fetching prescriptions for user: ${userId} with role: ${userRole}`);
+      logger.info(`Fetching prescriptions for user: ${userIdentifier} with role: ${userRole}`);
 
       let prescriptions = [];
 
       if (userRole === 'patient') {
         // Patients can see prescriptions issued to them
-        const result = await transactionService.getPrescriptionsByPatient(userId);
+        const result = await transactionService.getPrescriptionsByPatient(userIdentifier);
         prescriptions = result.data || [];
       } else if (userRole === 'doctor') {
         // Doctors can see prescriptions they've issued
-        const result = await transactionService.getPrescriptionsByDoctor(userId);
+        const result = await transactionService.getPrescriptionsByDoctor(req.user.id || userIdentifier);
         prescriptions = result.data || [];
       } else if (userRole === 'admin') {
         // Admins can see all prescriptions (implementation needed)
@@ -1151,27 +1206,27 @@ class HealthcareController {
    */
   async getCurrentUserAppointments(req, res, next) {
     try {
-      const userId = req.user.userId || req.user.id;
+      const userIdentifier = req.user.userId || req.user.id || req.user.walletAddress;
       const userRole = req.user.role;
 
-      if (!userId) {
+      if (!userIdentifier) {
         return res.status(400).json({
           success: false,
           error: 'User ID not found',
         });
       }
 
-      logger.info(`Fetching appointments for user: ${userId} with role: ${userRole}`);
+      logger.info(`Fetching appointments for user: ${userIdentifier} with role: ${userRole}`);
 
       let appointments = [];
 
       if (userRole === 'patient') {
         // Patients can see their appointments
-        const result = await transactionService.getAppointmentsByPatient(userId);
+        const result = await transactionService.getAppointmentsByPatient(userIdentifier);
         appointments = result.data || [];
       } else if (userRole === 'doctor') {
         // Doctors can see appointments they've scheduled
-        const result = await transactionService.getAppointmentsByDoctor(userId);
+        const result = await transactionService.getAppointmentsByDoctor(req.user.id || userIdentifier);
         appointments = result.data || [];
       } else if (userRole === 'admin') {
         // Admins can see all appointments (implementation needed)

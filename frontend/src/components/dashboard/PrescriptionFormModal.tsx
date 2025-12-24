@@ -10,7 +10,7 @@ import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 
 const prescriptionSchema = z.object({
-  patientId: z.string().min(1, 'Patient is required'),
+  patientEmail: z.string().email('Invalid email').min(1, 'Patient email is required'),
   medications: z.array(z.object({ name: z.string().min(1), dosage: z.string().optional(), frequency: z.string().optional(), duration: z.string().optional() })).min(1, 'At least one medication required'),
   instructions: z.string().optional(),
 });
@@ -29,7 +29,7 @@ export default function PrescriptionFormModal({ isOpen, onClose, onSubmit, initi
 
   const { register, control, handleSubmit, formState: { errors } } = useForm<PrescriptionFormValues>({
     resolver: zodResolver(prescriptionSchema),
-    defaultValues: initial || { patientId: '', medications: [{ name: '', dosage: '', frequency: '', duration: '' }], instructions: '' },
+    defaultValues: initial || { patientEmail: '', medications: [{ name: '', dosage: '', frequency: '', duration: '' }], instructions: '' },
   });
 
   const { fields, append, remove } = useFieldArray({ control, name: 'medications' });
@@ -57,9 +57,9 @@ export default function PrescriptionFormModal({ isOpen, onClose, onSubmit, initi
     >
       <form onSubmit={handleSubmit(_onSubmit)} className="space-y-4">
         <div>
-          <Label>Patient ID</Label>
-          <Input placeholder="Patient ID" {...register('patientId')} />
-          {errors.patientId && <p className="text-sm text-destructive">{errors.patientId.message}</p>}
+          <Label>Patient Email</Label>
+          <Input placeholder="patient@example.com" type="email" {...register('patientEmail')} />
+          {errors.patientEmail && <p className="text-sm text-destructive">{errors.patientEmail.message}</p>}
         </div>
 
         <div>
