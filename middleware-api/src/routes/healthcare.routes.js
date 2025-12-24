@@ -45,12 +45,9 @@ router.post('/', authenticateJWT, healthcareController.createMedicalRecord);
  */
 router.get('/', authenticateJWT, healthcareController.getCurrentUserRecords);
 
-/**
- * @route   GET /api/medical-records/:recordId
- * @desc    Get a medical record
- * @access  Protected
- */
-router.get('/:recordId', authenticateJWT, healthcareController.getMedicalRecord);
+// NOTE: The root-level `/:recordId` route was removed to avoid ambiguous route matching
+// which caused requests like `/patients` to be treated as a recordId and return 404.
+// Use the explicit `/records/:recordId` route defined later in this file instead.
 
 /**
  * @route   GET /api/medical-records/patient/:patientId

@@ -321,7 +321,10 @@ class HealthcareController {
 
   // Alias for routes that expect `getPatients`
   async getPatients(req, res, next) {
-    return this.getPatientsForDoctor(req, res, next);
+    // Call the concrete implementation from the prototype directly to avoid
+    // relying on `this` binding when Express invokes the handler.
+    const handler = HealthcareController.prototype.getPatientsForDoctor;
+    return handler.call(this, req, res, next);
   }
 
   /**
