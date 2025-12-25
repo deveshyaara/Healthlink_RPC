@@ -323,6 +323,7 @@ class HealthcareController {
         success: true,
         count: patients.length,
         patients,
+        data: patients, // Alias for frontend compatibility
         message: 'Patients retrieved successfully',
       });
     } catch (error) {
