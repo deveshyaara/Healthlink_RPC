@@ -184,9 +184,9 @@ function DoctorPatientsPageContent() {
                   : 'Start by uploading medical records for your patients'}
               </p>
               {!searchQuery && (
-                <Button onClick={() => (window.location.href = '/dashboard/records')}>
+                <Button onClick={() => (window.location.href = '/dashboard/doctor/patients/add')}>
                   <PlusCircle className="mr-2 h-4 w-4" />
-                  Upload First Record
+                  Add Patient
                 </Button>
               )}
             </div>
@@ -245,7 +245,7 @@ function DoctorPatientsPageContent() {
                           variant="default"
                           size="sm"
                           onClick={() => {
-                              setSelectedPatientEmail(patient.email || patient.patientId);
+                            setSelectedPatientEmail(patient.email || patient.patientId);
                             setShowUploadDialog(true);
                           }}
                         >
