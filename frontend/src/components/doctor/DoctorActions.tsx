@@ -116,16 +116,19 @@ export function AddPatientDialog() {
       // Success!
       toast({
         title: 'Patient Created',
-        description: `Patient ${formData.name} has been added successfully. Wallet address: ${result.data?.walletAddress || 'Auto-generated'}`,
+        description: `Patient ${formData.name} has been added successfully. Wallet address: ${result.walletAddress || 'Auto-generated'}`,
       });
 
-      // Surface blockchain errors if present
-      if (result.blockchainError || result.data?.blockchainError) {
-        toast({
-          title: 'On-chain Warning',
-          description: String(result.blockchainError || result.data?.blockchainError),
-          variant: 'destructive',
-        });
+      // Surface blockchain info if present (non-critical)
+      if (result.blockchainError) {
+        console.log('Blockchain info:', result.blockchainError);
+        // Only show if it's a real error, not just "contract not available"
+        if (!result.blockchainError.includes('not available')) {
+          toast({
+            title: 'Blockchain Info',
+            description: String(result.blockchainError),
+          });
+        }
       }
 
       // Reset form and close dialog
@@ -148,7 +151,7 @@ export function AddPatientDialog() {
   return (
     <Dialog open={open} onOpenChange={(isOpen) => {
       setOpen(isOpen);
-      if (!isOpen) {resetForm();}
+      if (!isOpen) { resetForm(); }
     }}>
       <DialogTrigger asChild>
         <Button className="bg-government-blue hover:bg-government-blue/90">
@@ -392,7 +395,7 @@ export function ScheduleAppointmentDialog({
   return (
     <Dialog open={open} onOpenChange={(isOpen) => {
       setOpen(isOpen);
-      if (!isOpen) {resetForm();}
+      if (!isOpen) { resetForm(); }
     }}>
       <DialogTrigger asChild>
         <Button className="bg-government-blue hover:bg-government-blue/90">
