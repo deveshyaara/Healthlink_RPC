@@ -9,7 +9,7 @@ export async function POST(
     const token = resolvedParams.token;
     const body = await request.json();
 
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
     const backendUrl = `${apiUrl}/api/users/invitations/${token}/accept`;
 
     const backendResponse = await fetch(backendUrl, {

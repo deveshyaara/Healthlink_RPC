@@ -9,7 +9,7 @@ export async function GET(
     const hash = resolvedParams.hash;
     const token = request.headers.get('authorization')?.replace('Bearer ', '');
 
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
     const backendUrl = `${apiUrl}/api/storage/${hash}`;
 
     const backendResponse = await fetch(backendUrl, {
