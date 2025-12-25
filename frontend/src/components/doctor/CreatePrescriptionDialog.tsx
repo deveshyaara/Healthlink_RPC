@@ -55,19 +55,10 @@ export function CreatePrescriptionDialog() {
 
   const resetForm = () => {
     setFormData({
-      prescriptionId: '',
       patientEmail: '',
       medication: '',
       dosage: '',
       instructions: '',
-      expiryDate: '',
-      includePatientDetails: false,
-      patientAge: '',
-      patientGender: '',
-      patientPhone: '',
-      patientEmergencyContact: '',
-      patientBloodGroup: '',
-      patientDateOfBirth: '',
     });
     setError(null);
   };
@@ -79,16 +70,19 @@ export function CreatePrescriptionDialog() {
 
     try {
       // Validate required fields
-      if (!formData.prescriptionId || !formData.patientEmail || !formData.medication || !formData.dosage) {
+      if (!formData.patientEmail || !formData.medication || !formData.dosage) {
         throw new Error('Please fill in all required fields');
       }
+
+      // Auto-generate prescription ID
+      const prescriptionId = `RX-${Date.now()}`;
 
       // Generate expiry timestamp (30 days from now)
       const expiryTimestamp = Math.floor(Date.now() / 1000) + (30 * 24 * 60 * 60);
 
       // Create prescription payload matching backend expectations
       const prescriptionPayload: any = {
-        prescriptionId: formData.prescriptionId,
+        prescriptionId,
         patientEmail: formData.patientEmail,
         doctorAddress: user?.id || '', // Use authenticated user's ID as doctor address
         medication: formData.medication,
@@ -97,33 +91,6 @@ export function CreatePrescriptionDialog() {
         expiryTimestamp: expiryTimestamp,
       };
 
-      // Add patient details if provided
-      if (formData.includePatientDetails) {
-        const patientDetails: any = {};
-
-        if (formData.patientAge) {
-          patientDetails.age = parseInt(formData.patientAge);
-        }
-        if (formData.patientGender) {
-          patientDetails.gender = formData.patientGender;
-        }
-        if (formData.patientPhone) {
-          patientDetails.phoneNumber = formData.patientPhone;
-        }
-        if (formData.patientEmergencyContact) {
-          patientDetails.emergencyContact = formData.patientEmergencyContact;
-        }
-        if (formData.patientBloodGroup) {
-          patientDetails.bloodGroup = formData.patientBloodGroup;
-        }
-        if (formData.patientDateOfBirth) {
-          patientDetails.dateOfBirth = formData.patientDateOfBirth;
-        }
-
-        if (Object.keys(patientDetails).length > 0) {
-          prescriptionPayload.patientDetails = patientDetails;
-        }
-      }
 
       console.log('Creating prescription:', prescriptionPayload);
 
@@ -149,12 +116,13 @@ export function CreatePrescriptionDialog() {
       // Success!
       toast({
         title: 'Prescription Created',
-        description: `Prescription ${formData.prescriptionId} for patient ${formData.patientEmail} has been created successfully.`,
+        description: `Prescription ${prescriptionId} for patient ${formData.patientEmail} has been created successfully.`,
       });
 
       // Reset and close
       resetForm();
       setOpen(false);
+
 
     } catch (err) {
       console.error('Failed to create prescription:', err);
@@ -262,116 +230,8 @@ export function CreatePrescriptionDialog() {
                 disabled={loading}
               />
             </div>
-
-            <div className="flex items-center space-x-2">
-              <input
-                type="checkbox"
-                id="includePatientDetails"
-                checked={formData.includePatientDetails}
-                onChange={(e) => setFormData({ ...formData, includePatientDetails: e.target.checked })}
-                disabled={loading}
-                className="rounded"
-              />
-              <Label htmlFor="includePatientDetails" className="text-sm">
-                Update patient details with this prescription
-              </Label>
-            </div>
-
-            {formData.includePatientDetails && (
-              <div className="border rounded-lg p-4 bg-gray-50 dark:bg-gray-900">
-                <h4 className="font-medium mb-3">Patient Details (Optional)</h4>
-                <div className="grid gap-3">
-                  <div className="grid gap-2">
-                    <Label htmlFor="patientAge">Age</Label>
-                    <Input
-                      id="patientAge"
-                      type="number"
-                      min="0"
-                      max="150"
-                      placeholder="30"
-                      value={formData.patientAge}
-                      onChange={(e) => setFormData({ ...formData, patientAge: e.target.value })}
-                      disabled={loading}
-                    />
-                  </div>
-
-                  <div className="grid gap-2">
-                    <Label htmlFor="patientGender">Gender</Label>
-                    <Select
-                      value={formData.patientGender}
-                      onValueChange={(value) => setFormData({ ...formData, patientGender: value })}
-                      disabled={loading}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select gender" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="Male">Male</SelectItem>
-                        <SelectItem value="Female">Female</SelectItem>
-                        <SelectItem value="Other">Other</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div className="grid gap-2">
-                    <Label htmlFor="patientPhone">Phone Number</Label>
-                    <Input
-                      id="patientPhone"
-                      placeholder="+1-555-0123"
-                      value={formData.patientPhone}
-                      onChange={(e) => setFormData({ ...formData, patientPhone: e.target.value })}
-                      disabled={loading}
-                    />
-                  </div>
-
-                  <div className="grid gap-2">
-                    <Label htmlFor="patientEmergencyContact">Emergency Contact</Label>
-                    <Input
-                      id="patientEmergencyContact"
-                      placeholder="Emergency contact info"
-                      value={formData.patientEmergencyContact}
-                      onChange={(e) => setFormData({ ...formData, patientEmergencyContact: e.target.value })}
-                      disabled={loading}
-                    />
-                  </div>
-
-                  <div className="grid gap-2">
-                    <Label htmlFor="patientBloodGroup">Blood Group</Label>
-                    <Select
-                      value={formData.patientBloodGroup}
-                      onValueChange={(value) => setFormData({ ...formData, patientBloodGroup: value })}
-                      disabled={loading}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select blood group" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="A+">A+</SelectItem>
-                        <SelectItem value="A-">A-</SelectItem>
-                        <SelectItem value="B+">B+</SelectItem>
-                        <SelectItem value="B-">B-</SelectItem>
-                        <SelectItem value="AB+">AB+</SelectItem>
-                        <SelectItem value="AB-">AB-</SelectItem>
-                        <SelectItem value="O+">O+</SelectItem>
-                        <SelectItem value="O-">O-</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div className="grid gap-2">
-                    <Label htmlFor="patientDateOfBirth">Date of Birth</Label>
-                    <Input
-                      id="patientDateOfBirth"
-                      type="date"
-                      value={formData.patientDateOfBirth}
-                      onChange={(e) => setFormData({ ...formData, patientDateOfBirth: e.target.value })}
-                      disabled={loading}
-                    />
-                  </div>
-                </div>
-              </div>
-            )}
           </div>
+
 
           <DialogFooter>
             <Button
