@@ -3,100 +3,15 @@ import logger from '../utils/logger.js';
 import { v4 as uuidv4 } from 'uuid';
 import dbService from '../services/db.service.prisma.js';
 
-// In-memory fallback for environments without Prisma/Supabase available
-const _inMemory = {
-  patientWalletMapping: new Map(),
-  appointments: new Map(),
-  prescriptions: new Map(),
-  medicalRecords: new Map(),
-
-  async findUniqueByEmail(email) {
-    for (const v of this.patientWalletMapping.values()) {
-      if (v.email === email) { return v; }
-    }
-    return null;
-  },
-  async createPatient(data) {
-    const id = uuidv4();
-    const record = { id, ...data, createdAt: new Date().toISOString(), isActive: true };
-    this.patientWalletMapping.set(id, record);
-    return record;
-  },
-  async findManyByDoctor(doctorId) {
-    const results = [];
-    for (const v of this.patientWalletMapping.values()) {
-      if (v.createdBy === doctorId && v.isActive) {
-        // Hydrate with counts
-        const patientId = v.id;
-        v.appointments = (await this.findAppointments({ patientId })).slice(0, 5);
-        v.prescriptions = (await this.findPrescriptions({ patientId })).slice(0, 3);
-        v.medicalRecords = (await this.findMedicalRecords({ patientId })).slice(0, 3);
-        results.push(v);
-      }
-    }
-    return results;
-  },
-
-  // Appointment Methods
-  async createAppointment(data) {
-    const id = data.id || uuidv4();
-    const record = { ...data, id, createdAt: new Date().toISOString() };
-    this.appointments.set(id, record);
-    return record;
-  },
-  async findAppointments(criteria) {
-    const results = [];
-    for (const v of this.appointments.values()) {
-      let match = true;
-      if (criteria.patientId && v.patientId !== criteria.patientId) match = false;
-      if (criteria.doctorId && v.doctorId !== criteria.doctorId) match = false;
-      if (match) results.push(v);
-    }
-    return results.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-  },
-
-  // Prescription Methods
-  async createPrescription(data) {
-    const id = data.id || uuidv4();
-    const record = { ...data, id, createdAt: new Date().toISOString() };
-    this.prescriptions.set(id, record);
-    return record;
-  },
-  async findPrescriptions(criteria) {
-    const results = [];
-    for (const v of this.prescriptions.values()) {
-      let match = true;
-      if (criteria.patientId && v.patientId !== criteria.patientId) match = false;
-      if (criteria.doctorId && v.doctorId !== criteria.doctorId) match = false;
-      if (match) results.push(v);
-    }
-    return results.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-  },
-
-  // Medical Record Methods
-  async createMedicalRecord(data) {
-    const id = data.id || uuidv4();
-    const record = { ...data, id, createdAt: new Date().toISOString() };
-    this.medicalRecords.set(id, record);
-    return record;
-  },
-  async findMedicalRecords(criteria) {
-    const results = [];
-    for (const v of this.medicalRecords.values()) {
-      let match = true;
-      if (criteria.patientId && v.patientId !== criteria.patientId) match = false;
-      if (criteria.doctorId && v.doctorId !== criteria.doctorId) match = false;
-      if (match) results.push(v);
-    }
-    return results.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-  }
-};
+// In-memory fallback REMOVED per user request
+// const _inMemory = { ... };
 
 function getPrismaClient() {
   if (dbService && dbService.isReady && dbService.isReady()) {
     return dbService.prisma;
   }
-  return _inMemory;
+  // Enforce DB usage - throw if not connected
+  throw new Error('Database disconnected. In-memory fallback is disabled.');
 }
 
 // Helper to resolve the patient mapping model across possible prisma client naming
@@ -195,15 +110,8 @@ class HealthcareController {
             createdBy: doctorId,
           },
         });
-      } else if (typeof db.createPatient === 'function') {
-        patientMapping = await db.createPatient({
-          email,
-          name,
-          walletAddress: patientWalletAddress,
-          createdBy: doctorId,
-        });
       } else {
-        throw new Error('No database backend available to create patient mapping');
+        throw new Error('Database not connected or PatientWalletMapping model missing');
       }
 
       // Upload patient metadata to IPFS using Pinata (initial minimal data)
@@ -462,19 +370,12 @@ class HealthcareController {
               ipfsHash: ipfsHash || null,
               fileName,
               patientId,
-              doctorId: doctorId || null,
+              // doctorId is mandatory in schema, default to current user if not provided
+              doctorId: doctorId || req.user?.id || req.user?.userId,
             },
           });
-        } else if (typeof db.createMedicalRecord === 'function') {
-          // Fallback to in-memory
-          await db.createMedicalRecord({
-            recordId: recordId || `rec-${Date.now()}`,
-            recordType: recordType || 'OTHER',
-            ipfsHash: ipfsHash || null,
-            patientId,
-            doctorId: doctorId || null,
-            createdAt: new Date().toISOString()
-          });
+        } else {
+          logger.warn('Failed to persist medical record to DB: medicalRecord model missing or DB disconnected');
         }
       } catch (dbErr) {
         logger.warn('Failed to persist medical record to DB:', dbErr);
@@ -600,8 +501,11 @@ class HealthcareController {
         logger.warn('Blockchain getRecordsByPatient failed, trying fallback:', err.message);
         // Fallback to in-memory/DB
         const db = getPrismaClient();
-        if (typeof db.findMedicalRecords === 'function') {
-          const records = await db.findMedicalRecords({ patientId });
+        if (db.medicalRecord && typeof db.medicalRecord.findMany === 'function') {
+          const records = await db.medicalRecord.findMany({
+            where: { patientId },
+            orderBy: { createdAt: 'desc' }
+          });
           result = { success: true, data: records };
         } else {
           throw err;
@@ -792,32 +696,18 @@ class HealthcareController {
           },
         });
       } else {
-        // Fallback to a lightweight in-memory appointment representation
-        if (typeof dbInstance.createAppointment === 'function') {
-          appointment = await dbInstance.createAppointment({
-            appointmentId: appointmentId || uuidv4(),
-            title,
-            description: description || reason || notes,
-            scheduledAt: new Date(scheduledAt),
-            status: 'SCHEDULED',
-            patientId: patientId,
-            doctorId: doctorUserId,
-            notes: notes || reason,
-            patient: patient ? { id: patient.id, email: patient.email, name: patient.name, walletAddress: patient.walletAddress } : null,
-            doctor: { id: doctorUserId, fullName: null, email: null },
-          });
-        } else {
-          // Should not happen as we patched _inMemory, but safe default
-          appointment = {
-            appointmentId: appointmentId || uuidv4(),
-            title,
-            description: description || reason || notes,
-            scheduledAt: new Date(scheduledAt),
-            status: 'SCHEDULED',
-            patientId: patientId,
-            doctorId: doctorUserId,
-          };
-        }
+        // No fallback - Log error
+        logger.warn('Failed to persist appointment to DB: appointment model missing');
+        // We do typically continue to blockchain, blocking here would stop flow.
+        // But user said "stored in database". If DB fails, should we fail req?
+        // Let's at least NOT fake it in memory.
+        appointment = {
+          appointmentId: appointmentId || uuidv4(),
+          title,
+          // minimal stub to allow blockchain attempt if critical, or maybe better to throw?
+          // Throwing is safer per user request.
+        };
+        throw new Error('Database persistence failed for appointment');
       }
 
       // Try to create appointment on blockchain
@@ -1069,50 +959,12 @@ class HealthcareController {
             },
           });
         } else {
-          // In-memory fallback when DB not available
-          if (typeof dbInstance.createPrescription === 'function') {
-            prescription = await dbInstance.createPrescription({
-              prescriptionId,
-              medication: med,
-              dosage,
-              instructions,
-              expiryDate: expiryDate ? new Date(expiryDate) : null,
-              status: 'ACTIVE',
-              patientId: patient.id || patientId,
-              doctorId: doctorUserId,
-            });
-          } else {
-            // Should not happen as we patched _inMemory
-            prescription = {
-              prescriptionId,
-              medication: med,
-              dosage,
-              instructions,
-              expiryDate: expiryDate ? new Date(expiryDate).toISOString() : null,
-              status: 'ACTIVE',
-              patientId: patient?.id || patientId,
-              doctorId: doctorUserId,
-              patient: patient ? { id: patient.id, email: patient.email, name: patient.name, walletAddress: patient.walletAddress } : null,
-              doctor: { id: doctorUserId, fullName: null, email: null },
-              createdAt: new Date().toISOString(),
-            };
-          }
+          logger.warn('Failed to persist prescription to DB: prescription model missing or DB disconnected');
+          throw new Error('Database persistence failed for prescription');
         }
       } catch (dbErr) {
-        logger.warn('Failed to persist prescription to DB, using in-memory fallback:', dbErr);
-        prescription = {
-          prescriptionId,
-          medication: med,
-          dosage,
-          instructions,
-          expiryDate: expiryDate ? new Date(expiryDate).toISOString() : null,
-          status: 'ACTIVE',
-          patientId: patient?.id || patientId,
-          doctorId: doctorUserId,
-          patient: patient ? { id: patient.id, email: patient.email, name: patient.name, walletAddress: patient.walletAddress } : null,
-          doctor: { id: doctorUserId, fullName: null, email: null },
-          createdAt: new Date().toISOString(),
-        };
+        logger.warn('Failed to persist prescription to DB:', dbErr);
+        throw dbErr;
       }
 
       // Try to create prescription on blockchain only when we have usable on-chain addresses
@@ -1601,11 +1453,15 @@ class HealthcareController {
       } catch (err) {
         logger.warn('Blockchain getPrescriptions failed, trying fallback:', err.message);
         const db = getPrismaClient();
-        // Fallback to in-memory
-        if (typeof db.findPrescriptions === 'function') {
-          prescriptions = await db.findPrescriptions({
-            patientId: userRole === 'patient' ? userIdentifier : undefined,
-            doctorId: userRole === 'doctor' ? (req.user.id || userIdentifier) : undefined
+        // Fallback to DB then in-memory
+        if (db.prescription && typeof db.prescription.findMany === 'function') {
+          const where = {};
+          if (userRole === 'patient') where.patientId = userIdentifier;
+          if (userRole === 'doctor') where.doctorId = req.user.id || userIdentifier;
+
+          prescriptions = await db.prescription.findMany({
+            where,
+            orderBy: { createdAt: 'desc' }
           });
         }
       }
@@ -1656,11 +1512,15 @@ class HealthcareController {
       } catch (err) {
         logger.warn('Blockchain getAppointments failed, trying fallback:', err.message);
         const db = getPrismaClient();
-        // Fallback to in-memory
-        if (typeof db.findAppointments === 'function') {
-          appointments = await db.findAppointments({
-            patientId: userRole === 'patient' ? userIdentifier : undefined,
-            doctorId: userRole === 'doctor' ? (req.user.id || userIdentifier) : undefined
+        // Fallback to DB then in-memory
+        if (db.appointment && typeof db.appointment.findMany === 'function') {
+          const where = {};
+          if (userRole === 'patient') where.patientId = userIdentifier;
+          if (userRole === 'doctor') where.doctorId = req.user.id || userIdentifier;
+
+          appointments = await db.appointment.findMany({
+            where,
+            orderBy: { scheduledAt: 'desc' }
           });
         }
       }
@@ -1716,17 +1576,10 @@ class HealthcareController {
               scheduledAt: 'desc',
             },
           });
-        } else {
-          // Fallback to in-memory
-          if (typeof db.findAppointments === 'function') {
-            appointments = await db.findAppointments({ doctorId });
-          }
         }
       } catch (err) {
-        logger.warn('Prisma getAppointmentsForDoctor failed, trying fallback:', err.message);
-        if (typeof db.findAppointments === 'function') {
-          appointments = await db.findAppointments({ doctorId });
-        }
+        logger.warn('Prisma getAppointmentsForDoctor failed:', err.message);
+        throw err; // Re-throw the error as in-memory fallback is removed
       }
 
       res.status(200).json({
@@ -1781,17 +1634,10 @@ class HealthcareController {
               createdAt: 'desc',
             },
           });
-        } else {
-          // Fallback to in-memory
-          if (typeof db.findPrescriptions === 'function') {
-            prescriptions = await db.findPrescriptions({ doctorId });
-          }
         }
       } catch (err) {
-        logger.warn('Prisma getPrescriptionsForDoctor failed, trying fallback:', err.message);
-        if (typeof db.findPrescriptions === 'function') {
-          prescriptions = await db.findPrescriptions({ doctorId });
-        }
+        logger.warn('Prisma getPrescriptionsForDoctor failed:', err.message);
+        throw err; // Re-throw the error as in-memory fallback is removed
       }
 
       res.status(200).json({
