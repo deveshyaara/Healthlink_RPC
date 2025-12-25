@@ -7,8 +7,14 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 // Load environment variables
-const envFile = process.env.NODE_ENV === 'production' ? '.env.production' : '.env';
-dotenv.config({ path: path.resolve(__dirname, '../../', envFile) });
+// On Vercel/Render, environment variables are injected directly into process.env
+// Only load from .env files in local development
+const isCloudPlatform = process.env.VERCEL === '1' || process.env.RENDER === 'true';
+if (!isCloudPlatform) {
+  const envFile = process.env.NODE_ENV === 'production' ? '.env.production' : '.env';
+  const envPath = path.resolve(__dirname, '../../', envFile);
+  dotenv.config({ path: envPath });
+}
 
 /**
  * Configuration object for the entire application

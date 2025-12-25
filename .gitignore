@@ -274,6 +274,8 @@ verify_*.sh
 
 # Render
 render.yaml
+# Note: render.yaml is needed for deployment, but can be gitignored if it contains secrets
+# Uncomment the line above if you want to ignore it
 
 # ============================================================================
 # Production Configurations (Security Critical)

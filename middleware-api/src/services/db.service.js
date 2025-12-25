@@ -67,8 +67,19 @@ class DatabaseService {
         },
       });
 
-      // Test connection
-      const { error } = await this.supabase.from('healthlink_users').select('count', { count: 'exact', head: true });
+      // Test connection - try 'users' table first (Prisma schema), fallback to 'healthlink_users' (legacy)
+      let error = null;
+      let testTable = 'users';
+      
+      // Try users table first
+      const { error: usersError } = await this.supabase.from('users').select('count', { count: 'exact', head: true });
+      
+      if (usersError) {
+        // Fallback to healthlink_users if users table doesn't exist
+        const { error: healthlinkError } = await this.supabase.from('healthlink_users').select('count', { count: 'exact', head: true });
+        error = healthlinkError;
+        testTable = 'healthlink_users';
+      }
 
       if (error) {
         logger.error('❌ Supabase connection failed:', error.message);
