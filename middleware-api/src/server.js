@@ -292,28 +292,41 @@ app.use(errorHandler);
 
 const startServer = async () => {
   try {
+    console.log('🚀 Starting HealthLink Middleware API Server...');
+    console.log('Environment:', process.env.NODE_ENV);
+    console.log('Port:', PORT);
+
     // Validate environment variables first
+    console.log('📋 Validating environment variables...');
     validateEnvironment();
+    console.log('✅ Environment validation passed');
 
     // Initialize Ethereum service first
     try {
       const rpcUrl = process.env.ETHEREUM_RPC_URL || 'http://127.0.0.1:8545';
       const privateKey = process.env.PRIVATE_KEY || process.env.DEPLOYER_PRIVATE_KEY;
 
+      console.log(`🔗 Connecting to Ethereum network at: ${rpcUrl}`);
       logger.info(`🔗 Connecting to Ethereum network at: ${rpcUrl}`);
       await ethereumService.initialize(rpcUrl, privateKey);
+      console.log('✅ Ethereum service initialized');
       logger.info('🔗 Ethereum service initialized successfully');
     } catch (error) {
+      console.warn('⚠️  Ethereum service initialization failed:', error.message);
       logger.warn('⚠️  Ethereum service initialization failed:', error.message);
       logger.warn('   Make sure Ethereum RPC URL is correct and network is accessible');
     }
 
     // Initialize database service (Supabase)
     try {
+      console.log('🗄️  Initializing database service...');
       logger.info('🗄️  Initializing database service...');
       await dbService.initialize();
+      console.log('✅ Database service initialized successfully');
       logger.info('🗄️  Database service initialized successfully');
     } catch (error) {
+      console.error('❌ Database service initialization failed:', error.message);
+      console.error('Stack:', error.stack);
       logger.warn('⚠️  Database service initialization failed:', error.message);
       logger.warn('   Authentication will not work without Supabase connection');
       logger.warn('   Make sure SUPABASE_URL and SUPABASE_SERVICE_KEY are set');
@@ -321,16 +334,21 @@ const startServer = async () => {
 
     // Initialize storage service
     try {
+      console.log('💾 Initializing storage service...');
       logger.info('💾 Initializing storage service...');
       StorageService.getInstance().initializeStorage();
+      console.log('✅ Storage service initialized');
       logger.info('💾 Storage service initialized successfully');
     } catch (error) {
+      console.error('❌ Storage service initialization failed:', error);
       logger.error('❌ Storage service initialization failed:', error);
       logger.error('   File uploads will not work without proper storage directories');
     }
 
+    console.log(`🌐 Starting HTTP server on port ${PORT}...`);
     // Start HTTP server
     httpServer.listen(PORT, () => {
+      console.log('✅ HTTP server listening on port', PORT);
       logger.info(`
 ╔════════════════════════════════════════════════════════════╗
 ║   HealthLink Middleware API Server                        ║
@@ -345,6 +363,7 @@ const startServer = async () => {
 ╚════════════════════════════════════════════════════════════╝
       `);
 
+      console.log('✅ Server started successfully');
       logger.info('✅ Server started successfully');
       logger.info(`📊 API Documentation available at: http://localhost:${PORT}/api/${API_VERSION}`);
     });
@@ -390,6 +409,9 @@ const startServer = async () => {
     });
 
   } catch (error) {
+    console.error('❌ FATAL: Failed to start server');
+    console.error('Error:', error.message);
+    console.error('Stack:', error.stack);
     logger.error('Failed to start server:', error);
     process.exit(1);
   }
