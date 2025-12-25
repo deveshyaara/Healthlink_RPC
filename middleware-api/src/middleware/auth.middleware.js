@@ -121,15 +121,17 @@ export const authenticateJWT = async (req, res, next) => {
       });
     }
 
-    // Note: Blockchain operations now use admin identity
     // Normalize user fields so downstream code can rely on `id`, `userId`, and `walletAddress`
     try {
-      // Normalize id fields
-      user.userId = user.userId || user.id || user.fabric_enrollment_id || user.user_id;
-      user.id = user.id || user.userId;
+      // Normalize id fields - userId from JWT is now the database UUID
+      user.id = decoded.userId || user.id || user.userId; // JWT userId is now UUID
+      user.userId = user.id; // Ensure consistency
+
+      // Keep fabricEnrollmentId for blockchain operations
+      user.fabricEnrollmentId = decoded.fabricEnrollmentId || user.fabric_enrollment_id || user.fabricEnrollmentId || null;
 
       // Normalize wallet address (fabric enrollment id used for on-chain wallet/address mapping)
-      user.walletAddress = user.walletAddress || user.fabric_enrollment_id || user.fabricEnrollmentId || null;
+      user.walletAddress = user.walletAddress || user.fabricEnrollmentId || null;
 
       // Attach user to request (Fabric identity will be admin)
       req.user = user;
@@ -140,7 +142,7 @@ export const authenticateJWT = async (req, res, next) => {
       };
 
       // Ensure req.user.walletAddress is available for permission checks
-      req.user.walletAddress = req.user.walletAddress || req.user.fabric_enrollment_id || null;
+      req.user.walletAddress = req.user.walletAddress || req.user.fabricEnrollmentId || null;
 
       next();
     } catch (error) {

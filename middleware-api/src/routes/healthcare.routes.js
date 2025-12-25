@@ -79,7 +79,7 @@ router.get('/patients/:patientId', authenticateJWT, healthcareController.getPati
  * @desc    Get all patients for a doctor
  * @access  Protected (Doctor or Admin)
  */
-router.get('/patients', authenticateJWT, requireDoctor, healthcareController.getPatients);
+router.get('/patients', authenticateJWT, requireDoctor, healthcareController.getPatientsForDoctor);
 
 /**
  * @route   GET /api/v1/healthcare/patients/search

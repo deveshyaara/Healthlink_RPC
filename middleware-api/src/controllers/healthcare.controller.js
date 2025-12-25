@@ -49,28 +49,13 @@ class HealthcareController {
   async createPatient(req, res, next) {
     try {
       const { name, email, walletAddress } = req.body;
-      const fabricEnrollmentId = req.user?.id || req.user?.userId;
+      const doctorId = req.user?.id || req.user?.userId; // Now a UUID!
 
-      if (!fabricEnrollmentId) {
+      if (!doctorId) {
         return res.status(503).json({
           error: 'Unable to determine creating doctor id. Authentication/user service may be unavailable. Try again later.',
         });
       }
-
-      // Get the doctor's database UUID from their fabricEnrollmentId
-      const db = getPrismaClient();
-      const doctor = await db.user.findUnique({
-        where: { fabricEnrollmentId },
-        select: { id: true },
-      });
-
-      if (!doctor) {
-        return res.status(404).json({
-          error: 'Doctor account not found in database. Please contact support.',
-        });
-      }
-
-      const doctorId = doctor.id;
 
       // Validate required fields - only name and email are required initially
       if (!name || !email) {
@@ -87,6 +72,7 @@ class HealthcareController {
 
       // Check if patient already exists (supports Prisma or in-memory fallback)
       let existingPatient = null;
+      const db = getPrismaClient();
       const patientsModel = resolvePatientModel(db);
       if (patientsModel && typeof patientsModel.findUnique === 'function') {
         existingPatient = await patientsModel.findUnique({ where: { email } });
@@ -236,7 +222,7 @@ class HealthcareController {
   async getPatientsForDoctor(req, res, next) {
     try {
       const userRole = req.user.role;
-      const fabricEnrollmentId = req.user.id;
+      const doctorId = req.user.id; // Already a UUID from JWT
 
       // Only doctors and admins can access this endpoint
       if (userRole !== 'doctor' && userRole !== 'admin') {
@@ -246,23 +232,8 @@ class HealthcareController {
         });
       }
 
-      // Get the doctor's database UUID from their fabricEnrollmentId
-      const db = getPrismaClient();
-      const doctor = await db.user.findUnique({
-        where: { fabricEnrollmentId },
-        select: { id: true },
-      });
-
-      if (!doctor) {
-        return res.status(404).json({
-          success: false,
-          error: 'Doctor account not found in database.',
-        });
-      }
-
-      const doctorId = doctor.id;
-
       // Get patients created by this doctor
+      const db = getPrismaClient();
       const patientsModel = resolvePatientModel(db);
       const patients = patientsModel && typeof patientsModel.findMany === 'function'
         ? await patientsModel.findMany({
@@ -406,24 +377,12 @@ class HealthcareController {
             metaObj = {};
           }
 
-          // Resolve doctor's database UUID from fabricEnrollmentId
-          let resolvedDoctorId = doctorId;
-          if (!resolvedDoctorId) {
-            const fabricEnrollmentId = req.user?.id || req.user?.userId;
-            if (fabricEnrollmentId) {
-              const doctor = await db.user.findUnique({
-                where: { fabricEnrollmentId },
-                select: { id: true },
-              });
-              if (doctor) {
-                resolvedDoctorId = doctor.id;
-              }
-            }
-          }
+          // Use doctor ID - either provided or from authenticated user (UUID)
+          const resolvedDoctorId = doctorId || req.user?.id || req.user?.userId;
 
           if (!resolvedDoctorId) {
-            logger.warn('Unable to resolve doctor ID for medical record creation');
-            throw new Error('Doctor ID could not be resolved');
+            logger.warn('Unable to determine doctor ID for medical record creation');
+            throw new Error('Doctor ID could not be determined');
           }
 
           await db.medicalRecord.create({
@@ -613,28 +572,38 @@ class HealthcareController {
 
       if (userRole === 'patient') {
         // Patients can only see their own records
-        const result = await transactionService.getRecordsByPatient(userIdentifier);
-        records = result?.data || [];
+        try {
+          const db = getPrismaClient();
+          const patientId = userIdentifier; // userIdentifier is the patient's UUID
+
+          if (db && db.medicalRecord && typeof db.medicalRecord.findMany === 'function') {
+            records = await db.medicalRecord.findMany({
+              where: { patientId },
+              include: {
+                doctor: {
+                  select: {
+                    id: true,
+                    fullName: true,
+                    email: true
+                  }
+                },
+              },
+              orderBy: { createdAt: 'desc' },
+            }) || [];
+          } else {
+            // Fallback if Prisma not available
+            records = [];
+          }
+        } catch (err) {
+          logger.warn('Failed to fetch patient records from DB:', err);
+          records = [];
+        }
       } else if (userRole === 'doctor') {
         // Doctors can see records they've authored/are associated with
         try {
           const db = getPrismaClient();
-
-          // Resolve doctor's database UUID from fabricEnrollmentId
-          const doctor = await db.user.findUnique({
-            where: { fabricEnrollmentId: userIdentifier },
-            select: { id: true },
-          });
-
-          if (!doctor) {
-            logger.warn(`Doctor not found for fabricEnrollmentId: ${userIdentifier}`);
-            return res.status(404).json({
-              success: false,
-              error: 'Doctor account not found in database.',
-            });
-          }
-
-          const doctorId = doctor.id;
+          // userIdentifier is already the database UUID from JWT
+          const doctorId = userIdentifier;
 
           if (db && db.medicalRecord && typeof db.medicalRecord.findMany === 'function') {
             records = await db.medicalRecord.findMany({
@@ -753,22 +722,7 @@ class HealthcareController {
       const dbInstance = getPrismaClient();
       let appointment;
       if (dbInstance && dbInstance.appointment && typeof dbInstance.appointment.create === 'function') {
-        // Resolve doctor's database UUID from fabricEnrollmentId
-        const doctor = await dbInstance.user.findUnique({
-          where: { fabricEnrollmentId: doctorUserId },
-          select: { id: true },
-        });
-
-        if (!doctor) {
-          logger.error(`Doctor not found for fabricEnrollmentId: ${doctorUserId}`);
-          return res.status(404).json({
-            success: false,
-            error: 'Doctor account not found in database.',
-          });
-        }
-
-        const resolvedDoctorId = doctor.id;
-
+        // doctorUserId from req.user.id is already a UUID
         appointment = await dbInstance.appointment.create({
           data: {
             appointmentId: appointmentId || uuidv4(),
@@ -777,7 +731,7 @@ class HealthcareController {
             scheduledAt: new Date(scheduledAt),
             status: 'SCHEDULED',
             patientId: patientId,
-            doctorId: resolvedDoctorId,
+            doctorId: doctorUserId, // Already a UUID from JWT
             notes: notes || reason,
           },
           include: {
@@ -1032,22 +986,7 @@ class HealthcareController {
       try {
         const dbInstance = getPrismaClient();
         if (dbInstance && dbInstance.prescription && typeof dbInstance.prescription.create === 'function') {
-          // Resolve doctor's database UUID from fabricEnrollmentId
-          const doctor = await dbInstance.user.findUnique({
-            where: { fabricEnrollmentId: doctorUserId },
-            select: { id: true },
-          });
-
-          if (!doctor) {
-            logger.error(`Doctor not found for fabricEnrollmentId: ${doctorUserId}`);
-            return res.status(404).json({
-              success: false,
-              error: 'Doctor account not found in database.',
-            });
-          }
-
-          const resolvedDoctorId = doctor.id;
-
+          // doctorUserId from req.user.id is already a UUID
           prescription = await dbInstance.prescription.create({
             data: {
               prescriptionId,
@@ -1057,7 +996,7 @@ class HealthcareController {
               expiryDate: expiryDate ? new Date(expiryDate) : null,
               status: 'ACTIVE',
               patientId: patient.id || patientId,
-              doctorId: resolvedDoctorId,
+              doctorId: doctorUserId, // Already a UUID from JWT
             },
             include: {
               patient: {
@@ -1557,32 +1496,40 @@ class HealthcareController {
       let prescriptions = [];
 
       try {
-        if (userRole === 'patient') {
-          // Patients can see prescriptions issued to them
-          const result = await transactionService.getPrescriptionsByPatient(userIdentifier);
-          prescriptions = result.data || [];
-        } else if (userRole === 'doctor') {
-          // Doctors can see prescriptions they've issued
-          const result = await transactionService.getPrescriptionsByDoctor(req.user.id || userIdentifier);
-          prescriptions = result.data || [];
+        const db = getPrismaClient();
+        if (db && db.prescription && typeof db.prescription.findMany === 'function') {
+          const where = {};
+          if (userRole === 'patient') where.patientId = userIdentifier;
+          if (userRole === 'doctor') where.doctorId = userIdentifier;
+
+          prescriptions = await db.prescription.findMany({
+            where,
+            include: {
+              patient: {
+                select: {
+                  id: true,
+                  email: true,
+                  name: true,
+                  walletAddress: true,
+                },
+              },
+              doctor: {
+                select: {
+                  id: true,
+                  fullName: true,
+                  email: true,
+                },
+              },
+            },
+            orderBy: { createdAt: 'desc' }
+          });
         } else if (userRole === 'admin') {
           // Admins can see all prescriptions (implementation needed)
           prescriptions = [];
         }
       } catch (err) {
-        logger.warn('Blockchain getPrescriptions failed, trying fallback:', err.message);
-        const db = getPrismaClient();
-        // Fallback to DB then in-memory
-        if (db.prescription && typeof db.prescription.findMany === 'function') {
-          const where = {};
-          if (userRole === 'patient') where.patientId = userIdentifier;
-          if (userRole === 'doctor') where.doctorId = req.user.id || userIdentifier;
-
-          prescriptions = await db.prescription.findMany({
-            where,
-            orderBy: { createdAt: 'desc' }
-          });
-        }
+        logger.warn('Failed to fetch prescriptions from DB:', err.message);
+        prescriptions = [];
       }
 
       res.status(200).json({
@@ -1615,33 +1562,79 @@ class HealthcareController {
 
       let appointments = [];
 
-      try {
-        if (userRole === 'patient') {
-          // Patients can see their appointments
-          const result = await transactionService.getAppointmentsByPatient(userIdentifier);
-          appointments = result.data || [];
-        } else if (userRole === 'doctor') {
-          // Doctors can see appointments they've scheduled
-          const result = await transactionService.getAppointmentsByDoctor(req.user.id || userIdentifier);
-          appointments = result.data || [];
-        } else if (userRole === 'admin') {
-          // Admins can see all appointments (implementation needed)
+      if (userRole === 'patient') {
+        // Patients can see their own appointments
+        try {
+          const db = getPrismaClient();
+          if (db && db.appointment && typeof db.appointment.findMany === 'function') {
+            const where = { patientId: userIdentifier };
+
+            appointments = await db.appointment.findMany({
+              where,
+              include: {
+                patient: {
+                  select: {
+                    id: true,
+                    email: true,
+                    name: true,
+                    walletAddress: true,
+                  },
+                },
+                doctor: {
+                  select: {
+                    id: true,
+                    fullName: true,
+                    email: true,
+                  },
+                },
+              },
+              orderBy: { scheduledAt: 'desc' }
+            }) || [];
+          } else {
+            appointments = [];
+          }
+        } catch (err) {
+          logger.warn('Failed to fetch patient appointments from DB:', err.message);
           appointments = [];
         }
-      } catch (err) {
-        logger.warn('Blockchain getAppointments failed, trying fallback:', err.message);
-        const db = getPrismaClient();
-        // Fallback to DB then in-memory
-        if (db.appointment && typeof db.appointment.findMany === 'function') {
-          const where = {};
-          if (userRole === 'patient') where.patientId = userIdentifier;
-          if (userRole === 'doctor') where.doctorId = req.user.id || userIdentifier;
+      } else if (userRole === 'doctor') {
+        // Doctors can see appointments they've scheduled
+        try {
+          const db = getPrismaClient();
+          const where = { doctorId: userIdentifier };
 
-          appointments = await db.appointment.findMany({
-            where,
-            orderBy: { scheduledAt: 'desc' }
-          });
+          if (db && db.appointment && typeof db.appointment.findMany === 'function') {
+            appointments = await db.appointment.findMany({
+              where,
+              include: {
+                patient: {
+                  select: {
+                    id: true,
+                    email: true,
+                    name: true,
+                    walletAddress: true,
+                  },
+                },
+                doctor: {
+                  select: {
+                    id: true,
+                    fullName: true,
+                    email: true,
+                  },
+                },
+              },
+              orderBy: { scheduledAt: 'desc' }
+            }) || [];
+          } else {
+            appointments = [];
+          }
+        } catch (err) {
+          logger.warn('Failed to fetch doctor appointments from DB:', err.message);
+          appointments = [];
         }
+      } else if (userRole === 'admin') {
+        // Admins can see all appointments (implementation needed)
+        appointments = [];
       }
 
       res.status(200).json({

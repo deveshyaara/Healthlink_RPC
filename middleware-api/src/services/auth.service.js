@@ -101,7 +101,8 @@ class AuthService {
       });
 
       return {
-        userId: dbUser.fabric_enrollment_id,
+        userId: dbUser.id, // Use database UUID
+        fabricEnrollmentId: dbUser.fabric_enrollment_id,
         email: dbUser.email,
         role: dbUser.role,
         name: dbUser.full_name,
@@ -166,7 +167,8 @@ class AuthService {
       });
 
       return {
-        userId: user.fabric_enrollment_id,
+        userId: user.id, // Use database UUID instead of fabricEnrollmentId
+        fabricEnrollmentId: user.fabric_enrollment_id, // Keep for blockchain if needed
         email: user.email,
         role: user.role,
         name: user.full_name,
@@ -288,7 +290,8 @@ class AuthService {
    */
   generateToken(user) {
     const payload = {
-      userId: user.userId,
+      userId: user.userId, // Database UUID
+      fabricEnrollmentId: user.fabricEnrollmentId, // For blockchain operations if needed
       email: user.email,
       role: user.role,
       iat: Math.floor(Date.now() / 1000),
