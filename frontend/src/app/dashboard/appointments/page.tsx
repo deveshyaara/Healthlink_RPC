@@ -9,6 +9,7 @@ import { appointmentsApi } from '@/lib/api-client';
 import { Calendar, Clock, User, PlusCircle } from 'lucide-react';
 import { ErrorBanner } from '@/components/ui/error-banner';
 import { ScheduleAppointmentDialog } from '@/components/doctor/DoctorActions';
+import type { AppointmentStatus } from '@/types';
 
 interface Appointment {
   appointmentId: string;
@@ -16,7 +17,7 @@ interface Appointment {
   doctorId: string;
   appointmentDate: string;
   appointmentTime: string;
-  status: string;
+  status: AppointmentStatus;
   type: string;
   notes?: string;
   prescriptionIds?: string[];
@@ -48,12 +49,13 @@ export default function AppointmentsPage() {
     fetchAppointments();
   }, []);
 
-  const getStatusVariant = (status: string) => {
-    switch (status.toLowerCase()) {
-      case 'scheduled': return 'default';
-      case 'completed': return 'secondary';
-      case 'cancelled': return 'destructive';
-      case 'pending': return 'outline';
+  const getStatusVariant = (status: AppointmentStatus | string) => {
+    const s = String(status).toUpperCase();
+    switch (s) {
+      case 'SCHEDULED': return 'default';
+      case 'COMPLETED': return 'secondary';
+      case 'CANCELLED': return 'destructive';
+      case 'NO_SHOW': return 'outline';
       default: return 'outline';
     }
   };
@@ -145,7 +147,7 @@ export default function AppointmentsPage() {
                     </TableCell>
                     <TableCell>
                       <Badge variant={getStatusVariant(appointment.status)}>
-                        {appointment.status}
+                        {String(appointment.status).replace(/_/g, ' ').toLowerCase().replace(/(^|\s)\S/g, t => t.toUpperCase())}
                       </Badge>
                     </TableCell>
                     <TableCell>
