@@ -43,21 +43,14 @@ export function CreatePrescriptionDialog() {
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [patients, setPatients] = useState<Array<{ email: string; name: string }>>([]);
+  const [loadingPatients, setLoadingPatients] = useState(false);
 
   const [formData, setFormData] = useState({
-    prescriptionId: '',
     patientEmail: '',
     medication: '',
     dosage: '',
     instructions: '',
-    expiryDate: '',
-    includePatientDetails: false,
-    patientAge: '',
-    patientGender: '',
-    patientPhone: '',
-    patientEmergencyContact: '',
-    patientBloodGroup: '',
-    patientDateOfBirth: '',
   });
 
   const resetForm = () => {
