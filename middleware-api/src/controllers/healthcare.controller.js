@@ -34,10 +34,9 @@ class HealthcareController {
   async resolvePatientId(email) {
     if (!email) return null;
     const db = getPrismaClient();
-    const patientsModel = resolvePatientModel(db);
-    const patient = patientsModel && typeof patientsModel.findUnique === 'function'
-      ? await patientsModel.findUnique({ where: { email } })
-      : await db.findUniqueByEmail?.(email);
+    const patient = db.patientWalletMapping && typeof db.patientWalletMapping.findUnique === 'function'
+      ? await db.patientWalletMapping.findUnique({ where: { email } })
+      : null;
 
     return patient ? patient.id : null;
   }
@@ -70,14 +69,11 @@ class HealthcareController {
         return res.status(400).json({ error: 'Invalid email format' });
       }
 
-      // Check if patient already exists (supports Prisma or in-memory fallback)
+      // Check if patient already exists
       let existingPatient = null;
       const db = getPrismaClient();
-      const patientsModel = resolvePatientModel(db);
-      if (patientsModel && typeof patientsModel.findUnique === 'function') {
-        existingPatient = await patientsModel.findUnique({ where: { email } });
-      } else if (typeof db.findUniqueByEmail === 'function') {
-        existingPatient = await db.findUniqueByEmail(email);
+      if (db.patientWalletMapping && typeof db.patientWalletMapping.findUnique === 'function') {
+        existingPatient = await db.patientWalletMapping.findUnique({ where: { email } });
       }
 
       if (existingPatient) {
@@ -714,10 +710,9 @@ class HealthcareController {
 
       // Fetch full patient record for walletAddress when available
       const db = getPrismaClient();
-      const patientsModel2 = resolvePatientModel(db);
-      const patient = patientsModel2 && typeof patientsModel2.findUnique === 'function'
-        ? await patientsModel2.findUnique({ where: { id: patientId } })
-        : await db.patientWalletMapping?.get(patientId) || null;
+      const patient = db.patientWalletMapping && typeof db.patientWalletMapping.findUnique === 'function'
+        ? await db.patientWalletMapping.findUnique({ where: { id: patientId } })
+        : null;
 
       // Create appointment in database (Prisma or in-memory fallback)
       const dbInstance = getPrismaClient();
@@ -969,10 +964,9 @@ class HealthcareController {
       }
 
       const db2 = getPrismaClient();
-      const patientsModel3 = resolvePatientModel(db2);
-      const patient = patientsModel3 && typeof patientsModel3.findUnique === 'function'
-        ? await patientsModel3.findUnique({ where: { id: patientId } })
-        : await db2.findUniqueByEmail?.(patientEmail) || null;
+      const patient = db2.patientWalletMapping && typeof db2.patientWalletMapping.findUnique === 'function'
+        ? await db2.patientWalletMapping.findUnique({ where: { id: patientId } })
+        : null;
 
       // Normalize medication input: prefer explicit `medication`, then `medications` array
       let med = medication || '';
@@ -1940,9 +1934,8 @@ class HealthcareController {
 
       // Find patient by email
       const db3 = getPrismaClient();
-      const patientsModel4 = resolvePatientModel(db3);
-      const patient = patientsModel4 && typeof patientsModel4.findUnique === 'function'
-        ? await patientsModel4.findUnique({
+      const patient = db3.patientWalletMapping && typeof db3.patientWalletMapping.findUnique === 'function'
+        ? await db3.patientWalletMapping.findUnique({
           where: { email },
           include: {
             appointments: {
