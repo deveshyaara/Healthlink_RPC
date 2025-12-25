@@ -99,8 +99,8 @@ model User {
   email        String  @unique @db.VarChar(255)
   passwordHash String  @map("password_hash") @db.Text
   
-  // Role-Based Access Control
-  role Role @default(PATIENT)
+  // Role-Based Access Control (stored as varchar in DB)
+  role String @default("patient") @db.VarChar(50)
   
   // Hyperledger Fabric Integration
   fabricEnrollmentId String @unique @map("fabric_enrollment_id") @db.VarChar(255)
@@ -112,9 +112,9 @@ model User {
   
   // Doctor-Specific Fields (NULL for non-doctors)
   doctorLicenseNumber         String? @map("license_number") @db.VarChar(100)
-  doctorSpecialization        String? @map("doctor_specialization") @db.VarChar(100)
+  doctorSpecialization        String? @map("specialization") @db.VarChar(100)
   doctorHospitalAffiliation   String? @map("doctor_hospital_affiliation") @db.VarChar(255)
-  doctorVerificationStatus    DoctorVerificationStatus? @map("doctor_verification_status")
+  doctorVerificationStatus    String? @map("doctor_verification_status") @db.VarChar(50)
   
   // Patient-Specific Fields (NULL for non-patients)
   patientDateOfBirth      DateTime? @map("date_of_birth") @db.Date
@@ -186,10 +186,10 @@ model UserInvitation {
   id String @id @default(uuid()) @db.Uuid
   
   // Invitation Details
-  email String @unique @db.VarChar(255)
-  role Role
+  email String @db.VarChar(255)
+  role String @db.VarChar(50)
   token String @unique @db.VarChar(255)
-  status InvitationStatus @default(PENDING)
+  status String @default("pending") @db.VarChar(50)
   
   // Invitation Metadata
   invitedBy String? @map("invited_by") @db.Uuid
@@ -254,14 +254,14 @@ model PatientWalletMapping {
 // ============================================================================
 model Appointment {
   // Primary Key
-  id String @id @default(uuid()) @db.Uuid
+  id String @id @default(uuid()) @db.Text
 
   // Appointment Details
   appointmentId String @unique @map("appointment_id") @db.VarChar(255)
   title String @db.VarChar(255)
   description String? @db.Text
   scheduledAt DateTime @map("scheduled_at") @db.Timestamptz(6)
-  status AppointmentStatus @default(SCHEDULED)
+  status String @default("SCHEDULED") @db.VarChar(50)
 
   // Relationships
   patientId String @map("patient_id") @db.Uuid
@@ -298,7 +298,7 @@ model Prescription {
   dosage String @db.VarChar(100)
   instructions String? @db.Text
   expiryDate DateTime? @map("expiry_date") @db.Timestamptz(6)
-  status PrescriptionStatus @default(ACTIVE)
+  status String @default("ACTIVE") @db.VarChar(50)
 
   // Relationships
   patientId String @map("patient_id") @db.Uuid
@@ -328,7 +328,7 @@ model MedicalRecord {
   recordId String @unique @map("record_id") @db.VarChar(255)
   title String @db.VarChar(255)
   description String? @db.Text
-  recordType RecordType @map("record_type")
+  recordType String @map("record_type") @db.VarChar(50)
   ipfsHash String @map("ipfs_hash") @db.VarChar(255)
   fileName String? @map("file_name") @db.VarChar(255)
 
@@ -360,7 +360,7 @@ model ConsentRequest {
   consentId String @unique @map("consent_id") @db.VarChar(255)
   purpose String @db.Text
   scope String @db.VarChar(100)
-  status ConsentStatus @default(PENDING)
+  status String @default("PENDING") @db.VarChar(50)
   validUntil DateTime @map("valid_until") @db.Timestamptz(6)
 
   // Relationships
@@ -392,7 +392,7 @@ model LabTest {
   testName String @map("test_name") @db.VarChar(255)
   testType String @map("test_type") @db.VarChar(100)
   results String? @db.Text
-  status LabTestStatus @default(PENDING)
+  status String @default("PENDING") @db.VarChar(50)
   performedAt DateTime? @map("performed_at") @db.Timestamptz(6)
 
   // Relationships
