@@ -518,7 +518,9 @@ export const patientsApi = {
    * Function: GetAllPatients
    */
   getAll: async (): Promise<Patient[]> => {
-    return fetchApi<Patient[]>('/api/v1/healthcare/patients', { method: 'GET' }, true);
+    const response = await fetchApi<{ success: boolean; patients?: Patient[]; data?: Patient[] }>('/api/v1/healthcare/patients', { method: 'GET' }, true);
+    // Extract array from response - backend returns {success: true, patients: [...], data: [...]}
+    return response.patients || response.data || [];
   },
 
   /**

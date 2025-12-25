@@ -406,6 +406,26 @@ class HealthcareController {
             metaObj = {};
           }
 
+          // Resolve doctor's database UUID from fabricEnrollmentId
+          let resolvedDoctorId = doctorId;
+          if (!resolvedDoctorId) {
+            const fabricEnrollmentId = req.user?.id || req.user?.userId;
+            if (fabricEnrollmentId) {
+              const doctor = await db.user.findUnique({
+                where: { fabricEnrollmentId },
+                select: { id: true },
+              });
+              if (doctor) {
+                resolvedDoctorId = doctor.id;
+              }
+            }
+          }
+
+          if (!resolvedDoctorId) {
+            logger.warn('Unable to resolve doctor ID for medical record creation');
+            throw new Error('Doctor ID could not be resolved');
+          }
+
           await db.medicalRecord.create({
             data: {
               recordId: recordId || `rec-${Date.now()}`,
@@ -415,8 +435,7 @@ class HealthcareController {
               ipfsHash: ipfsHash || null,
               fileName,
               patientId,
-              // doctorId is mandatory in schema, default to current user if not provided
-              doctorId: doctorId || req.user?.id || req.user?.userId,
+              doctorId: resolvedDoctorId,
             },
           });
         } else {
@@ -551,10 +570,15 @@ class HealthcareController {
             where: { patientId },
             orderBy: { createdAt: 'desc' }
           });
-          result = { success: true, data: records };
+          result = { success: true, data: records, records: records, count: records.length };
         } else {
           throw err;
         }
+      }
+
+      // Ensure response has both data and records properties
+      if (result && !result.records && result.data) {
+        result.records = result.data;
       }
 
       res.status(200).json(result);
@@ -595,9 +619,26 @@ class HealthcareController {
         // Doctors can see records they've authored/are associated with
         try {
           const db = getPrismaClient();
+
+          // Resolve doctor's database UUID from fabricEnrollmentId
+          const doctor = await db.user.findUnique({
+            where: { fabricEnrollmentId: userIdentifier },
+            select: { id: true },
+          });
+
+          if (!doctor) {
+            logger.warn(`Doctor not found for fabricEnrollmentId: ${userIdentifier}`);
+            return res.status(404).json({
+              success: false,
+              error: 'Doctor account not found in database.',
+            });
+          }
+
+          const doctorId = doctor.id;
+
           if (db && db.medicalRecord && typeof db.medicalRecord.findMany === 'function') {
             records = await db.medicalRecord.findMany({
-              where: { doctorId: req.user.id },
+              where: { doctorId },
               include: {
                 patient: { select: { id: true, email: true, name: true, walletAddress: true } },
               },
@@ -628,6 +669,7 @@ class HealthcareController {
       res.status(200).json({
         success: true,
         data: records,
+        records: records, // Alias for frontend compatibility
         count: Array.isArray(records) ? records.length : 0,
       });
     } catch (error) {
