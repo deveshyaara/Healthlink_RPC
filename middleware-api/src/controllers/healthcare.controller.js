@@ -234,9 +234,10 @@ class HealthcareController {
 
       // Get patients created by this doctor
       const db = getPrismaClient();
-      const patientsModel = resolvePatientModel(db);
-      const patients = patientsModel && typeof patientsModel.findMany === 'function'
-        ? await patientsModel.findMany({
+
+      // Query PatientWalletMapping table (the actual patient table in schema)
+      const patients = db.patientWalletMapping && typeof db.patientWalletMapping.findMany === 'function'
+        ? await db.patientWalletMapping.findMany({
           where: {
             createdBy: doctorId,
             isActive: true,
@@ -288,7 +289,7 @@ class HealthcareController {
             createdAt: 'desc',
           },
         })
-        : (typeof db.findManyByDoctor === 'function' ? await db.findManyByDoctor(doctorId) : []);
+        : [];
 
       res.status(200).json({
         success: true,
