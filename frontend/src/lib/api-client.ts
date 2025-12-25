@@ -292,7 +292,7 @@ async function fetchApi<T>(
   };
 
   try {
-  const response = await fetch(url, config);
+    const response = await fetch(url, config);
 
     // Handle 404 gracefully if requested (for dashboard stats)
     if (response.status === 404 && handleNotFound) {
@@ -512,6 +512,15 @@ export const recordsApi = medicalRecordsApi;
 // ========================================
 
 export const patientsApi = {
+  /**
+   * Get all patients (for doctors/admin)
+   * Backend route: GET /api/v1/healthcare/patients
+   * Function: GetAllPatients
+   */
+  getAll: async (): Promise<Patient[]> => {
+    return fetchApi<Patient[]>('/api/v1/healthcare/patients', { method: 'GET' }, true);
+  },
+
   /**
    * Create new patient
    * Backend route: POST /api/v1/healthcare/patients
@@ -929,12 +938,38 @@ export const getAllConsents = consentsApi.getAll;
 // These are placeholder APIs for features not yet implemented in backend
 // They prevent import errors in pages that reference them
 
+// Audit Log Types
+export interface AuditLog {
+  id: string;
+  user_id: string;
+  action: string;
+  metadata?: Record<string, any>;
+  created_at: string;
+  ip_address?: string;
+}
+
 export const auditApi = {
-  getAll: async (): Promise<any[]> => {
-    return [];
+  /**
+   * Get all audit logs
+   * Backend route: GET /api/v1/audit/logs
+   */
+  getAll: async (params?: { limit?: number; offset?: number }): Promise<AuditLog[]> => {
+    const queryParams = new URLSearchParams();
+    if (params?.limit) queryParams.append('limit', params.limit.toString());
+    if (params?.offset) queryParams.append('offset', params.offset.toString());
+
+    const queryString = queryParams.toString();
+    const url = queryString ? `/api/v1/audit/logs?${queryString}` : '/api/v1/audit/logs';
+
+    return fetchApi<AuditLog[]>(url, { method: 'GET' }, true);
   },
-  getById: async (_id: string): Promise<any> => {
-    throw new Error('Audit API not yet implemented');
+
+  /**
+   * Get audit log by ID
+   * Backend route: GET /api/v1/audit/logs/:id
+   */
+  getById: async (id: string): Promise<AuditLog> => {
+    return fetchApi<AuditLog>(`/api/v1/audit/logs/${id}`, { method: 'GET' });
   },
 };
 
