@@ -17,6 +17,7 @@ interface Prescription {
   appointmentId: string;
   patientId: string;
   doctorId: string;
+  medication?: string; // Backend stores single medication as string
   medications: Array<{
     name: string;
     dosage: string;
