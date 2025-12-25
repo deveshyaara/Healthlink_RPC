@@ -66,8 +66,10 @@ export async function POST(request: NextRequest) {
           walletAddress,
           ipfsHash: result.data?.ipfsHash || '',
           createdAt: new Date().toISOString(),
+          blockchainError: result.blockchainError || null,
         },
       },
+      blockchainError: result.blockchainError || null,
       message: 'Patient created successfully with minimal information. Additional details can be added when creating appointments or prescriptions.',
     });
 

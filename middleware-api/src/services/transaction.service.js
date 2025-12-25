@@ -40,7 +40,8 @@ class TransactionService {
       logger.info('Service: Creating patient', { patientAddress, name });
 
       const publicData = { name, age, gender, ipfsHash };
-      const result = await ethereumService.createPatient(patientAddress, publicData);
+      // Call ethereumService.createPatient with explicit primitive args to match contract ABI
+      const result = await ethereumService.createPatient(patientAddress, name, age, gender, ipfsHash);
 
       return {
         success: true,

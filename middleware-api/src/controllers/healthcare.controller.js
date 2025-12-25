@@ -175,6 +175,7 @@ class HealthcareController {
 
       // Create patient on blockchain with minimal data (if IPFS succeeded)
       let blockchainResult = null;
+      let blockchainErrorMessage = null;
       if (ipfsHash) {
         try {
           blockchainResult = await transactionService.createPatient(
@@ -182,7 +183,8 @@ class HealthcareController {
           );
         } catch (blockchainError) {
           logger.error('Failed to create patient on blockchain:', blockchainError);
-          // Continue with database creation even if blockchain fails
+          // Capture a safe, user-friendly message to return in the response
+          blockchainErrorMessage = blockchainError && blockchainError.reason ? String(blockchainError.reason) : (blockchainError && blockchainError.message ? String(blockchainError.message) : 'Blockchain transaction failed');
         }
       }
 
@@ -194,6 +196,7 @@ class HealthcareController {
         walletAddress: patientMapping.walletAddress,
         ipfsHash,
         blockchainCreated: !!blockchainResult,
+        blockchainError: blockchainErrorMessage,
         createdAt: patientMapping.createdAt,
         message: 'Patient created successfully with minimal information. Additional details can be added when creating appointments or prescriptions.',
       });
@@ -717,6 +720,7 @@ class HealthcareController {
 
       // Try to create appointment on blockchain
       let blockchainResult = null;
+      let blockchainErrorMessage = null;
       try {
         if (!transactionService || typeof transactionService.createAppointment !== 'function') {
           logger.warn('Transaction service unavailable when attempting to create appointment on blockchain');
@@ -733,6 +737,7 @@ class HealthcareController {
         }
       } catch (blockchainError) {
         logger.error('Failed to create appointment on blockchain:', blockchainError);
+        blockchainErrorMessage = blockchainError && blockchainError.reason ? String(blockchainError.reason) : (blockchainError && blockchainError.message ? String(blockchainError.message) : 'Blockchain transaction failed');
         // Continue with database creation even if blockchain fails
       }
 
@@ -782,6 +787,7 @@ class HealthcareController {
         data: {
           ...appointment,
           blockchainCreated: !!blockchainResult,
+          blockchainError: blockchainErrorMessage,
         },
         message: patientDetails ?
           'Appointment created successfully and patient details updated.' :

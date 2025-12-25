@@ -1,5 +1,7 @@
 import { useState, useCallback } from 'react';
-import ethereumService, { Patient, MedicalRecord, Consent } from '@/services/ethereum.service';
+import ethereumService, { Patient, MedicalRecord, Consent } from '../services/ethereum.service';
+
+import { extractErrorMessage } from './error-utils';
 
 export function useHealthcare() {
   const [isLoading, setIsLoading] = useState(false);
@@ -18,9 +20,9 @@ export function useHealthcare() {
       const receipt = await ethereumService.createPatient(patientAddress, name, age, gender, ipfsHash);
       return receipt;
     } catch (err: unknown) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to create patient';
+      const errorMessage = extractErrorMessage(err, 'Failed to create patient');
       setError(errorMessage);
-      throw err;
+      throw new Error(errorMessage);
     } finally {
       setIsLoading(false);
     }
@@ -33,9 +35,9 @@ export function useHealthcare() {
       const patient = await ethereumService.getPatient(patientAddress);
       return patient;
     } catch (err: unknown) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to get patient';
+      const errorMessage = extractErrorMessage(err, 'Failed to get patient');
       setError(errorMessage);
-      throw err;
+      throw new Error(errorMessage);
     } finally {
       setIsLoading(false);
     }
@@ -57,9 +59,9 @@ export function useHealthcare() {
       );
       return receipt;
     } catch (err: unknown) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to create medical record';
+      const errorMessage = extractErrorMessage(err, 'Failed to create medical record');
       setError(errorMessage);
-      throw err;
+      throw new Error(errorMessage);
     } finally {
       setIsLoading(false);
     }
@@ -72,9 +74,9 @@ export function useHealthcare() {
       const record = await ethereumService.getMedicalRecord(recordId);
       return record;
     } catch (err: unknown) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to get medical record';
+      const errorMessage = extractErrorMessage(err, 'Failed to get medical record');
       setError(errorMessage);
-      throw err;
+      throw new Error(errorMessage);
     } finally {
       setIsLoading(false);
     }
@@ -87,9 +89,9 @@ export function useHealthcare() {
       const records = await ethereumService.getRecordsByPatient(patientId);
       return records;
     } catch (err: unknown) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to get patient records';
+      const errorMessage = extractErrorMessage(err, 'Failed to get patient records');
       setError(errorMessage);
-      throw err;
+      throw new Error(errorMessage);
     } finally {
       setIsLoading(false);
     }
@@ -109,9 +111,9 @@ export function useHealthcare() {
       );
       return receipt;
     } catch (err: unknown) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to create consent';
+      const errorMessage = extractErrorMessage(err, 'Failed to create consent');
       setError(errorMessage);
-      throw err;
+      throw new Error(errorMessage);
     } finally {
       setIsLoading(false);
     }
@@ -124,9 +126,27 @@ export function useHealthcare() {
       const consent = await ethereumService.getConsent(consentId);
       return consent;
     } catch (err: unknown) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to get consent';
+      const errorMessage = extractErrorMessage(err, 'Failed to get consent');
       setError(errorMessage);
-      throw err;
+      throw new Error(errorMessage);
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  /**
+   * Revoke a consent (on-chain)
+   */
+  const revokeConsent = useCallback(async (consentId: string) => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const tx = await (ethereumService as any).revokeConsent(consentId);
+      return tx;
+    } catch (err: unknown) {
+      const errorMessage = extractErrorMessage(err, 'Failed to revoke consent');
+      setError(errorMessage);
+      throw new Error(errorMessage);
     } finally {
       setIsLoading(false);
     }
@@ -148,9 +168,9 @@ export function useHealthcare() {
       );
       return receipt;
     } catch (err: unknown) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to create appointment';
+      const errorMessage = extractErrorMessage(err, 'Failed to create appointment');
       setError(errorMessage);
-      throw err;
+      throw new Error(errorMessage);
     } finally {
       setIsLoading(false);
     }
@@ -172,9 +192,9 @@ export function useHealthcare() {
       );
       return receipt;
     } catch (err: unknown) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to create prescription';
+      const errorMessage = extractErrorMessage(err, 'Failed to create prescription');
       setError(errorMessage);
-      throw err;
+      throw new Error(errorMessage);
     } finally {
       setIsLoading(false);
     }
@@ -195,9 +215,9 @@ export function useHealthcare() {
       );
       return receipt;
     } catch (err: unknown) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to register doctor';
+      const errorMessage = extractErrorMessage(err, 'Failed to register doctor');
       setError(errorMessage);
-      throw err;
+      throw new Error(errorMessage);
     } finally {
       setIsLoading(false);
     }
@@ -210,9 +230,9 @@ export function useHealthcare() {
       const doctors = await ethereumService.getVerifiedDoctors();
       return doctors;
     } catch (err: unknown) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to get verified doctors';
+      const errorMessage = extractErrorMessage(err, 'Failed to get verified doctors');
       setError(errorMessage);
-      throw err;
+      throw new Error(errorMessage);
     } finally {
       setIsLoading(false);
     }
@@ -228,6 +248,7 @@ export function useHealthcare() {
     getRecordsByPatient,
     createConsent,
     getConsent,
+    revokeConsent,
     createAppointment,
     createPrescription,
     registerDoctor,

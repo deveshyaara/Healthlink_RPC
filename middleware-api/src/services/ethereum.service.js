@@ -233,35 +233,81 @@ class EthereumService {
   }
 
   /**
+   * Decode revert data from a raw hex payload (Error(string) and basic fallback)
+   */
+  _decodeRevertData(raw) {
+    try {
+      if (!raw || typeof raw !== 'string') return null;
+      // Standard Error(string) selector
+      if (raw.startsWith('0x08c379a0')) {
+        const hex = raw.slice(10);
+        // offset 0x20 / 32 bytes for the string
+        const lenHex = hex.slice(64, 128);
+        const len = parseInt(lenHex, 16);
+        const strHex = hex.slice(128, 128 + len * 2);
+        return Buffer.from(strHex, 'hex').toString('utf8');
+      }
+      // No known encoding - return as-is
+      return raw;
+    } catch (err) {
+      logger.warn('Failed to decode revert data payload:', err.message || err);
+      return raw;
+    }
+  }
+
+  /**
    * Format transaction errors
    */
   _formatTransactionError(error) {
-    const message = error.message || 'Transaction failed';
-    const errorMessage = message.toLowerCase();
+    try {
+      // Normalize error shape
+      const rawMsg = (error && (error.message || error.shortMessage)) || 'Transaction failed';
+      const message = String(rawMsg);
+      const errorMessage = message.toLowerCase();
 
-    // Map to specific error types
-    if (error.code === 'ACTION_REJECTED' || errorMessage.includes('user denied') || errorMessage.includes('user rejected')) {
-      return new UserRejectedError(message);
+      // Try to surface revert payloads when available
+      const rawData = (error && (error.data || (error.error && error.error.data) || (error.revert && error.revert.data) || (error.receipt && error.receipt.revert && error.receipt.revert.data))) || null;
+      if (typeof rawData === 'string' && rawData.startsWith('0x')) {
+        const decoded = this._decodeRevertData(rawData);
+        if (decoded) {
+          return new ContractRevertError(`Smart contract reverted: ${decoded}`, decoded);
+        }
+      }
+
+      // If receipt exists and status === 0 but no revert payload
+      const receipt = error && (error.receipt || error.transactionReceipt || null);
+      if (receipt && receipt.status === 0 && !rawData) {
+        return new ContractRevertError('Transaction reverted without a reason string', null);
+      }
+
+      // Map to specific error types
+      if (error && (error.code === 'ACTION_REJECTED' || errorMessage.includes('user denied') || errorMessage.includes('user rejected'))) {
+        return new UserRejectedError(message);
+      }
+
+      if (errorMessage.includes('insufficient funds')) {
+        return new InsufficientFundsError(message);
+      }
+
+      if (errorMessage.includes('nonce too low') || errorMessage.includes('replacement transaction underpriced')) {
+        return new NonceError(message);
+      }
+
+      if (errorMessage.includes('smart contract logic reverted') || errorMessage.includes('execution reverted')) {
+        return new ContractRevertError(message, error && error.reason);
+      }
+
+      if (errorMessage.includes('network') || errorMessage.includes('connection') || errorMessage.includes('timeout')) {
+        return new NetworkError(message);
+      }
+
+      // Default Web3 error
+      return new Web3Error(message, error, error && error.code);
+    } catch (err) {
+      // If formatting itself errors, return a generic Web3Error
+      logger.error('Error while formatting transaction error:', err);
+      return new Web3Error('Transaction failed');
     }
-
-    if (errorMessage.includes('insufficient funds')) {
-      return new InsufficientFundsError(message);
-    }
-
-    if (errorMessage.includes('nonce too low') || errorMessage.includes('replacement transaction underpriced')) {
-      return new NonceError(message);
-    }
-
-    if (errorMessage.includes('smart contract logic reverted') || errorMessage.includes('execution reverted')) {
-      return new ContractRevertError(message, error.reason);
-    }
-
-    if (errorMessage.includes('network') || errorMessage.includes('connection') || errorMessage.includes('timeout')) {
-      return new NetworkError(message);
-    }
-
-    // Default Web3 error
-    return new Web3Error(message, error, error.code);
   }
 
   /**
@@ -498,14 +544,85 @@ class EthereumService {
 
   async createPatient(patientAddress, name, age, gender, ipfsHash) {
     const contract = this.getContract('HealthLink');
-    return await this.sendTransaction(
-      contract.createPatient,
-      patientAddress,
-      name,
-      age,
-      gender,
-      ipfsHash,
-    );
+    if (contract) {
+      // Ensure contract instance is connected to the current signer
+      const contractWithSigner = contract.connect(this.signer);
+
+      // Explicit gas estimation for better diagnostics
+      logger.info('createPatient args (raw):', { patientAddress, name, age, gender, ipfsHash });
+      [patientAddress, name, age, gender, ipfsHash].forEach((a, i) => {
+        if (typeof a === 'undefined') {
+          logger.error(`createPatient arg index ${i} is undefined`);
+        }
+      });
+
+      try {
+        // Prefer method-specific estimate via the function itself (works with ethers v6)
+        if (contractWithSigner.createPatient && contractWithSigner.createPatient.estimateGas) {
+          const gasEstimate = await contractWithSigner.createPatient.estimateGas(patientAddress, name, age, gender, ipfsHash);
+          logger.info('createPatient gas estimate (via method):', gasEstimate.toString());
+        } else if (contractWithSigner.estimateGas && contractWithSigner.estimateGas.createPatient) {
+          const gasEstimate = await contractWithSigner.estimateGas.createPatient(patientAddress, name, age, gender, ipfsHash);
+          logger.info('createPatient gas estimate (via contract.estimateGas):', gasEstimate.toString());
+        } else {
+          logger.warn('No estimateGas helper found on contract for createPatient; skipping explicit estimation');
+        }
+      } catch (err) {
+        logger.error('createPatient gas estimation failed:', err);
+
+        // Provide more context if the error is related to ABI param resolution
+        if (err && err.message && err.message.includes('reading')) {
+          logger.error('createPatient gas estimation: one or more arguments may be invalid for the ABI. Args types:', {
+            patientAddressType: typeof patientAddress,
+            nameType: typeof name,
+            ageType: typeof age,
+            genderType: typeof gender,
+            ipfsHashType: typeof ipfsHash,
+          });
+        }
+
+        // Attempt to proceed by sending the transaction with a conservative gasLimit
+        try {
+          logger.warn('Proceeding to send createPatient transaction with fallback gasLimit (400000) despite estimateGas failure');
+          const tx = await contractWithSigner.createPatient(patientAddress, name, age, gender, ipfsHash, { gasLimit: 400000 });
+          return await this.waitForTransaction(tx);
+        } catch (txErr) {
+          logger.error('createPatient transaction failed after estimateGas error:', txErr);
+
+          // Try to replay as eth_call to extract revert reason
+          try {
+            const encoded = contractWithSigner.interface.encodeFunctionData('createPatient', [patientAddress, name, age, gender, ipfsHash]);
+            const callData = await this.provider.call({ from: await this.signer.getAddress(), to: contractWithSigner.target || contractWithSigner.address, data: encoded });
+            if (callData && callData !== '0x') {
+              logger.error('Revert data from provider.call replay (unexpected non-empty):', callData);
+              logger.error('Decoded revert:', this.formatError({ message: null, data: callData }));
+            } else {
+              logger.error('provider.call did not return data; attempting to catch call exception');
+            }
+          } catch (replayErr) {
+            const raw = replayErr?.data || replayErr?.error?.data || replayErr?.reason || replayErr?.message || null;
+            if (typeof raw === 'string' && raw.startsWith('0x')) {
+              logger.error('Decoded revert from replay:', decodeRevertData(raw, contractWithSigner));
+            } else {
+              logger.error('Replay call failed to return revert payload:', replayErr.message || replayErr);
+            }
+          }
+
+          throw txErr;
+        }
+      }
+
+      return await this.sendTransaction(
+        contractWithSigner.createPatient,
+        patientAddress,
+        name,
+        age,
+        gender,
+        ipfsHash,
+      );
+    }
+
+    throw new Error('HealthLink contract not available');
   }
 
   async getPatient(patientId) {
@@ -716,17 +833,38 @@ class EthereumService {
 
   async updateAppointmentStatus(appointmentId, status) {
     const contract = this.getContract('Appointments');
+
+    // Coerce status string to contract enum number if needed
+    let statusArg = status;
+    if (typeof status === 'string') {
+      const mapping = {
+        SCHEDULED: 0,
+        CONFIRMED: 1,
+        COMPLETED: 2,
+        CANCELLED: 3,
+        NO_SHOW: 3,
+      };
+      const key = status.toUpperCase();
+      if (mapping[key] !== undefined) {
+        statusArg = mapping[key];
+      } else if (!isNaN(Number(status))) {
+        statusArg = Number(status);
+      } else {
+        throw new Error('Unknown appointment status: ' + status);
+      }
+    }
+
     if (contract) {
       return await this.sendTransaction(
         contract.updateAppointmentStatus,
         appointmentId,
-        status,
+        statusArg,
       );
     }
 
     const apt = this._stores.appointments.get(appointmentId);
     if (!apt) {throw new Error('Appointment not found');}
-    apt.status = status;
+    apt.status = statusArg;
     apt.updatedAt = Date.now();
     this._stores.appointments.set(appointmentId, apt);
     return { transactionHash: `local-update-apt-${appointmentId}-${apt.updatedAt}`, blockNumber: 0, gasUsed: '0', status: 'success' };

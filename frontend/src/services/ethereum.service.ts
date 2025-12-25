@@ -357,6 +357,18 @@ class EthereumService {
   }
 
   /**
+   * Revoke consent
+   */
+  async revokeConsent(consentId: string): Promise<ethers.TransactionReceipt> {
+    if (!this.contracts.healthLink) {
+      throw new Error('Contracts not initialized');
+    }
+
+    const tx = await this.contracts.healthLink.revokeConsent(consentId);
+    return await tx.wait();
+  }
+
+  /**
    * Create an appointment
    */
   async createAppointment(
