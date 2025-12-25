@@ -297,7 +297,17 @@ class HealthcareController {
         message: 'Patients retrieved successfully',
       });
     } catch (error) {
-      next(error);
+      logger.error('getPatientsForDoctor error:', {
+        message: error.message,
+        code: error.code,
+        meta: error.meta,
+        stack: error.stack,
+      });
+      res.status(500).json({
+        success: false,
+        error: error.message,
+        details: error.meta,
+      });
     }
   }
 
