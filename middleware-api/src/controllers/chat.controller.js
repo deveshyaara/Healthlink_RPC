@@ -5,6 +5,7 @@
 
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import logger from '../utils/logger.js';
+import dbService from '../services/db.service.prisma.js';
 
 class ChatController {
   constructor() {
@@ -75,10 +76,78 @@ class ChatController {
     }
 
     try {
-      // Create healthcare-focused system prompt
-      const systemPrompt = `You are a helpful healthcare AI assistant for HealthLink, a blockchain-based healthcare platform.
+      // Fetch user context from Database
+      let contextData = {
+        appointments: [],
+        prescriptions: [],
+        records: [],
+      };
 
-You are speaking with ${userName}, who is a ${userRole} in the HealthLink system.
+      try {
+        if (dbService && dbService.isReady && dbService.isReady()) {
+          const db = dbService.prisma;
+          const userEmail = req.user?.email;
+          let patientId = userId; // Default to userId
+
+          if (userRole === 'patient') {
+            // Resolve PatientWalletMapping ID if possible, as it differs from User ID
+            if (userEmail && db.patientWalletMapping) {
+              const mapping = await db.patientWalletMapping.findUnique({
+                where: { email: userEmail }
+              });
+              if (mapping) {
+                patientId = mapping.id;
+              }
+            }
+
+            // Fetch Appointments
+            if (db.appointment) {
+              const appointments = await db.appointment.findMany({
+                where: {
+                  patientId: patientId,
+                  scheduledAt: { gte: new Date() }
+                },
+                orderBy: { scheduledAt: 'asc' },
+                take: 5,
+                include: { doctor: { select: { fullName: true } } }
+              });
+              contextData.appointments = appointments.map(a => ({
+                date: a.scheduledAt,
+                title: a.title,
+                doctor: a.doctor?.fullName,
+                status: a.status
+              }));
+            }
+
+            // Fetch Prescriptions
+            if (db.prescription) {
+              const prescriptions = await db.prescription.findMany({
+                where: { patientId: patientId, status: 'ACTIVE' },
+                orderBy: { createdAt: 'desc' },
+                take: 5,
+              });
+              contextData.prescriptions = prescriptions.map(p => ({
+                medication: p.medication,
+                dosage: p.dosage,
+                instructions: p.instructions,
+                expiry: p.expiryDate
+              }));
+            }
+          }
+        }
+      } catch (dbError) {
+        logger.warn('Failed to fetch DB context for chat:', dbError);
+        // Continue without context
+      }
+
+      // Create healthcare-focused system prompt
+      const systemPrompt = `You are a helpful healthcare AI assistant for HealthLink.
+
+You are speaking with ${userName} (${userRole}).
+
+USER CONTEXT (From Database):
+Appointments: ${JSON.stringify(contextData.appointments)}
+Active Prescriptions: ${JSON.stringify(contextData.prescriptions)}
 
 IMPORTANT GUIDELINES:
 1. Be empathetic, supportive, and professional
@@ -86,17 +155,10 @@ IMPORTANT GUIDELINES:
 3. NEVER give specific medical advice or treatment recommendations
 4. If the user asks for medical advice, direct them to consult their healthcare provider
 5. You can help with general health information, appointment scheduling questions, and platform navigation
-6. Always remind users that you are an AI assistant, not a medical professional
-7. For urgent medical issues, advise seeking immediate professional help
+6. Use the provided context to answer questions about their schedule or medications ("When is my next appointment?").
+7. Always remind users that you are an AI assistant, not a medical professional
 
-Available HealthLink features you can help with:
-- Medical record access and management
-- Appointment scheduling and management
-- Prescription tracking
-- Doctor credential verification
-- General health information and education
-
-Keep responses concise but helpful. If you don't know something, say so clearly.`;
+Keep responses concise but helpful.`;
 
       // Generate response using Gemini
       const chat = this.model.startChat({
