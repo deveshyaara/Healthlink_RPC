@@ -210,7 +210,7 @@ export const commonRoutes: NavRoute[] = [
  * Get routes for a specific user role
  */
 export function getRoutesForRole(role: string | undefined): NavRoute[] {
-  if (!role) {return [];}
+  if (!role) { return []; }
 
   switch (role.toLowerCase()) {
     case 'doctor':
@@ -227,6 +227,7 @@ export function getRoutesForRole(role: string | undefined): NavRoute[] {
 /**
  * Check if a user has access to a specific route
  * Admin users have access to ALL routes
+ * Now supports sub-routes (e.g., /dashboard/doctor/patients/add)
  */
 export function canAccessRoute(userRole: string | undefined, routeHref: string): boolean {
   if (!userRole) {
@@ -240,16 +241,43 @@ export function canAccessRoute(userRole: string | undefined, routeHref: string):
     return true;
   }
 
-  const allRoutes = [...doctorRoutes, ...patientRoutes, ...adminRoutes, ...commonRoutes];
-  const route = allRoutes.find((r) => r.href === routeHref);
-
-  // If route not found, deny access for non-admin (safest default)
-  if (!route) {
-    return false;
+  // Allow signin/signout routes for everyone
+  if (routeHref.includes('/signin') || routeHref.includes('/signout') || routeHref === '/') {
+    return true;
   }
 
-  // Check if user's role is in the allowed roles for this route
-  return route.roles.includes(normalizedRole);
+  const allRoutes = [...doctorRoutes, ...patientRoutes, ...adminRoutes, ...commonRoutes];
+
+  // First, try exact match
+  const exactRoute = allRoutes.find((r) => r.href === routeHref);
+  if (exactRoute) {
+    return exactRoute.roles.includes(normalizedRole);
+  }
+
+  // If no exact match, check if the current route is a sub-route of an allowed route
+  // Example: /dashboard/doctor/patients/add should match /dashboard/doctor/patients
+  const parentRoute = allRoutes.find((r) => routeHref.startsWith(r.href + '/') || routeHref.startsWith(r.href));
+
+  if (parentRoute) {
+    return parentRoute.roles.includes(normalizedRole);
+  }
+
+  // If route not found in config, check by role-based dashboard prefix
+  // This allows new pages under /dashboard/doctor/ or /dashboard/patient/ without explicit config
+  if (routeHref.startsWith('/dashboard/doctor') && normalizedRole === 'doctor') {
+    return true;
+  }
+
+  if (routeHref.startsWith('/dashboard/patient') && normalizedRole === 'patient') {
+    return true;
+  }
+
+  if (routeHref.startsWith('/dashboard/admin') && normalizedRole === 'admin') {
+    return true;
+  }
+
+  // Default deny for safety
+  return false;
 }
 
 /**
