@@ -14,6 +14,7 @@ import { useState } from 'react';
 import { useHealthcare } from '@/hooks/useHealthcare';
 import { useAuth } from '@/contexts/auth-context';
 import { Button } from '@/components/ui/button';
+import { patientsApi, appointmentsApi } from '@/lib/api-client';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
@@ -96,22 +97,8 @@ export function AddPatientDialog({ onSuccess }: { onSuccess?: () => void }) {
 
       console.log('Creating patient:', payload);
 
-      // Call the new healthcare API
-      const response = await fetch('/api/v1/healthcare/patients', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${authUtils.getToken()}`,
-        },
-        body: JSON.stringify(payload),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || `HTTP ${response.status}: ${response.statusText}`);
-      }
-
-      const result = await response.json();
+      // Call the new healthcare API using standardized client
+      const result = await patientsApi.create(payload as any);
       console.log('Patient created successfully:', result);
 
       // Success!
@@ -121,13 +108,14 @@ export function AddPatientDialog({ onSuccess }: { onSuccess?: () => void }) {
       });
 
       // Surface blockchain info if present (non-critical)
-      if (result.blockchainError) {
-        console.log('Blockchain info:', result.blockchainError);
+      const patientResult = result as any;
+      if (patientResult.blockchainError) {
+        console.log('Blockchain info:', patientResult.blockchainError);
         // Only show if it's a real error, not just "contract not available"
-        if (!result.blockchainError.includes('not available')) {
+        if (!patientResult.blockchainError.includes('not available')) {
           toast({
             title: 'Blockchain Info',
-            description: String(result.blockchainError),
+            description: String(patientResult.blockchainError),
           });
         }
       }
@@ -360,21 +348,7 @@ export function ScheduleAppointmentDialog({
     }
 
     try {
-      const response = await fetch('/api/v1/healthcare/appointments', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${authUtils.getToken()}`,
-        },
-        body: JSON.stringify(appointmentPayload),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || `HTTP ${response.status}: ${response.statusText}`);
-      }
-
-      const result = await response.json();
+      const result = await appointmentsApi.create(appointmentPayload);
       console.log('Appointment scheduled successfully:', result);
 
       toast({
@@ -382,10 +356,11 @@ export function ScheduleAppointmentDialog({
         description: `Appointment scheduled for ${new Date(formData.scheduledAt).toLocaleString()}`,
       });
 
-      if (result.blockchainError || result.data?.blockchainError) {
+      const appointmentResult = result as any;
+      if (appointmentResult.blockchainError || appointmentResult.data?.blockchainError) {
         toast({
           title: 'On-chain Warning',
-          description: String(result.blockchainError || result.data?.blockchainError),
+          description: String(appointmentResult.blockchainError || appointmentResult.data?.blockchainError),
           variant: 'destructive',
         });
       }

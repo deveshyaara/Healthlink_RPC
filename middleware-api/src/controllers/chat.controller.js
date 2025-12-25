@@ -90,13 +90,14 @@ class ChatController {
           let patientId = userId; // Default to userId
 
           if (userRole === 'patient') {
-            // Resolve PatientWalletMapping ID if possible, as it differs from User ID
-            if (userEmail && db.patientWalletMapping) {
-              const mapping = await db.patientWalletMapping.findUnique({
+            // Try to find patient record by email to get correct patient ID
+            if (userEmail && (db.patient || db.Patient)) {
+              const patientModel = db.patient || db.Patient;
+              const patientRecord = await patientModel.findUnique({
                 where: { email: userEmail }
               });
-              if (mapping) {
-                patientId = mapping.id;
+              if (patientRecord) {
+                patientId = patientRecord.id;
               }
             }
 

@@ -116,7 +116,7 @@ class HealthcareController {
           },
         });
       } else {
-        throw new Error('Database not connected or PatientWalletMapping model missing');
+        throw new Error('Database not connected or Patient model missing');
       }
 
       // Upload patient metadata to IPFS using Pinata (initial minimal data)

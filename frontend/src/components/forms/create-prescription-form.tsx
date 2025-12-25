@@ -11,6 +11,7 @@ import { useState, useEffect } from 'react';
 import { Loader2, Pill } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { authUtils } from '@/lib/auth-utils';
+import { patientsApi, prescriptionsApi } from '@/lib/api-client';
 
 // Zod validation schema for a single medication (backend expects single medication, not array)
 const medicationSchema = z.object({
@@ -92,21 +93,8 @@ export function CreatePrescriptionForm({
   useEffect(() => {
     const fetchPatients = async () => {
       try {
-        // Fetch patients from healthcare API
-        const token = authUtils.getToken();
-        const response = await fetch('/api/v1/healthcare/patients', {
-          headers: {
-            'Authorization': `Bearer ${token}`,
-          },
-        });
-
-        if (!response.ok) {
-          throw new Error('Failed to fetch patients');
-        }
-
-        const result = await response.json();
-        // Backend returns {success: true, patients: [...], data: [...]}
-        const patientsData = result.patients || result.data || (Array.isArray(result) ? result : []);
+        // Fetch patients from healthcare API using standardized client
+        const patientsData = await patientsApi.getAll();
 
         // Transform to expected format
         const transformedPatients = patientsData.map((patient: any) => ({
@@ -142,23 +130,8 @@ export function CreatePrescriptionForm({
         expiryTimestamp: Math.floor(Date.now() / 1000) + (30 * 24 * 60 * 60), // 30 days from now
       };
 
-      // Call healthcare API to create prescription
-      const token = authUtils.getToken();
-      const response = await fetch('/api/v1/healthcare/prescriptions', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
-        },
-        body: JSON.stringify(prescriptionPayload),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Failed to create prescription');
-      }
-
-      const _result = await response.json();
+      // Call healthcare API to create prescription using standardized client
+      const _result = await prescriptionsApi.create(prescriptionPayload);
 
       // Import toast dynamically
       const { toast } = await import('sonner');
