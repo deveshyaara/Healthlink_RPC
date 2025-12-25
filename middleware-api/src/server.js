@@ -22,6 +22,7 @@ import swaggerUi from 'swagger-ui-express';
 import swaggerSpec from './config/swagger.js';
 import ethereumService from './services/ethereum.service.js';
 import StorageService from './services/storage.service.js';
+import dbService from './services/db.service.js';
 
 /**
  * HealthLink Middleware API Server
@@ -310,8 +311,7 @@ const startServer = async () => {
     // Initialize database service (Supabase)
     try {
       logger.info('🗄️  Initializing database service...');
-      const dbService = await import('./services/db.service.js');
-      await dbService.default.initialize();
+      await dbService.initialize();
       logger.info('🗄️  Database service initialized successfully');
     } catch (error) {
       logger.warn('⚠️  Database service initialization failed:', error.message);
