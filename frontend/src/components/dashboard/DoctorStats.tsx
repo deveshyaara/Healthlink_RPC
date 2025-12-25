@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Users, Calendar, Pill, Activity, Loader2 } from 'lucide-react';
-import { appointmentsApi, prescriptionsApi } from '@/lib/api-client';
+import { appointmentsApi, prescriptionsApi, medicalRecordsApi } from '@/lib/api-client';
 
 /**
  * DoctorStats Component
@@ -33,11 +33,7 @@ export function DoctorStats() {
           await Promise.allSettled([
             appointmentsApi.getAll(),  // Backend filters by doctorId automatically
             prescriptionsApi.getAll(), // Backend filters by doctorId automatically
-            fetch('/api/v1/medical-records', {
-              headers: {
-                'Authorization': `Bearer ${typeof window !== 'undefined' ? localStorage.getItem('auth_token') : ''}`,
-              }
-            }).then(r => r.json()), // Fetch medical records
+            medicalRecordsApi.getAll(), // Fetch medical records
           ]);
 
         // Extract successful results with proper array extraction

@@ -22,7 +22,7 @@ function getPrismaClient() {
 // Helper to resolve the patient mapping model across possible prisma client naming
 function resolvePatientModel(db) {
   if (!db) return null;
-  return db.patientWalletMapping || db.PatientWalletMapping || db.patient || db.patientWalletMappings || null;
+  return db.patient || db.Patient;
 }
 
 /**
