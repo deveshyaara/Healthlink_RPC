@@ -29,18 +29,38 @@ export function DoctorStats() {
 
       try {
         // Fetch doctor-specific data in parallel with Promise.allSettled
-        const [appointmentsResult, prescriptionsResult] =
+        const [appointmentsResult, prescriptionsResult, recordsResult] =
           await Promise.allSettled([
             appointmentsApi.getAll(),  // Backend filters by doctorId automatically
             prescriptionsApi.getAll(), // Backend filters by doctorId automatically
+            fetch('/api/v1/medical-records', {
+              headers: {
+                'Authorization': `Bearer ${typeof window !== 'undefined' ? localStorage.getItem('auth_token') : ''}`,
+              }
+            }).then(r => r.json()), // Fetch medical records
           ]);
 
-        // Extract successful results, default to empty array for failures
-        const appointments = appointmentsResult.status === 'fulfilled' ? appointmentsResult.value : [];
-        const prescriptions = prescriptionsResult.status === 'fulfilled' ? prescriptionsResult.value : [];
+        // Extract successful results with proper array extraction
+        let appointments: any[] = [];
+        if (appointmentsResult.status === 'fulfilled') {
+          const result: any = appointmentsResult.value;
+          appointments = Array.isArray(result) ? result : (result?.data || result?.appointments || []);
+        }
+
+        let prescriptions: any[] = [];
+        if (prescriptionsResult.status === 'fulfilled') {
+          const result: any = prescriptionsResult.value;
+          prescriptions = Array.isArray(result) ? result : (result?.data || result?.prescriptions || []);
+        }
+
+        let records: any[] = [];
+        if (recordsResult.status === 'fulfilled') {
+          const result: any = recordsResult.value;
+          records = Array.isArray(result) ? result : (result?.data || result?.records || []);
+        }
 
         // Calculate stats from fetched data
-        // Extract unique patient IDs from appointments and prescriptions
+        // Extract unique patient IDs from appointments, prescriptions, and records
         const patientIds = new Set<string>();
         if (Array.isArray(appointments)) {
           appointments.forEach((apt: any) => {
@@ -50,6 +70,11 @@ export function DoctorStats() {
         if (Array.isArray(prescriptions)) {
           prescriptions.forEach((rx: any) => {
             if (rx && rx.patientId) { patientIds.add(rx.patientId); }
+          });
+        }
+        if (Array.isArray(records)) {
+          records.forEach((rec: any) => {
+            if (rec && rec.patientId) { patientIds.add(rec.patientId); }
           });
         }
 
@@ -67,7 +92,7 @@ export function DoctorStats() {
         });
 
         // Only show error if ALL requests failed
-        const allFailed = [appointmentsResult, prescriptionsResult].every(
+        const allFailed = [appointmentsResult, prescriptionsResult, recordsResult].every(
           result => result.status === 'rejected'
         );
         if (allFailed) {

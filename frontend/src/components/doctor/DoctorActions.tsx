@@ -339,10 +339,12 @@ export function ScheduleAppointmentDialog({
     const appointmentPayload: any = {
       appointmentId: `appt-${Date.now()}`,
       patientEmail: formData.patientEmail,
-      doctorAddress: user?.id || '', // Use authenticated user's ID
-      timestamp: Math.floor(scheduledAt.getTime() / 1000),
-      reason: formData.title, // Use title as reason
-      notes: formData.notes || '',
+      title: formData.title, // Backend expects 'title', not 'reason'
+      scheduledAt: scheduledAt.toISOString(), // Backend expects ISO string 'scheduledAt'
+      description: formData.description || formData.title, // Optional description
+      notes: formData.notes || '', // Optional notes
+      reason: formData.title, // Also send as reason for compatibility
+      doctorAddress: user?.id || '', // Doctor's fabricEnrollmentId
     };
 
     // Add optional patient details

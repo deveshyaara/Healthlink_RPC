@@ -33,11 +33,11 @@ const createPrescriptionSchema = z.object({
 type CreatePrescriptionFormData = z.infer<typeof createPrescriptionSchema>;
 
 interface CreatePrescriptionFormProps {
-    doctorId: string;
-    defaultPatientId?: string;
-    onSuccess: () => void;
-    onCancel?: () => void;
-    onSubmitting?: (isSubmitting: boolean) => void;
+  doctorId: string;
+  defaultPatientId?: string;
+  onSuccess: () => void;
+  onCancel?: () => void;
+  onSubmitting?: (isSubmitting: boolean) => void;
 }
 
 /**
@@ -105,7 +105,8 @@ export function CreatePrescriptionForm({
         }
 
         const result = await response.json();
-        const patientsData = result.data || result;
+        // Backend returns {success: true, patients: [...], data: [...]}
+        const patientsData = result.patients || result.data || (Array.isArray(result) ? result : []);
 
         // Transform to expected format
         const transformedPatients = patientsData.map((patient: any) => ({
@@ -188,12 +189,12 @@ export function CreatePrescriptionForm({
       {/* Patient Selection */}
       <div className="space-y-2">
         <Label htmlFor="patientEmail" className="text-sm font-medium">
-                    Patient Email <span className="text-red-500">*</span>
+          Patient Email <span className="text-red-500">*</span>
         </Label>
         {loadingPatients ? (
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
             <Loader2 className="h-4 w-4 animate-spin" />
-                        Loading patients...
+            Loading patients...
           </div>
         ) : (
           <Select
@@ -212,7 +213,7 @@ export function CreatePrescriptionForm({
               ))}
               {patients.length === 0 && (
                 <div className="p-2 text-sm text-muted-foreground">
-                                    No patients found
+                  No patients found
                 </div>
               )}
             </SelectContent>
@@ -226,7 +227,7 @@ export function CreatePrescriptionForm({
       {/* Diagnosis (Optional) */}
       <div className="space-y-2">
         <Label htmlFor="diagnosis" className="text-sm font-medium">
-                    Diagnosis (Optional)
+          Diagnosis (Optional)
         </Label>
         <Input
           id="diagnosis"

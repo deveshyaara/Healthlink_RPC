@@ -456,14 +456,18 @@ export const medicalRecordsApi = {
    * Function: GetRecordsByPatient
    */
   getAll: async (): Promise<any[]> => {
-    return fetchApi<any[]>('/api/medical-records', { method: 'GET' }, true);
+    const response = await fetchApi<{ success: boolean; records?: any[]; data?: any[] }>('/api/medical-records', { method: 'GET' }, true);
+    // Backend returns {success: true, records: [...], data: [...]}
+    return response.records || response.data || (Array.isArray(response) ? response : []);
   },
 
   /**
    * Alias for getAll() for backward compatibility
    */
   getAllRecords: async (): Promise<any[]> => {
-    return fetchApi<any[]>('/api/medical-records', { method: 'GET' }, true);
+    const response = await fetchApi<{ success: boolean; records?: any[]; data?: any[] }>('/api/medical-records', { method: 'GET' }, true);
+    // Backend returns {success: true, records: [...], data: [...]}
+    return response.records || response.data || (Array.isArray(response) ? response : []);
   },
 
   /**
@@ -500,7 +504,9 @@ export const medicalRecordsApi = {
    * Function: GetRecordsByPatient
    */
   getByPatient: async (patientId: string): Promise<MedicalRecord[]> => {
-    return fetchApi<MedicalRecord[]>(`/api/medical-records/patient/${patientId}`, { method: 'GET' }, true);
+    const response = await fetchApi<{ success: boolean; records?: MedicalRecord[]; data?: MedicalRecord[] }>(`/api/medical-records/patient/${patientId}`, { method: 'GET' }, true);
+    // Backend returns {success: true, records: [...], data: [...]}
+    return response.records || response.data || (Array.isArray(response) ? response : []);
   },
 };
 
@@ -556,7 +562,9 @@ export const appointmentsApi = {
    * Function: GetAppointmentsByPatient or GetAppointmentsByDoctor (role-based)
    */
   getAll: async (): Promise<Appointment[]> => {
-    return fetchApi<Appointment[]>('/api/appointments', { method: 'GET' }, true);
+    const response = await fetchApi<{ success: boolean; appointments?: Appointment[]; data?: Appointment[] }>('/api/appointments', { method: 'GET' }, true);
+    // Backend returns {success: true, appointments: [...], data: [...]}
+    return response.appointments || response.data || (Array.isArray(response) ? response : []);
   },
 
   /**
@@ -606,7 +614,9 @@ export const prescriptionsApi = {
    * Function: GetPrescriptionsByPatient or GetPrescriptionsByDoctor
    */
   getAll: async (): Promise<Prescription[]> => {
-    return fetchApi<Prescription[]>('/api/prescriptions', { method: 'GET' }, true);
+    const response = await fetchApi<{ success: boolean; prescriptions?: Prescription[]; data?: Prescription[] }>('/api/prescriptions', { method: 'GET' }, true);
+    // Backend returns {success: true, prescriptions: [...], data: [...]}
+    return response.prescriptions || response.data || (Array.isArray(response) ? response : []);
   },
 
   /**
