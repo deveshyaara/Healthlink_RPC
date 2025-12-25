@@ -419,7 +419,7 @@ class AuthService {
 
       // Get full user data with password hash
       const { data: fullUser, error } = await dbService.supabase
-        .from('healthlink_users')
+        .from('users')
         .select('id, password_hash')
         .eq('fabric_enrollment_id', userId)
         .single();
@@ -438,7 +438,7 @@ class AuthService {
       const newPasswordHash = await dbService.hashPassword(newPassword);
 
       const { error: updateError } = await dbService.supabase
-        .from('healthlink_users')
+        .from('users')
         .update({ password_hash: newPasswordHash })
         .eq('id', fullUser.id);
 
