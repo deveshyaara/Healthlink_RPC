@@ -217,8 +217,24 @@ class AuthController {
    */
   async getMe(req, res) {
     try {
-      // User is already attached to req by authenticateJWT middleware
-      const user = await authService.getUserById(req.user.userId);
+      // For patient role, user data is in PatientWalletMapping, not User table
+      // So we return the user data from JWT directly
+      if (req.user && req.user.role === 'patient') {
+        return res.status(200).json({
+          success: true,
+          user: {
+            id: req.user.id || req.user.userId,
+            name: req.user.name || req.user.fullName || 'Patient',
+            email: req.user.email,
+            role: req.user.role,
+            walletAddress: req.user.walletAddress || req.user.fabric_enrollment_id,
+          },
+        });
+      }
+
+      // For doctor/admin roles, fetch from User table
+      const userId = req.user.userId || req.user.id;
+      const user = await authService.getUserById(userId);
 
       if (!user) {
         return res.status(404).json({

@@ -154,15 +154,25 @@ export default function PrescriptionsPage() {
                     <TableCell>{prescription.doctorId}</TableCell>
                     <TableCell>
                       <div className="flex flex-wrap gap-1">
-                        {prescription.medications.slice(0, 2).map((med, index) => (
-                          <Badge key={index} variant="outline" className="text-xs">
-                            {med.name}
-                          </Badge>
-                        ))}
-                        {prescription.medications.length > 2 && (
+                        {Array.isArray(prescription.medications) ? (
+                          <>
+                            {prescription.medications.slice(0, 2).map((med, index) => (
+                              <Badge key={index} variant="outline" className="text-xs">
+                                {typeof med === 'string' ? med : med.name}
+                              </Badge>
+                            ))}
+                            {prescription.medications.length > 2 && (
+                              <Badge variant="outline" className="text-xs">
+                                +{prescription.medications.length - 2} more
+                              </Badge>
+                            )}
+                          </>
+                        ) : prescription.medication ? (
                           <Badge variant="outline" className="text-xs">
-                            +{prescription.medications.length - 2} more
+                            {prescription.medication}
                           </Badge>
+                        ) : (
+                          <span className="text-sm text-muted-foreground">No medications</span>
                         )}
                       </div>
                     </TableCell>

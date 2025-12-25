@@ -570,7 +570,27 @@ class HealthcareController {
         // Patients can only see their own records
         try {
           const db = getPrismaClient();
-          const patientId = userIdentifier; // userIdentifier is the patient's UUID
+          let patientId = userIdentifier; // userIdentifier might be UUID or email
+
+          // If userIdentifier looks like an email, resolve it to patient ID
+          if (userIdentifier && userIdentifier.includes('@')) {
+            logger.info(`Patient identified by email: ${userIdentifier}, looking up patient record`);
+
+            if (db.patientWalletMapping && typeof db.patientWalletMapping.findUnique === 'function') {
+              const patientRecord = await db.patientWalletMapping.findUnique({
+                where: { email: userIdentifier }
+              });
+
+              if (patientRecord) {
+                patientId = patientRecord.id;
+                logger.info(`Resolved patient email to ID: ${patientId}`);
+              } else {
+                logger.warn(`No patient found with email: ${userIdentifier}`);
+              }
+            }
+          }
+
+          logger.info(`Querying medical records for patient ID: ${patientId}`);
 
           if (db && db.medicalRecord && typeof db.medicalRecord.findMany === 'function') {
             records = await db.medicalRecord.findMany({
@@ -586,12 +606,15 @@ class HealthcareController {
               },
               orderBy: { createdAt: 'desc' },
             }) || [];
+
+            logger.info(`Found ${records.length} medical records for patient`);
           } else {
             // Fallback if Prisma not available
+            logger.warn('Prisma medicalRecord model not available');
             records = [];
           }
         } catch (err) {
-          logger.warn('Failed to fetch patient records from DB:', err);
+          logger.error('Failed to fetch patient records from DB:', err);
           records = [];
         }
       } else if (userRole === 'doctor') {
