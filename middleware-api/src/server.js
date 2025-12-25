@@ -22,7 +22,7 @@ import swaggerUi from 'swagger-ui-express';
 import swaggerSpec from './config/swagger.js';
 import ethereumService from './services/ethereum.service.js';
 import StorageService from './services/storage.service.js';
-import dbService from './services/db.service.js';
+import dbService from './services/db.service.prisma.js';
 
 /**
  * HealthLink Middleware API Server

@@ -10,8 +10,13 @@ function getPrismaClient() {
   if (dbService && dbService.isReady && dbService.isReady()) {
     return dbService.prisma;
   }
-  // Enforce DB usage - throw if not connected
-  throw new Error('Database disconnected. In-memory fallback is disabled.');
+  // Provide specific error about DATABASE_URL
+  const hasDbUrl = !!process.env.DATABASE_URL;
+  throw new Error(
+    hasDbUrl
+      ? 'Database disconnected. Prisma failed to connect - check DATABASE_URL format.'
+      : 'DATABASE_URL environment variable is not set. Set it in Render dashboard.'
+  );
 }
 
 // Helper to resolve the patient mapping model across possible prisma client naming

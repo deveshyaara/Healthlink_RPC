@@ -200,10 +200,11 @@ Keep responses concise but helpful.`;
       res.status(500).json({
         status: 'error',
         statusCode: 500,
-        message: 'Failed to generate AI response',
+        message: 'Failed to generate AI response: ' + error.message,
         error: {
           code: 'AI_ERROR',
-          details: 'Unable to process your message at this time',
+          details: error.message,
+          stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
         },
       });
     }
