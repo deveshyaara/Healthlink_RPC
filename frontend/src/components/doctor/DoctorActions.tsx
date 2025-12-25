@@ -12,6 +12,7 @@
 
 import { useState } from 'react';
 import { useHealthcare } from '@/hooks/useHealthcare';
+import { useAuth } from '@/contexts/auth-context';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -271,6 +272,7 @@ export function ScheduleAppointmentDialog({
   const [internalOpen, setInternalOpen] = useState(false);
   // reuse centralized on-chain hook state
   const { isLoading: hcIsLoading, error: hcError, createAppointment } = useHealthcare();
+  const { user } = useAuth(); // Import useAuth to get doctor ID
   const [validationErrorSchedule, setValidationErrorSchedule] = useState<string | null>(null);
 
   // Use controlled state if provided, otherwise use internal state
@@ -337,9 +339,9 @@ export function ScheduleAppointmentDialog({
     const appointmentPayload: any = {
       appointmentId: `appt-${Date.now()}`,
       patientEmail: formData.patientEmail,
-      doctorAddress: formData.title,
+      doctorAddress: user?.id || '', // Use authenticated user's ID
       timestamp: Math.floor(scheduledAt.getTime() / 1000),
-      reason: formData.description || formData.notes || '',
+      reason: formData.title, // Use title as reason
       notes: formData.notes || '',
     };
 
