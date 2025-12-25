@@ -100,10 +100,9 @@ class HealthcareController {
       }
 
       // Create patient wallet mapping in database
-      // Create patient mapping (Prisma or in-memory)
       let patientMapping;
-      if (patientsModel && typeof patientsModel.create === 'function') {
-        patientMapping = await patientsModel.create({
+      if (db.patientWalletMapping && typeof db.patientWalletMapping.create === 'function') {
+        patientMapping = await db.patientWalletMapping.create({
           data: {
             email,
             name,

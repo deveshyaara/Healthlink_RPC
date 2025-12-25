@@ -387,7 +387,7 @@ export function ScheduleAppointmentDialog({
           Schedule Appointment
         </Button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-[500px]">
+      <DialogContent className="sm:max-w-[500px] max-h-[90vh] overflow-auto">
         <form onSubmit={handleSchedule}>
           <DialogHeader>
             <DialogTitle>Schedule Appointment</DialogTitle>
