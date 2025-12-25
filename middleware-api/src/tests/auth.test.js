@@ -46,6 +46,9 @@ jest.unstable_mockModule('../controllers/auth.controller.js', () => {
         const token = (svc && typeof svc.generateToken === 'function') ? svc.generateToken(user) : 'mock-jwt-token';
         return res.status(200).json({ success: true, token, user });
       } catch (err) {
+        if (err.message && (err.message.includes('Database not connected') || err.message.includes('Supabase'))) {
+          return res.status(503).json({ success: false, error: 'Database not connected' });
+        }
         return res.status(401).json({ success: false, error: err.message || 'Authentication failed' });
       }
     }),
@@ -64,6 +67,9 @@ jest.unstable_mockModule('../controllers/auth.controller.js', () => {
         const token = (svc && typeof svc.generateToken === 'function') ? svc.generateToken(responseUser) : 'mock-jwt-token';
         return res.status(201).json({ success: true, token, user: responseUser });
       } catch (err) {
+        if (err.message && (err.message.includes('Database not connected') || err.message.includes('Supabase'))) {
+          return res.status(503).json({ success: false, error: 'Database not connected' });
+        }
         return res.status(500).json({ success: false, error: err.message || 'Registration failed' });
       }
     }),
@@ -185,6 +191,21 @@ describe('Authentication API', () => {
       expect(response.body.success).toBe(false);
       expect(response.body.error).toBeDefined();
     });
+
+    it('should return 503 when database is not connected', async () => {
+      authService.authenticateUser.mockRejectedValue(new Error('Database not connected. Please ensure Supabase is configured.'));
+
+      const response = await request(app)
+        .post('/api/auth/login')
+        .send({
+          email: 'john@example.com',
+          password: 'password123',
+        });
+
+      expect(response.status).toBe(503);
+      expect(response.body.success).toBe(false);
+      expect(response.body.error).toBe('Database not connected');
+    });
   });
 
   describe('POST /api/auth/register', () => {
@@ -228,6 +249,24 @@ describe('Authentication API', () => {
 
       expect(response.status).toBe(400);
       expect(response.body.success).toBe(false);
+    });
+
+    it('should return 503 when database is not connected', async () => {
+      authService.getUserById.mockResolvedValue(null);
+      authService.registerUser.mockRejectedValue(new Error('Database not connected. Please ensure Supabase is configured.'));
+
+      const response = await request(app)
+        .post('/api/auth/register')
+        .send({
+          name: 'Jane Doe',
+          email: `jane+${Date.now()}@example.com`,
+          password: 'password123',
+          role: 'patient',
+        });
+
+      expect(response.status).toBe(503);
+      expect(response.body.success).toBe(false);
+      expect(response.body.error).toBe('Database not connected');
     });
   });
 

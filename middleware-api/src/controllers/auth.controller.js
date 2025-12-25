@@ -56,6 +56,15 @@ class AuthController {
         });
       }
 
+      if (error.message && (error.message.includes('Database not connected') || error.message.includes('Supabase'))) {
+        return res.status(503).json({
+          success: false,
+          error: 'Database not connected',
+          code: 'DB_NOT_CONNECTED',
+          details: 'Supabase is not configured or currently unavailable. Ensure SUPABASE_URL and SUPABASE_SERVICE_KEY are set.',
+        });
+      }
+
       return res.status(500).json({
         success: false,
         error: 'Login failed',
@@ -157,6 +166,15 @@ class AuthController {
         });
       }
 
+      if (error.message && (error.message.includes('Database not connected') || error.message.includes('Supabase'))) {
+        return res.status(503).json({
+          success: false,
+          error: 'Database not connected',
+          code: 'DB_NOT_CONNECTED',
+          details: 'Supabase is not configured or currently unavailable. Ensure SUPABASE_URL and SUPABASE_SERVICE_KEY are set.',
+        });
+      }
+
       return res.status(500).json({
         success: false,
         error: 'Registration failed',
@@ -223,6 +241,15 @@ class AuthController {
       });
     } catch (error) {
       logger.error('Get profile error:', error);
+
+      if (error.message && (error.message.includes('Database not connected') || error.message.includes('Supabase'))) {
+        return res.status(503).json({
+          success: false,
+          error: 'Database not connected',
+          code: 'DB_NOT_CONNECTED',
+          details: 'Supabase is not configured or currently unavailable. Ensure SUPABASE_URL and SUPABASE_SERVICE_KEY are set.',
+        });
+      }
 
       return res.status(500).json({
         success: false,
@@ -305,6 +332,15 @@ class AuthController {
           success: false,
           error: 'Invalid current password',
           code: 'INVALID_PASSWORD',
+        });
+      }
+
+      if (error.message && (error.message.includes('Database not connected') || error.message.includes('Supabase'))) {
+        return res.status(503).json({
+          success: false,
+          error: 'Database not connected',
+          code: 'DB_NOT_CONNECTED',
+          details: 'Supabase is not configured or currently unavailable. Ensure SUPABASE_URL and SUPABASE_SERVICE_KEY are set.',
         });
       }
 
