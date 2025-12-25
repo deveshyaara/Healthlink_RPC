@@ -172,18 +172,6 @@ export function CreatePrescriptionDialog() {
 
           <div className="grid gap-4 py-4">
             <div className="grid gap-2">
-              <Label htmlFor="prescriptionId">Prescription ID *</Label>
-              <Input
-                id="prescriptionId"
-                placeholder="RX_001"
-                value={formData.prescriptionId}
-                onChange={(e) => setFormData({ ...formData, prescriptionId: e.target.value })}
-                required
-                disabled={loading}
-              />
-            </div>
-
-            <div className="grid gap-2">
               <Label htmlFor="patientEmail">Patient Email *</Label>
               <Input
                 id="patientEmail"
