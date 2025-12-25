@@ -49,13 +49,28 @@ class HealthcareController {
   async createPatient(req, res, next) {
     try {
       const { name, email, walletAddress } = req.body;
-      const doctorId = req.user?.id || req.user?.userId;
+      const fabricEnrollmentId = req.user?.id || req.user?.userId;
 
-      if (!doctorId) {
+      if (!fabricEnrollmentId) {
         return res.status(503).json({
           error: 'Unable to determine creating doctor id. Authentication/user service may be unavailable. Try again later.',
         });
       }
+
+      // Get the doctor's database UUID from their fabricEnrollmentId
+      const db = getPrismaClient();
+      const doctor = await db.user.findUnique({
+        where: { fabricEnrollmentId },
+        select: { id: true },
+      });
+
+      if (!doctor) {
+        return res.status(404).json({
+          error: 'Doctor account not found in database. Please contact support.',
+        });
+      }
+
+      const doctorId = doctor.id;
 
       // Validate required fields - only name and email are required initially
       if (!name || !email) {
@@ -71,7 +86,6 @@ class HealthcareController {
       }
 
       // Check if patient already exists (supports Prisma or in-memory fallback)
-      const db = getPrismaClient();
       let existingPatient = null;
       const patientsModel = resolvePatientModel(db);
       if (patientsModel && typeof patientsModel.findUnique === 'function') {
@@ -222,7 +236,7 @@ class HealthcareController {
   async getPatientsForDoctor(req, res, next) {
     try {
       const userRole = req.user.role;
-      const doctorId = req.user.id;
+      const fabricEnrollmentId = req.user.id;
 
       // Only doctors and admins can access this endpoint
       if (userRole !== 'doctor' && userRole !== 'admin') {
@@ -232,8 +246,23 @@ class HealthcareController {
         });
       }
 
-      // Get patients created by this doctor
+      // Get the doctor's database UUID from their fabricEnrollmentId
       const db = getPrismaClient();
+      const doctor = await db.user.findUnique({
+        where: { fabricEnrollmentId },
+        select: { id: true },
+      });
+
+      if (!doctor) {
+        return res.status(404).json({
+          success: false,
+          error: 'Doctor account not found in database.',
+        });
+      }
+
+      const doctorId = doctor.id;
+
+      // Get patients created by this doctor
       const patientsModel = resolvePatientModel(db);
       const patients = patientsModel && typeof patientsModel.findMany === 'function'
         ? await patientsModel.findMany({
