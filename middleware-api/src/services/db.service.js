@@ -249,16 +249,14 @@ class DatabaseService {
         role,
         fabric_enrollment_id: fabricEnrollmentId,
         full_name: fullName,
-        phone_number: phoneNumber,
-        // Doctor fields
-        doctor_license_number: doctorLicenseNumber || null,
-        doctor_specialization: doctorSpecialization || null,
-        doctor_hospital_affiliation: doctorHospitalAffiliation || null,
-        doctor_verification_status: role === 'doctor' ? 'pending' : null,
-        // Patient fields
-        patient_date_of_birth: patientDateOfBirth || null,
-        patient_blood_group: patientBloodGroup || null,
-        patient_emergency_contact: patientEmergencyContact || null,
+        phone: phoneNumber,
+        // Doctor fields - use simple column names
+        license_number: doctorLicenseNumber || null,
+        specialization: doctorSpecialization || null,
+        // Patient fields - dates and contact info
+        date_of_birth: patientDateOfBirth || null,
+        blood_group: patientBloodGroup || null,
+        emergency_contact: patientEmergencyContact || null,
       })
       .select('id, email, role, fabric_enrollment_id, full_name, created_at')
       .single();
