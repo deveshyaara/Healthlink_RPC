@@ -240,7 +240,7 @@
       ],
       "stateMutability": "view",
       "type": "function"
-    }
+    },
     {
       "inputs": [],
       "name": "AccessControlBadConfirmation",
