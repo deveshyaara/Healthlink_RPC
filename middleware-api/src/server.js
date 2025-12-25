@@ -307,6 +307,18 @@ const startServer = async () => {
       logger.warn('   Make sure Ethereum RPC URL is correct and network is accessible');
     }
 
+    // Initialize database service (Supabase)
+    try {
+      logger.info('🗄️  Initializing database service...');
+      const dbService = await import('./services/db.service.js');
+      await dbService.default.initialize();
+      logger.info('🗄️  Database service initialized successfully');
+    } catch (error) {
+      logger.warn('⚠️  Database service initialization failed:', error.message);
+      logger.warn('   Authentication will not work without Supabase connection');
+      logger.warn('   Make sure SUPABASE_URL and SUPABASE_SERVICE_KEY are set');
+    }
+
     // Initialize storage service
     try {
       logger.info('💾 Initializing storage service...');
