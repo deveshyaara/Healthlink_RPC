@@ -12,16 +12,7 @@ import { format } from 'date-fns';
 import * as React from 'react';
 import { DateRange } from 'react-day-picker';
 import { useEffect, useState } from 'react';
-import { auditApi } from '@/lib/api-client';
-
-interface AuditLog {
-  id: string;
-  timestamp: string;
-  user: string;
-  action: string;
-  details: string;
-  ip: string;
-}
+import { auditApi, type AuditLog } from '@/lib/api-client';
 
 function DatePickerWithRange({ className }: React.HTMLAttributes<HTMLDivElement>) {
   const [date, setDate] = React.useState<DateRange | undefined>({
@@ -81,10 +72,8 @@ export default function AuditTrailPage() {
         const data = await auditApi.getAll();
         setLogs(Array.isArray(data) ? data : []);
       } catch {
-        setLogs([
-          { id: 'LOG-001', timestamp: '2023-10-15 10:30:15', user: 'You', action: 'UPLOAD_RECORD', details: "Uploaded 'Annual Checkup 2023.pdf'", ip: '192.168.1.1' },
-          { id: 'LOG-002', timestamp: '2023-10-15 11:05:02', user: 'Dr. Smith', action: 'REQUEST_ACCESS', details: "Requested access to 'REC-001'", ip: '203.0.113.25' },
-        ]);
+        // Fallback to empty array if API fails
+        setLogs([]);
       } finally {
         setLoading(false);
       }
@@ -119,7 +108,7 @@ export default function AuditTrailPage() {
             <DatePickerWithRange />
             <Button variant="outline">
               <Download className="mr-2 h-4 w-4" />
-                            Download
+              Download
             </Button>
           </div>
         </div>
@@ -138,11 +127,21 @@ export default function AuditTrailPage() {
           <TableBody>
             {logs.map((log) => (
               <TableRow key={log.id}>
-                <TableCell>{log.timestamp}</TableCell>
-                <TableCell className="font-medium">{log.user}</TableCell>
+                <TableCell>
+                  {new Date(log.created_at).toLocaleString('en-US', {
+                    year: 'numeric',
+                    month: 'short',
+                    day: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit',
+                  })}
+                </TableCell>
+                <TableCell className="font-medium">{log.user_id}</TableCell>
                 <TableCell><span className="font-mono text-xs">{log.action}</span></TableCell>
-                <TableCell>{log.details}</TableCell>
-                <TableCell className="font-mono text-xs">{log.ip}</TableCell>
+                <TableCell>
+                  {log.metadata ? JSON.stringify(log.metadata) : '—'}
+                </TableCell>
+                <TableCell className="font-mono text-xs">{log.ip_address || '—'}</TableCell>
               </TableRow>
             ))}
           </TableBody>
