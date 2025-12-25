@@ -76,23 +76,25 @@ function DoctorPatientsPageContent() {
 
       // Support new flat responses: { success: true, patients: [...] }
       let patientsArray: any[] = [];
-      if (data && typeof data === 'object' && Object.prototype.hasOwnProperty.call(data, 'success')) {
-        console.log('✅ Found success field:', data.success);
-        if (data.success === true) {
-          patientsArray = Array.isArray(data.patients) ? data.patients : (Array.isArray(data.data) ? data.data : []);
-        } else {
-          throw new Error(data.error || data.message || 'Failed to fetch patients');
+
+      // Robust extraction strategy
+      if (Array.isArray(data)) {
+        patientsArray = data;
+      } else if (data && typeof data === 'object') {
+        if (Array.isArray(data.patients)) patientsArray = data.patients;
+        else if (Array.isArray(data.data)) patientsArray = data.data;
+        else if (Array.isArray(data.result)) patientsArray = data.result;
+
+        // Handle case where success is true but array is nested deeper or under 'data.data' specifically if faulty backend
+        if (patientsArray.length === 0 && data.count > 0 && Array.isArray(data.data?.data)) {
+          patientsArray = data.data.data;
         }
-      } else {
-        // Back-compat: JSend-style or raw array
-        patientsArray = Array.isArray(data.data) ? data.data : (Array.isArray(data) ? data : []);
       }
 
       console.log('📊 Patients Array:', patientsArray);
       console.log('📊 Array length:', patientsArray.length);
 
       const transformedPatients: Patient[] = patientsArray.map((patient: any) => {
-        console.log('🔍 Transforming patient:', patient);
         return {
           patientId: patient.walletAddress || patient.id || patient.email,
           name: patient.name,

@@ -39,8 +39,19 @@ export default function PrescriptionsPage() {
   const fetchPrescriptions = async () => {
     try {
       setError(null);
-      const data = await prescriptionsApi.getAll();
-      setPrescriptions(Array.isArray(data) ? data : []);
+      const data: any = await prescriptionsApi.getAll();
+
+      // Handle various response formats
+      let rxList: Prescription[] = [];
+      if (Array.isArray(data)) {
+        rxList = data;
+      } else if (data && typeof data === 'object') {
+        if (Array.isArray(data.data)) rxList = data.data;
+        else if (Array.isArray(data.prescriptions)) rxList = data.prescriptions;
+        else if (Array.isArray(data.result)) rxList = data.result;
+      }
+
+      setPrescriptions(rxList);
     } catch (err) {
       console.error('Failed to fetch prescriptions:', err);
       const errorMessage = err instanceof Error ? err.message : 'Failed to load prescriptions';
@@ -84,7 +95,7 @@ export default function PrescriptionsPage() {
         <div>
           <h1 className="text-3xl font-bold text-government-navy dark:text-white">Prescriptions</h1>
           <p className="text-neutral-600 dark:text-neutral-400 mt-1">
-                        Manage patient prescriptions and medications
+            Manage patient prescriptions and medications
           </p>
         </div>
         {(user?.role === 'doctor' || user?.role === 'admin') && (
@@ -93,7 +104,7 @@ export default function PrescriptionsPage() {
             onClick={() => setShowCreateDialog(true)}
           >
             <PlusCircle className="mr-2 h-4 w-4" />
-                        Create Prescription
+            Create Prescription
           </Button>
         )}
       </div>
@@ -150,7 +161,7 @@ export default function PrescriptionsPage() {
                         ))}
                         {prescription.medications.length > 2 && (
                           <Badge variant="outline" className="text-xs">
-                                                        +{prescription.medications.length - 2} more
+                            +{prescription.medications.length - 2} more
                           </Badge>
                         )}
                       </div>
@@ -162,7 +173,7 @@ export default function PrescriptionsPage() {
                     </TableCell>
                     <TableCell>
                       <Button variant="outline" size="sm">
-                                                View Details
+                        View Details
                       </Button>
                     </TableCell>
                   </TableRow>

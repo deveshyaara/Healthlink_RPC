@@ -32,8 +32,22 @@ export default function PatientDashboard() {
           medicalRecordsApi.getAll(),
         ]);
 
-        const appts = apptsRes.status === 'fulfilled' && Array.isArray(apptsRes.value) ? apptsRes.value : [];
-        const recs = recsRes.status === 'fulfilled' && Array.isArray(recsRes.value) ? recsRes.value : [];
+        // Helper to extract array from response
+        const extractArray = (res: any) => {
+          if (res.status !== 'fulfilled') return [];
+          const val = res.value;
+          if (Array.isArray(val)) return val;
+          if (val && typeof val === 'object') {
+            if (Array.isArray(val.data)) return val.data;
+            if (Array.isArray(val.appointments)) return val.appointments;
+            if (Array.isArray(val.records)) return val.records;
+            if (Array.isArray(val.result)) return val.result;
+          }
+          return [];
+        };
+
+        const appts = extractArray(apptsRes);
+        const recs = extractArray(recsRes);
 
         if (!mounted) return;
         setAppointments(appts);

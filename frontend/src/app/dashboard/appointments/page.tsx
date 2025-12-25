@@ -33,8 +33,19 @@ export default function AppointmentsPage() {
   const fetchAppointments = async () => {
     try {
       setError(null);
-      const data = await appointmentsApi.getAll();
-      setAppointments(Array.isArray(data) ? data : []);
+      const data: any = await appointmentsApi.getAll();
+
+      // Handle various response formats
+      let appts: Appointment[] = [];
+      if (Array.isArray(data)) {
+        appts = data;
+      } else if (data && typeof data === 'object') {
+        if (Array.isArray(data.data)) appts = data.data;
+        else if (Array.isArray(data.appointments)) appts = data.appointments;
+        else if (Array.isArray(data.result)) appts = data.result;
+      }
+
+      setAppointments(appts);
     } catch (err) {
       console.error('Failed to fetch appointments:', err);
       const errorMessage = err instanceof Error ? err.message : 'Failed to load appointments';
@@ -80,7 +91,7 @@ export default function AppointmentsPage() {
         <div>
           <h1 className="text-3xl font-bold text-government-navy dark:text-white">Appointments</h1>
           <p className="text-neutral-600 dark:text-neutral-400 mt-1">
-                        Manage patient appointments and schedules
+            Manage patient appointments and schedules
           </p>
         </div>
         <Button
@@ -152,7 +163,7 @@ export default function AppointmentsPage() {
                     </TableCell>
                     <TableCell>
                       <Button variant="outline" size="sm">
-                                                View Details
+                        View Details
                       </Button>
                     </TableCell>
                   </TableRow>

@@ -8,7 +8,7 @@ const _inMemory = {
   patientWalletMapping: new Map(),
   async findUniqueByEmail(email) {
     for (const v of this.patientWalletMapping.values()) {
-      if (v.email === email) {return v;}
+      if (v.email === email) { return v; }
     }
     return null;
   },
@@ -21,7 +21,7 @@ const _inMemory = {
   async findManyByDoctor(doctorId) {
     const results = [];
     for (const v of this.patientWalletMapping.values()) {
-      if (v.createdBy === doctorId && v.isActive) {results.push(v);}
+      if (v.createdBy === doctorId && v.isActive) { results.push(v); }
     }
     return results;
   },
@@ -264,52 +264,53 @@ class HealthcareController {
             isActive: true,
           },
           select: {
-          id: true,
-          email: true,
-          name: true,
-          walletAddress: true,
-          createdAt: true,
-          appointments: {
-            select: {
-              id: true,
-              title: true,
-              scheduledAt: true,
-              status: true,
+            id: true,
+            email: true,
+            name: true,
+            walletAddress: true,
+            createdAt: true,
+            appointments: {
+              select: {
+                id: true,
+                title: true,
+                scheduledAt: true,
+                status: true,
+              },
+              orderBy: {
+                scheduledAt: 'desc',
+              },
+              take: 5, // Last 5 appointments
             },
-            orderBy: {
-              scheduledAt: 'desc',
+            prescriptions: {
+              select: {
+                id: true,
+                medication: true,
+                createdAt: true,
+                status: true,
+              },
+              orderBy: {
+                createdAt: 'desc',
+              },
+              take: 3, // Last 3 prescriptions
             },
-            take: 5, // Last 5 appointments
+            medicalRecords: {
+              select: {
+                id: true,
+                title: true,
+                recordType: true,
+                createdAt: true,
+              },
+              orderBy: {
+                createdAt: 'desc',
+              },
+              take: 3, // Last 3 records
+            },
           },
-          prescriptions: {
-            select: {
-              id: true,
-              medication: true,
-              createdAt: true,
-              status: true,
-            },
-            orderBy: {
-              createdAt: 'desc',
-            },
-            take: 3, // Last 3 prescriptions
+          orderBy: {
+            createdAt: 'desc',
           },
-          medicalRecords: {
-            select: {
-              id: true,
-              title: true,
-              recordType: true,
-              createdAt: true,
-            },
-            orderBy: {
-              createdAt: 'desc',
-            },
-            take: 3, // Last 3 records
-          },
-        },
-        orderBy: {
-          createdAt: 'desc',
-        },
-      }) : [];
+        })
+        : (typeof db.findManyByDoctor === 'function' ? await db.findManyByDoctor(doctorId) : []);
 
       res.status(200).json({
         success: true,
@@ -370,7 +371,7 @@ class HealthcareController {
           const mapRecordTypeToEnum = (rt) => {
             if (!rt) return 'OTHER';
             const normalized = String(rt).toUpperCase().replace(/[^A-Z0-9]/g, '_');
-            const allowed = ['DIAGNOSIS','TREATMENT','PRESCRIPTION','LAB_RESULT','IMAGING','OTHER'];
+            const allowed = ['DIAGNOSIS', 'TREATMENT', 'PRESCRIPTION', 'LAB_RESULT', 'IMAGING', 'OTHER'];
             return allowed.includes(normalized) ? normalized : 'OTHER';
           };
 
@@ -1214,7 +1215,7 @@ class HealthcareController {
             existing = null;
           }
         } else {
-          logger.warn('DB client or Appointment model not available for fallback', { hasDb: !!db, modelCandidates: ['appointment','Appointment','appointments','Appointments','appointmentModel'], availableKeys: db ? Object.keys(db) : [] });
+          logger.warn('DB client or Appointment model not available for fallback', { hasDb: !!db, modelCandidates: ['appointment', 'Appointment', 'appointments', 'Appointments', 'appointmentModel'], availableKeys: db ? Object.keys(db) : [] });
           existing = null;
         }
       }
@@ -1812,61 +1813,61 @@ class HealthcareController {
         ? await patientsModel4.findUnique({
           where: { email },
           include: {
-          appointments: {
-            include: {
-              doctor: {
-                select: {
-                  id: true,
-                  fullName: true,
-                  email: true,
+            appointments: {
+              include: {
+                doctor: {
+                  select: {
+                    id: true,
+                    fullName: true,
+                    email: true,
+                  },
                 },
               },
+              orderBy: {
+                scheduledAt: 'desc',
+              },
+              take: 10,
             },
-            orderBy: {
-              scheduledAt: 'desc',
-            },
-            take: 10,
-          },
-          prescriptions: {
-            include: {
-              doctor: {
-                select: {
-                  id: true,
-                  fullName: true,
-                  email: true,
+            prescriptions: {
+              include: {
+                doctor: {
+                  select: {
+                    id: true,
+                    fullName: true,
+                    email: true,
+                  },
                 },
               },
+              orderBy: {
+                createdAt: 'desc',
+              },
+              take: 10,
             },
-            orderBy: {
-              createdAt: 'desc',
-            },
-            take: 10,
-          },
-          medicalRecords: {
-            include: {
-              doctor: {
-                select: {
-                  id: true,
-                  fullName: true,
-                  email: true,
+            medicalRecords: {
+              include: {
+                doctor: {
+                  select: {
+                    id: true,
+                    fullName: true,
+                    email: true,
+                  },
                 },
               },
+              orderBy: {
+                createdAt: 'desc',
+              },
+              take: 10,
             },
-            orderBy: {
-              createdAt: 'desc',
+            _count: {
+              select: {
+                appointments: true,
+                prescriptions: true,
+                medicalRecords: true,
+                labTests: true,
+              },
             },
-            take: 10,
           },
-          _count: {
-            select: {
-              appointments: true,
-              prescriptions: true,
-              medicalRecords: true,
-              labTests: true,
-            },
-          },
-        },
-      }) : null;
+        }) : null;
 
       if (!patient) {
         return res.status(404).json({

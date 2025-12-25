@@ -1,4 +1,4 @@
- 'use client';
+'use client';
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -86,10 +86,13 @@ export default function RecordsPage() {
           if ('data' in response && Array.isArray((response as any).data)) {
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             recordsData = (response as any).data;
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
           } else if ('records' in response && Array.isArray((response as any).records)) {
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             recordsData = (response as any).records;
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          } else if ('result' in response && Array.isArray((response as any).result)) {
+            recordsData = (response as any).result;
           }
         }
 
@@ -225,7 +228,7 @@ export default function RecordsPage() {
   // Removed unused _handleFileSelect function
 
   const filteredRecords = records.filter(record => {
-    if (!searchTerm) {return true;}
+    if (!searchTerm) { return true; }
 
     const searchLower = searchTerm.toLowerCase();
     const descriptionMatch = record.description?.toLowerCase().includes(searchLower) || false;
@@ -269,12 +272,12 @@ export default function RecordsPage() {
               {canUploadRecords && user?.id ? (
                 <Button onClick={() => setShowUploadDialog(true)}>
                   <UploadCloud className="mr-2 h-4 w-4" />
-                                    Upload
+                  Upload
                 </Button>
               ) : (
                 <Button disabled title={`You must be logged in to upload records (Current role: ${user?.role || 'unknown'})`}>
                   <UploadCloud className="mr-2 h-4 w-4" />
-                                    Upload
+                  Upload
                 </Button>
               )}
             </div>
@@ -324,43 +327,43 @@ export default function RecordsPage() {
                 </TableRow>
               ) : (
                 filteredRecords.map((record) => (
-                <TableRow key={record.recordId}>
-                  <TableCell className="font-medium">{record.recordId}</TableCell>
-                  <TableCell>{record.description || 'No description'}</TableCell>
-                  <TableCell><Badge variant="secondary">{record.recordType}</Badge></TableCell>
-                  <TableCell className="flex gap-1 flex-wrap">
-                    {record.tags?.map(tag => <Badge key={tag} variant="outline">{tag}</Badge>) || <span className="text-muted-foreground text-sm">No tags</span>}
-                  </TableCell>
-                  <TableCell>{record.createdAt ? format(new Date(record.createdAt), 'MMM dd, yyyy') : 'N/A'}</TableCell>
-                  <TableCell>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" className="h-8 w-8 p-0">
-                          <span className="sr-only">Open menu</span>
-                          <MoreHorizontal className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                        <DropdownMenuItem onClick={() => handleViewDetails(record)}>
-                          <Eye className="mr-2 h-4 w-4" />
-                                                    View Details
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => handleDownload(record)}>
-                          <Download className="mr-2 h-4 w-4" />
-                                                    Download
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => handleShare(record)}>
-                          <Share2 className="mr-2 h-4 w-4" />
-                                                    Share
-                        </DropdownMenuItem>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem className="text-destructive">Delete</DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </TableCell>
-                </TableRow>
-              ))
+                  <TableRow key={record.recordId}>
+                    <TableCell className="font-medium">{record.recordId}</TableCell>
+                    <TableCell>{record.description || 'No description'}</TableCell>
+                    <TableCell><Badge variant="secondary">{record.recordType}</Badge></TableCell>
+                    <TableCell className="flex gap-1 flex-wrap">
+                      {record.tags?.map(tag => <Badge key={tag} variant="outline">{tag}</Badge>) || <span className="text-muted-foreground text-sm">No tags</span>}
+                    </TableCell>
+                    <TableCell>{record.createdAt ? format(new Date(record.createdAt), 'MMM dd, yyyy') : 'N/A'}</TableCell>
+                    <TableCell>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" className="h-8 w-8 p-0">
+                            <span className="sr-only">Open menu</span>
+                            <MoreHorizontal className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                          <DropdownMenuItem onClick={() => handleViewDetails(record)}>
+                            <Eye className="mr-2 h-4 w-4" />
+                            View Details
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => handleDownload(record)}>
+                            <Download className="mr-2 h-4 w-4" />
+                            Download
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => handleShare(record)}>
+                            <Share2 className="mr-2 h-4 w-4" />
+                            Share
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem className="text-destructive">Delete</DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </TableCell>
+                  </TableRow>
+                ))
               )}
             </TableBody>
           </Table>
@@ -441,11 +444,11 @@ export default function RecordsPage() {
               <div className="flex gap-2 pt-4">
                 <Button onClick={() => handleDownload(selectedRecord)} variant="outline">
                   <Download className="mr-2 h-4 w-4" />
-                                    Download
+                  Download
                 </Button>
                 <Button onClick={() => handleShare(selectedRecord)} variant="outline">
                   <Share2 className="mr-2 h-4 w-4" />
-                                    Share
+                  Share
                 </Button>
               </div>
             </div>

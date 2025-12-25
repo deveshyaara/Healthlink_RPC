@@ -38,11 +38,26 @@ export function PatientStats() {
             consentsApi.getAll(),
           ]);
 
-        // Extract successful results, default to empty array for failures
-        const records = recordsResult.status === 'fulfilled' ? recordsResult.value : [];
-        const appointments = appointmentsResult.status === 'fulfilled' ? appointmentsResult.value : [];
-        const prescriptions = prescriptionsResult.status === 'fulfilled' ? prescriptionsResult.value : [];
-        const consents = consentsResult.status === 'fulfilled' ? consentsResult.value : [];
+        // Helper to extract array from response
+        const extractArray = (res: PromiseSettledResult<any>) => {
+          if (res.status !== 'fulfilled') return [];
+          const val = res.value;
+          if (Array.isArray(val)) return val;
+          if (val && typeof val === 'object') {
+            if (Array.isArray(val.data)) return val.data;
+            if (Array.isArray(val.appointments)) return val.appointments;
+            if (Array.isArray(val.records)) return val.records;
+            if (Array.isArray(val.prescriptions)) return val.prescriptions;
+            if (Array.isArray(val.consents)) return val.consents;
+            if (Array.isArray(val.result)) return val.result;
+          }
+          return [];
+        };
+
+        const records = extractArray(recordsResult);
+        const appointments = extractArray(appointmentsResult);
+        const prescriptions = extractArray(prescriptionsResult);
+        const consents = extractArray(consentsResult);
 
         // Log any failures for debugging
         const results = [
