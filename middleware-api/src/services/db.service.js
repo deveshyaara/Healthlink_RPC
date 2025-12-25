@@ -67,19 +67,8 @@ class DatabaseService {
         },
       });
 
-      // Test connection - try 'users' table first (Prisma schema), fallback to 'healthlink_users' (legacy)
-      let error = null;
-      let testTable = 'users';
-      
-      // Try users table first
-      const { error: usersError } = await this.supabase.from('users').select('count', { count: 'exact', head: true });
-      
-      if (usersError) {
-        // Fallback to healthlink_users if users table doesn't exist
-        const { error: healthlinkError } = await this.supabase.from('healthlink_users').select('count', { count: 'exact', head: true });
-        error = healthlinkError;
-        testTable = 'healthlink_users';
-      }
+      // Test connection with users table
+      const { error } = await this.supabase.from('users').select('count', { count: 'exact', head: true });
 
       if (error) {
         logger.error('❌ Supabase connection failed:', error.message);
@@ -253,7 +242,7 @@ class DatabaseService {
 
     // Insert user
     const { data, error } = await this.supabase
-      .from('healthlink_users')
+      .from('users')
       .insert({
         email: email.toLowerCase(),
         password_hash: passwordHash,
@@ -325,7 +314,7 @@ class DatabaseService {
     }
 
     const { data, error } = await this.supabase
-      .from('healthlink_users')
+      .from('users')
       .select('*')
       .eq('email', email.toLowerCase())
       .eq('is_active', true)
@@ -352,7 +341,7 @@ class DatabaseService {
     }
 
     const { data, error } = await this.supabase
-      .from('healthlink_users')
+      .from('users')
       .select('*')
       .eq('id', userId)
       .single();
@@ -412,7 +401,7 @@ class DatabaseService {
 
     try {
       const { data, error } = await this.supabase
-        .from('healthlink_users')
+        .from('users')
         .select('*')
         .eq('fabric_enrollment_id', fabricId)
         .single();
@@ -444,7 +433,7 @@ class DatabaseService {
     }
 
     await this.supabase
-      .from('healthlink_users')
+      .from('users')
       .update({ last_login_at: new Date().toISOString() })
       .eq('id', userId);
   }
@@ -478,7 +467,7 @@ class DatabaseService {
     }
 
     const { data, error } = await this.supabase
-      .from('healthlink_users')
+      .from('users')
       .update(sanitizedUpdates)
       .eq('id', userId)
       .select('id, email, role, full_name, phone_number, avatar_url')
@@ -502,7 +491,7 @@ class DatabaseService {
     }
 
     let query = this.supabase
-      .from('healthlink_users')
+      .from('users')
       .select('*')
       .order('created_at', { ascending: false });
 
@@ -569,7 +558,7 @@ class DatabaseService {
 
     try {
       await this.supabase
-        .from('healthlink_user_audit_log')
+        .from('user_audit_log')
         .insert({
           user_id: userId,
           action,
@@ -593,7 +582,7 @@ class DatabaseService {
     }
 
     const { data, error } = await this.supabase
-      .from('healthlink_users')
+      .from('users')
       .select('id')
       .eq('email', email.toLowerCase())
       .single();
@@ -611,7 +600,7 @@ class DatabaseService {
     }
 
     const { error } = await this.supabase
-      .from('healthlink_users')
+      .from('users')
       .update({ is_active: false })
       .eq('id', userId);
 
@@ -631,7 +620,7 @@ class DatabaseService {
     }
 
     const { error } = await this.supabase
-      .from('healthlink_users')
+      .from('users')
       .update({ doctor_verification_status: status })
       .eq('id', userId)
       .eq('role', 'doctor');
