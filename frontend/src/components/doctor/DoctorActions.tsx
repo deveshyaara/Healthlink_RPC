@@ -46,7 +46,7 @@ import { authUtils } from '@/lib/auth-utils';
  * - Argument logging
  * - Error handling with reverted transaction detection
  */
-export function AddPatientDialog() {
+export function AddPatientDialog({ onSuccess }: { onSuccess?: () => void }) {
   const { toast } = useToast();
   const [open, setOpen] = useState(false);
   // Use the centralized hook for loading/error state to avoid local duplication
@@ -134,6 +134,11 @@ export function AddPatientDialog() {
       // Reset form and close dialog
       resetForm();
       setOpen(false);
+
+      // Notify parent component to refresh data
+      if (onSuccess) {
+        onSuccess();
+      }
 
     } catch (err) {
       console.error('Failed to create patient:', err);

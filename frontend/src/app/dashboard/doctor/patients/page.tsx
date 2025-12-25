@@ -15,6 +15,7 @@ import { RequireDoctor } from '@/components/auth/RequireRole';
 import { ActionModal } from '@/components/ui/action-modal';
 import { UploadRecordForm } from '@/components/forms/upload-record-form';
 import { authUtils } from '@/lib/auth-utils';
+import { AddPatientDialog } from '@/components/doctor/DoctorActions';
 
 interface Patient {
   patientId: string;
@@ -193,10 +194,7 @@ function DoctorPatientsPageContent() {
                   : 'Start by uploading medical records for your patients'}
               </p>
               {!searchQuery && (
-                <Button onClick={() => (window.location.href = '/dashboard/doctor/patients/add')}>
-                  <PlusCircle className="mr-2 h-4 w-4" />
-                  Add Patient
-                </Button>
+                <AddPatientDialog onSuccess={fetchPatients} />
               )}
             </div>
           ) : (
