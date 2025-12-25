@@ -71,10 +71,12 @@ function DoctorPatientsPageContent() {
       }
 
       const data = await response.json();
+      console.log('📋 Raw API Response:', data);
 
       // Support new flat responses: { success: true, patients: [...] }
       let patientsArray: any[] = [];
       if (data && typeof data === 'object' && Object.prototype.hasOwnProperty.call(data, 'success')) {
+        console.log('✅ Found success field:', data.success);
         if (data.success === true) {
           patientsArray = Array.isArray(data.patients) ? data.patients : (Array.isArray(data.data) ? data.data : []);
         } else {
@@ -85,15 +87,22 @@ function DoctorPatientsPageContent() {
         patientsArray = Array.isArray(data.data) ? data.data : (Array.isArray(data) ? data : []);
       }
 
-      const transformedPatients: Patient[] = patientsArray.map((patient: any) => ({
-        patientId: patient.walletAddress, // Use wallet address as patient ID
-        name: patient.name,
-        email: patient.email,
-        lastVisit: patient.createdAt,
-        recordCount: (patient.appointments?.length || 0) + (patient.prescriptions?.length || 0) + (patient.medicalRecords?.length || 0),
-        status: patient.isActive ? 'Active' : 'Inactive',
-      }));
+      console.log('📊 Patients Array:', patientsArray);
+      console.log('📊 Array length:', patientsArray.length);
 
+      const transformedPatients: Patient[] = patientsArray.map((patient: any) => {
+        console.log('🔍 Transforming patient:', patient);
+        return {
+          patientId: patient.walletAddress || patient.id || patient.email,
+          name: patient.name,
+          email: patient.email,
+          lastVisit: patient.createdAt,
+          recordCount: (patient.appointments?.length || 0) + (patient.prescriptions?.length || 0) + (patient.medicalRecords?.length || 0),
+          status: patient.isActive !== false ? 'Active' : 'Inactive',
+        };
+      });
+
+      console.log('✨ Transformed Patients:', transformedPatients);
       setPatients(transformedPatients);
       setFilteredPatients(transformedPatients);
     } catch (err) {
