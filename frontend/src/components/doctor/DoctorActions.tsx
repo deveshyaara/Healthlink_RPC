@@ -489,17 +489,6 @@ export function ScheduleAppointmentDialog({
               />
             </div>
 
-            <div className="grid gap-2">
-              <Label htmlFor="notes">Notes</Label>
-              <Textarea
-                id="notes"
-                placeholder="Additional notes (optional)"
-                value={formData.notes}
-                onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                disabled={hcIsLoading}
-              />
-            </div>
-
             <div className="flex items-center space-x-2">
               <input
                 type="checkbox"

@@ -753,6 +753,22 @@ class HealthcareController {
       const dbInstance = getPrismaClient();
       let appointment;
       if (dbInstance && dbInstance.appointment && typeof dbInstance.appointment.create === 'function') {
+        // Resolve doctor's database UUID from fabricEnrollmentId
+        const doctor = await dbInstance.user.findUnique({
+          where: { fabricEnrollmentId: doctorUserId },
+          select: { id: true },
+        });
+
+        if (!doctor) {
+          logger.error(`Doctor not found for fabricEnrollmentId: ${doctorUserId}`);
+          return res.status(404).json({
+            success: false,
+            error: 'Doctor account not found in database.',
+          });
+        }
+
+        const resolvedDoctorId = doctor.id;
+
         appointment = await dbInstance.appointment.create({
           data: {
             appointmentId: appointmentId || uuidv4(),
@@ -761,7 +777,7 @@ class HealthcareController {
             scheduledAt: new Date(scheduledAt),
             status: 'SCHEDULED',
             patientId: patientId,
-            doctorId: doctorUserId,
+            doctorId: resolvedDoctorId,
             notes: notes || reason,
           },
           include: {
@@ -1016,6 +1032,22 @@ class HealthcareController {
       try {
         const dbInstance = getPrismaClient();
         if (dbInstance && dbInstance.prescription && typeof dbInstance.prescription.create === 'function') {
+          // Resolve doctor's database UUID from fabricEnrollmentId
+          const doctor = await dbInstance.user.findUnique({
+            where: { fabricEnrollmentId: doctorUserId },
+            select: { id: true },
+          });
+
+          if (!doctor) {
+            logger.error(`Doctor not found for fabricEnrollmentId: ${doctorUserId}`);
+            return res.status(404).json({
+              success: false,
+              error: 'Doctor account not found in database.',
+            });
+          }
+
+          const resolvedDoctorId = doctor.id;
+
           prescription = await dbInstance.prescription.create({
             data: {
               prescriptionId,
@@ -1025,7 +1057,7 @@ class HealthcareController {
               expiryDate: expiryDate ? new Date(expiryDate) : null,
               status: 'ACTIVE',
               patientId: patient.id || patientId,
-              doctorId: doctorUserId,
+              doctorId: resolvedDoctorId,
             },
             include: {
               patient: {
