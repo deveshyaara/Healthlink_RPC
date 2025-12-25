@@ -199,6 +199,17 @@ class TransactionService {
       await this.initialize();
       logger.info('Service: Getting audit records', { limit });
 
+      if (!ethereumService || typeof ethereumService.getAuditRecords !== 'function') {
+        logger.warn('EthereumService does not implement getAuditRecords; returning empty audit list');
+        return {
+          success: true,
+          data: [],
+          functionName: 'getAuditRecords',
+          timestamp: new Date().toISOString(),
+          message: 'Audit records not available on this deployment',
+        };
+      }
+
       const result = await ethereumService.getAuditRecords(limit);
 
       return {

@@ -1,5 +1,17 @@
+import { jest } from '@jest/globals';
 import { ethers } from 'ethers';
 import { ContractRevertError } from '../utils/errors.js';
+
+// Mock fabric-config to prevent loading complex Fabric configs during unit tests
+jest.unstable_mockModule('../config/fabric-config.js', () => ({
+  __esModule: true,
+  default: {
+    network: { channel: { name: 'test' } },
+    wallet: { basePath: '', adminUserId: '', appUserId: '' },
+    profiles: {},
+  },
+  getDefaultChaincode: () => 'test',
+}));
 
 // Local copy of the small helpers from EthereumService so tests don't pull in full service dependencies
 function _decodeRevertData(raw) {
@@ -82,4 +94,6 @@ describe('EthereumService _formatTransactionError (local helpers)', () => {
 
     expect(svc._stores.appointments.get('apt-1').status).toBe(2);
   });
+
+
 });

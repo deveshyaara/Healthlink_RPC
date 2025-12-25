@@ -1149,6 +1149,42 @@ class EthereumService {
     }));
   }
 
+  /**
+   * Get audit records from HealthLink contract (recent first)
+   * Returns an array of { actor, action, patientId, timestamp }
+   */
+  async getAuditRecords(limit = 10) {
+    const contract = this.getContract('HealthLink');
+    if (!contract) {
+      throw new Error('HealthLink contract not available');
+    }
+
+    const records = [];
+    for (let i = 0; i < limit; i++) {
+      try {
+        const record = await contract.getAuditRecord(i);
+        // record.timestamp may be a BigInt-like object or number
+        const ts = record && (record.timestamp !== undefined) ? Number(record.timestamp) : 0;
+        if (ts > 0) {
+          records.push({
+            actor: record.actor,
+            action: record.action,
+            patientId: record.patientId,
+            timestamp: ts,
+          });
+        } else {
+          // No more records — break early
+          break;
+        }
+      } catch (err) {
+        // If contract throws (index out of bounds), stop iterating
+        break;
+      }
+    }
+
+    return records;
+  }
+
   // ====== Role Management ======
 
   async grantDoctorRole(contractName, address) {
