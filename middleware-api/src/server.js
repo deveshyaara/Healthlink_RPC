@@ -178,6 +178,11 @@ app.post('/api/appointments', authenticateJWT, requireDoctor, healthcareControll
 app.get('/api/prescriptions', authenticateJWT, healthcareController.getCurrentUserPrescriptions);
 app.post('/api/prescriptions', authenticateJWT, requireDoctor, healthcareController.createPrescription);
 
+// Mount consents routes (aliased for frontend compatibility)
+app.get('/api/consents', authenticateJWT, healthcareController.getCurrentUserConsents);
+app.get('/api/consents/:consentId', authenticateJWT, healthcareController.getConsent);
+app.patch('/api/consents/:consentId/revoke', authenticateJWT, healthcareController.revokeConsent);
+
 // Note: consents and patients endpoints are provided by the healthcare router
 // mounted under the API version and via explicit alias routes where needed.
 
