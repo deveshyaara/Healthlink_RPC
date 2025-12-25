@@ -220,7 +220,7 @@ model PatientWalletMapping {
   email String @unique @db.VarChar(255)
 
   // Blockchain Wallet Address
-  walletAddress String @unique @db.VarChar(42)
+  walletAddress String @unique @map("wallet_address") @db.VarChar(42)
 
   // Patient Basic Info
   name String @db.VarChar(255)
