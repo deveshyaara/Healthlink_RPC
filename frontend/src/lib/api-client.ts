@@ -6,6 +6,7 @@
 import { getApiBaseUrl } from './env-utils';
 import { logger } from './logger';
 import { authUtils } from './auth-utils';
+import type { AppointmentStatus } from '@/types';
 
 // ========================================
 // TYPES
@@ -127,7 +128,7 @@ export interface Appointment {
   appointmentDate: string;
   appointmentTime: string;
   time?: number;
-  status: string;
+  status: AppointmentStatus;
   type: string;
   notes?: string;
   details?: string;
@@ -149,7 +150,7 @@ export interface CreateAppointmentRequest {
 }
 
 export interface UpdateAppointmentRequest {
-  status?: 'scheduled' | 'completed' | 'cancelled';
+  status?: AppointmentStatus;
   notes?: string;
 }
 
