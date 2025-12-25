@@ -269,7 +269,7 @@ class TransactionService {
     try {
       await this.initialize();
       logger.info('Service: Creating prescription', { prescriptionId, patientId });
-      logger.info('transaction.createPrescription args', { prescriptionId, patientId, doctorAddress, medicationType: typeof medication, medicationSample: (typeof medication === 'string' ? medication.slice(0,200) : JSON.stringify(medication)), dosage, instructions, expiryTimestamp });
+      logger.info('transaction.createPrescription args', { prescriptionId, patientId, doctorAddress, medicationType: typeof medication, medicationSample: (typeof medication === 'string' ? medication.slice(0, 200) : JSON.stringify(medication)), dosage, instructions, expiryTimestamp });
 
       // Ensure expiry is a future timestamp. Default to 30 days from now when not provided.
       const now = Math.floor(Date.now() / 1000);
@@ -628,10 +628,26 @@ class TransactionService {
    * @param {string} patientId - Patient ID
    * @returns {Promise<Object>} Array of consents
    */
+  /**
+   * Get consents by patient
+   * @param {string} patientId - Patient ID
+   * @returns {Promise<Object>} Array of consents
+   */
   async getConsentsByPatient(patientId) {
     try {
       await this.initialize();
       logger.info('Service: Getting consents by patient', { patientId });
+
+      // Check if ethereumService actually implements this
+      if (!ethereumService || typeof ethereumService.getConsentsByPatient !== 'function') {
+        logger.warn('EthereumService.getConsentsByPatient is missing. Returning empty array.');
+        return {
+          success: true,
+          data: [],
+          functionName: 'getConsentsByPatient',
+          timestamp: new Date().toISOString(),
+        };
+      }
 
       const result = await ethereumService.getConsentsByPatient(patientId);
 
@@ -643,7 +659,14 @@ class TransactionService {
       };
     } catch (error) {
       logger.error('Service: getConsentsByPatient failed:', error);
-      throw error;
+      // Return empty array on not found/error instead of crashing stats
+      return {
+        success: true,
+        data: [],
+        error: String(error),
+        functionName: 'getConsentsByPatient',
+        timestamp: new Date().toISOString(),
+      };
     }
   }
 
@@ -688,7 +711,7 @@ class TransactionService {
   async submitTransaction(functionName, args = [], _userId = null) {
     logger.warn('Legacy submitTransaction called, routing to specific method');
 
-    switch(functionName) {
+    switch (functionName) {
       case 'CreatePatient':
         return this.createPatient(...args);
       case 'CreateRecord':
@@ -714,7 +737,7 @@ class TransactionService {
   async queryLedger(functionName, args = [], _userId = null) {
     logger.warn('Legacy queryLedger called, routing to specific method');
 
-    switch(functionName) {
+    switch (functionName) {
       case 'GetPatient':
         return this.getPatient(...args);
       case 'GetRecord':
