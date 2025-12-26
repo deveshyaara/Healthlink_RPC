@@ -48,7 +48,7 @@ class PatientDataController {
 
             // Query consent requests for this patient
             const consents = await db.consentRequest?.findMany({
-                where: { patient_id: patient.id },
+                where: { patientId: patient.id },
                 include: {
                     requester: {
                         select: {
