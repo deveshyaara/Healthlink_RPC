@@ -14,7 +14,7 @@ import logger from '../utils/logger.js';
  * e.g., 'body.user.name' -> req.body.user.name
  */
 function getNestedValue(obj, path) {
-  if (!path) {return undefined;}
+  if (!path) { return undefined; }
 
   const keys = path.split('.');
   let value = obj;
@@ -250,8 +250,15 @@ export function createDynamicRouter(routesConfig) {
       middlewares.push(requireRole(...config.roles));
     }
 
-    // Create route handler
-    const handler = createRouteHandler(config);
+    // Create route handler - support both controller and chaincode
+    let handler;
+    if (config.controller) {
+      // Database controller route
+      handler = config.handler; // Direct function reference
+    } else {
+      // Blockchain chaincode route
+      handler = createRouteHandler(config);
+    }
 
     // Register route with Express
     const method = config.method.toLowerCase();
@@ -263,6 +270,7 @@ export function createDynamicRouter(routesConfig) {
       registeredRoutes.push({
         method: config.method,
         path,
+        type: config.controller ? 'database' : 'blockchain',
         chaincode: config.chaincode,
         function: config.function,
         auth: config.auth !== false,
@@ -273,17 +281,33 @@ export function createDynamicRouter(routesConfig) {
     }
   }
 
-  // Log registered routes (dev mode)
-  if (process.env.NODE_ENV !== 'production') {
-    logger.info('\n=== Dynamic Routes Registered ===');
-    registeredRoutes.forEach(route => {
-      const authInfo = route.auth ? `🔒 ${route.roles.join(', ') || 'authenticated'}` : '🌐 public';
-      logger.info(`${route.method.padEnd(6)} ${route.path.padEnd(40)} → ${route.chaincode}.${route.function} (${authInfo})`);
-    });
-    logger.info('=================================\n');
-  }
+  if (typeof router[method] === 'function') {
+    router[method](path, ...middlewares, handler);
 
-  return router;
+    registeredRoutes.push({
+      method: config.method,
+      path,
+      chaincode: config.chaincode,
+      function: config.function,
+      auth: config.auth !== false,
+      roles: config.roles || [],
+    });
+  } else {
+    logger.warn(`Unsupported HTTP method: ${config.method} for path ${path}`);
+  }
+}
+
+// Log registered routes (dev mode)
+if (process.env.NODE_ENV !== 'production') {
+  logger.info('\n=== Dynamic Routes Registered ===');
+  registeredRoutes.forEach(route => {
+    const authInfo = route.auth ? `🔒 ${route.roles.join(', ') || 'authenticated'}` : '🌐 public';
+    logger.info(`${route.method.padEnd(6)} ${route.path.padEnd(40)} → ${route.chaincode}.${route.function} (${authInfo})`);
+  });
+  logger.info('=================================\n');
+}
+
+return router;
 }
 
 /**

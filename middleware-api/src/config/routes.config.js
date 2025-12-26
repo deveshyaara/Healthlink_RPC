@@ -491,18 +491,15 @@ export const routesConfig = [
   },
 
   // ==========================================
-  // CONSENTS ENDPOINTS
+  // CONSENTS ENDPOINTS (Database-backed)
   // ==========================================
   {
     path: '/consents',
     method: 'GET',
-    chaincode: 'healthlink-contract',
-    function: 'GetConsentsByPatient',
-    channel: 'mychannel',
+    controller: 'patient-data',
+    function: 'getConsents',
+    handler: null, // Will be set dynamically
     auth: true,
-    paramMapping: {
-      patientId: 'user.userId', // Auto-inject from JWT (Me pattern)
-    },
   },
   {
     path: '/consents',

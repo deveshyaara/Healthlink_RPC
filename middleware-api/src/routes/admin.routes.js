@@ -1,53 +1,28 @@
 import express from 'express';
 import { authenticateJWT, requireAdmin } from '../middleware/auth.middleware.js';
+import adminController from '../controllers/admin.controller.js';
 
 const router = express.Router();
 
-// GET: All patients (admin only)
-router.get('/users/patients', authenticateJWT, requireAdmin, async (req, res) => {
-  try {
-    // Fetch from blockchain or database
-    const patients = await getPatients();
-    res.json(patients);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
+// All routes require authentication and admin role
+router.use(authenticateJWT, requireAdmin);
 
-// GET: All doctors
-router.get('/users/doctors', authenticateJWT, requireAdmin, async (req, res) => {
-  try {
-    const doctors = await getDoctors();
-    res.json(doctors);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
+/**
+ * Admin Dashboard Statistics
+ * GET /api/v1/admin/stats
+ */
+router.get('/stats', adminController.getStats.bind(adminController));
 
-// GET: Pending approvals
-router.get('/users/pending', authenticateJWT, requireAdmin, async (req, res) => {
-  try {
-    const pending = await getPendingUsers();
-    res.json(pending);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
+/**
+ * User Management
+ */
+// GET: All patients
+router.get('/users/patients', adminController.getPatients.bind(adminController));
 
-// Helper functions - implement these based on your data source
-async function getPatients() {
-  // Implement patient fetching logic
-  return [];
-}
+// GET: All doctors  
+router.get('/users/doctors', adminController.getDoctors.bind(adminController));
 
-async function getDoctors() {
-  // Implement doctor fetching logic
-  return [];
-}
-
-async function getPendingUsers() {
-  // Implement pending users fetching logic
-  return [];
-}
+// GET: Pending verifications
+router.get('/users/pending', adminController.getPendingVerifications.bind(adminController));
 
 export default router;

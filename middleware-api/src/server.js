@@ -18,6 +18,7 @@ import userRoutes from './routes/user.routes.js';
 import storageRoutes from './routes/storage.routes.js';
 import chatRoutes from './routes/chat.routes.js';
 import adminRoutes from './routes/admin.routes.js';
+import patientDataRoutes from './routes/patient-data.routes.js'; // ✅ Database-backed patient data
 import swaggerUi from 'swagger-ui-express';
 import swaggerSpec from './config/swagger.js';
 import ethereumService from './services/ethereum.service.js';
@@ -162,35 +163,40 @@ app.use('/api/chat', chatRoutes);
 // Mount storage routes (for IPFS/file storage)
 app.use('/api/storage', storageRoutes);
 
+// Mount admin routes (must be before other routes to avoid conflicts)
+app.use('/api/v1/admin', adminRoutes);
+
+// Mount users API (for admin dashboard)
+app.use('/api/users', authenticateJWT, async (req, res, next) => {
+  const AdminController = (await import('./controllers/admin.controller.js')).default;
+  AdminController.getUsers(req, res, next);
+});
+
+// Mount health API (for admin dashboard)
+app.use('/api/health', async (req, res) => {
+  const AdminController = (await import('./controllers/admin.controller.js')).default;
+  AdminController.getHealth(req, res);
+});
+
 // Mount NEW healthcare routes (Ethereum-based)
 app.use(`/api/${API_VERSION}/healthcare`, healthcareRoutes);
+
+// ✅ Mount DATABASE-BACKED patient data routes (takes precedence over blockchain)
+// These routes query Supabase instead of blockchain for patient data
+app.use('/api', patientDataRoutes);
 
 // Mount medical records routes (aliased for frontend compatibility)
 app.use('/api/medical-records', healthcareRoutes);
 
-// Mount appointments routes (aliased for frontend compatibility)
-// Explicit alias routes so `/api/appointments` maps to the correct handlers
-app.get('/api/appointments', authenticateJWT, healthcareController.getCurrentUserAppointments);
-app.post('/api/appointments', authenticateJWT, requireDoctor, healthcareController.createAppointment);
-
-// Mount prescriptions routes (aliased for frontend compatibility)
-// Explicit alias routes so `/api/prescriptions` maps to the correct handlers
-app.get('/api/prescriptions', authenticateJWT, healthcareController.getCurrentUserPrescriptions);
-app.post('/api/prescriptions', authenticateJWT, requireDoctor, healthcareController.createPrescription);
-
-// Mount consents routes (aliased for frontend compatibility)
-app.get('/api/consents', authenticateJWT, healthcareController.getCurrentUserConsents);
-app.get('/api/consents/:consentId', authenticateJWT, healthcareController.getConsent);
-app.patch('/api/consents/:consentId/revoke', authenticateJWT, healthcareController.revokeConsent);
+// Note: Patient data endpoints (appointments, prescriptions, consents, medical-records, lab-tests)
+// are now handled by the database-backed patient-data router mounted above.
+// This queries Supabase instead of blockchain for better performance and RLS security.
 
 // Note: consents and patients endpoints are provided by the healthcare router
 // mounted under the API version and via explicit alias routes where needed.
 
-// Mount user management routes
+// Mount user management routes (legacy, kept for compatibility)
 app.use('/api/users', userRoutes);
-
-// Mount admin routes
-app.use('/api/v1/admin', adminRoutes);
 
 // Mount legacy transaction routes (for backward compatibility)
 app.use(`/api/${API_VERSION}`, transactionRoutes);

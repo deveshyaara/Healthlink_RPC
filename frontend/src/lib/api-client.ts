@@ -999,17 +999,19 @@ export const labTestsApi = {
 
 export const dashboardApi = {
   getStats: async (): Promise<DashboardStats> => {
-    // Return empty stats to prevent dashboard crashes
-    return {
-      totalPatients: 0,
-      totalAppointments: 0,
-      totalPrescriptions: 0,
-      totalRecords: 0,
-      activeRecords: 0,
-      pendingConsents: 0,
-      auditEvents24h: 0,
-      unreadNotifications: 0,
-    };
+    return fetchApi<DashboardStats>('/api/v1/admin/stats', { method: 'GET' });
+  },
+};
+
+export const usersApi = {
+  getUsers: async (): Promise<any[]> => {
+    return fetchApi<any[]>('/api/users', { method: 'GET' });
+  },
+};
+
+export const healthApi = {
+  check: async (): Promise<any> => {
+    return fetchApi<any>('/api/health', { method: 'GET' });
   },
 };
 
