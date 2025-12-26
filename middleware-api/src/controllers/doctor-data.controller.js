@@ -4,8 +4,15 @@
  * Queries by doctorId instead of patientId
  */
 
-import { getPrismaClient } from '../services/db.service.prisma.js';
+import dbService from '../services/db.service.prisma.js';
 import logger from '../utils/logger.js';
+
+function getPrismaClient() {
+    if (dbService && dbService.isReady && dbService.isReady()) {
+        return dbService.prisma;
+    }
+    throw new Error('Database not connected. Check DATABASE_URL configuration.');
+}
 
 class DoctorDataController {
     /**
