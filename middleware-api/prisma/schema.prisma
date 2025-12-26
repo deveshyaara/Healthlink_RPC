@@ -145,7 +145,11 @@ model User {
   consentRequests ConsentRequest[] @relation("ConsentRequests")
   
   // Lab Relations
+  // Lab Relations
   labTests LabTest[] @relation("LabTests")
+  
+  // Patient Profile Link
+  patientProfile PatientWalletMapping? @relation("LinkedPatientProfile")
   
   @@index([email], name: "idx_users_email")
   @@index([role], name: "idx_users_role")
@@ -229,6 +233,10 @@ model PatientWalletMapping {
   createdBy String @map("created_by") @db.Uuid
   createdByUser User @relation("CreatedPatientMappings", fields: [createdBy], references: [id], onDelete: Cascade)
 
+  // Link to User Account (The missing field!)
+  userId String? @map("user_id") @db.Uuid
+  user   User?   @relation("LinkedPatientProfile", fields: [userId], references: [id], onDelete: Cascade)
+
   // Status
   isActive Boolean @default(true) @map("is_active")
 
@@ -246,6 +254,7 @@ model PatientWalletMapping {
   @@index([email], name: "idx_patient_wallet_email")
   @@index([walletAddress], name: "idx_patient_wallet_address")
   @@index([createdBy], name: "idx_patient_wallet_created_by")
+  @@index([userId], name: "idx_patient_wallet_user_id")
   @@map("patient_wallet_mappings")
 }
 
