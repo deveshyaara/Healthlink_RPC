@@ -234,7 +234,7 @@ model PatientWalletMapping {
   createdByUser User @relation("CreatedPatientMappings", fields: [createdBy], references: [id], onDelete: Cascade)
 
   // Link to User Account (The missing field!)
-  userId String? @map("user_id") @db.Uuid
+  userId String? @unique @map("user_id") @db.Uuid
   user   User?   @relation("LinkedPatientProfile", fields: [userId], references: [id], onDelete: Cascade)
 
   // Status
