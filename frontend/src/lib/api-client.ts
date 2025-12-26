@@ -794,63 +794,6 @@ export const walletApi = {
 };
 
 // ========================================
-// USERS API (User Management)
-// ========================================
-
-export const usersApi = {
-  /**
-   * Send user invitation
-   * Backend route: POST /api/users/invite
-   * Function: SendInvitation
-   */
-  invite: async (invitationData: { email: string; role: 'patient' | 'doctor' }): Promise<any> => {
-    return fetchApi<any>('/api/users/invite', {
-      method: 'POST',
-      body: JSON.stringify(invitationData),
-    });
-  },
-
-  /**
-   * List pending invitations
-   * Backend route: GET /api/users/invitations
-   * Function: ListInvitations
-   */
-  getInvitations: async (): Promise<any[]> => {
-    return fetchApi<any[]>('/api/users/invitations', { method: 'GET' }, true);
-  },
-
-  /**
-   * Accept user invitation
-   * Backend route: POST /api/users/invitations/:token/accept
-   * Function: AcceptInvitation
-   */
-  acceptInvitation: async (token: string, userData: { name: string; password: string }): Promise<any> => {
-    return fetchApi<any>(`/api/users/invitations/${token}/accept`, {
-      method: 'POST',
-      body: JSON.stringify(userData),
-    });
-  },
-
-  /**
-   * Cancel invitation
-   * Backend route: DELETE /api/users/invitations/:id
-   * Function: CancelInvitation
-   */
-  cancelInvitation: async (invitationId: string): Promise<any> => {
-    return fetchApi<any>(`/api/users/invitations/${invitationId}`, {
-      method: 'DELETE',
-    });
-  },
-
-  /**
-   * Get all users
-   * Backend route: GET /api/users
-   * Function: GetUsers
-   */
-  getUsers: async (): Promise<any[]> => {
-    return fetchApi<any[]>('/api/users', { method: 'GET' }, true);
-  },
-};
 
 // ========================================
 // CHAT API (AI Assistant)
@@ -872,19 +815,6 @@ export const chatApi = {
 
 // ========================================
 // HEALTH API (System Health Check)
-// ========================================
-
-export const healthApi = {
-  /**
-   * Check backend health status
-   * Backend route: GET /api/health
-   * Function: HealthCheck
-   */
-  check: async (): Promise<any> => {
-    return fetchApi<any>('/api/health', { method: 'GET' });
-  },
-};
-
 // ========================================
 // STORAGE API (File Upload)
 // ========================================
@@ -1009,7 +939,16 @@ export const usersApi = {
   },
 };
 
+// ========================================
+// HEALTH API (System Health Check)
+// ========================================
+
 export const healthApi = {
+  /**
+   * Check backend health status
+   * Backend route: GET /api/health
+   * Function: HealthCheck
+   */
   check: async (): Promise<any> => {
     return fetchApi<any>('/api/health', { method: 'GET' });
   },
