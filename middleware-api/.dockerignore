@@ -1,0 +1,40 @@
+node_modules
+npm-debug.log
+.env
+.env.local
+.env.*.local
+.git
+.gitignore
+*.md
+README.md
+*.log
+.DS_Store
+Thumbs.db
+
+# Python
+python_agent/venv
+python_agent/__pycache__
+python_agent/*.pyc
+python_agent/.pytest_cache
+**/__pycache__
+**/*.pyc
+
+# Build artifacts
+dist
+build
+.next
+
+# IDE
+.vscode
+.idea
+*.swp
+*.swo
+
+# Test coverage
+coverage
+.nyc_output
+
+# Misc
+.dockerignore
+docker-compose.yml
+Dockerfile.dev

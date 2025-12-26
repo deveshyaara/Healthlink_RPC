@@ -1,39 +1,41 @@
-# Use Node.js 20 Alpine for smaller image
-FROM node:20-alpine
+FROM node:18-bullseye
+
+# Install Python 3 and pip
+RUN apt-get update && \
+    apt-get install -y python3 python3-pip python3-venv && \
+    rm -rf /var/lib/apt/lists/*
 
 # Set working directory
 WORKDIR /app
 
-# Copy package files
+# Copy package files for Node.js
 COPY package*.json ./
+COPY prisma ./prisma/
+COPY prisma.config.ts ./
 
-# Install dependencies
+# Install Node.js dependencies
 RUN npm ci --only=production
 
-# Copy source code
-COPY . .
-
-# Generate Prisma client
+# Generate Prisma Client
 RUN npx prisma generate
 
-# Create non-root user
-RUN addgroup -g 1001 -S nodejs
-RUN adduser -S healthlink -u 1001
+# Copy Python agent directory
+COPY python_agent ./python_agent
 
-# Change ownership
-RUN chown -R healthlink:nodejs /app
-USER healthlink
+# Install Python dependencies for LangGraph
+RUN cd python_agent && \
+    pip3 install --no-cache-dir -r requirements.txt && \
+    cd ..
+
+# Copy application source code
+COPY . .
 
 # Expose port
-EXPOSE 3000
+EXPOSE 4000
 
 # Health check
-HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-  CMD node -e "require('http').get('http://localhost:3000/health', (res) => process.exit(res.statusCode === 200 ? 0 : 1)).on('error', () => process.exit(1))"
-
-# Copy start script
-COPY start.sh ./
-RUN chmod +x start.sh
+HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
+  CMD node -e "require('http').get('http://localhost:4000/health', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"
 
 # Start the application
-CMD ["./start.sh"]
+CMD ["npm", "start"]
