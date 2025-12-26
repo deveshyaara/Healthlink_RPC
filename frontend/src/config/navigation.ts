@@ -49,21 +49,21 @@ export const doctorRoutes: NavRoute[] = [
     icon: Calendar,
     label: 'Appointments',
     description: 'Schedule and manage appointments',
-    roles: ['doctor'],
+    roles: ['doctor', 'patient'], // ✅ Allow both
   },
   {
     href: '/dashboard/prescriptions',
     icon: Pill,
     label: 'Prescriptions',
     description: "Prescriptions you've created",
-    roles: ['doctor'],
+    roles: ['doctor', 'patient'], // ✅ Allow both
   },
   {
     href: '/dashboard/lab-tests',
     icon: TestTube,
     label: 'Lab Results',
     description: 'Laboratory test results',
-    roles: ['doctor'],
+    roles: ['doctor', 'patient'], // ✅ Allow both
   },
   {
     href: '/dashboard/doctor/records',
@@ -77,7 +77,7 @@ export const doctorRoutes: NavRoute[] = [
     icon: ShieldCheck,
     label: 'Consent Requests',
     description: 'Patient data access permissions',
-    roles: ['doctor'],
+    roles: ['doctor', 'patient'], // ✅ FIXED: Allow both doctors and patients
   },
 ];
 
@@ -100,27 +100,7 @@ export const patientRoutes: NavRoute[] = [
     description: 'Your medical documents',
     roles: ['patient'],
   },
-  {
-    href: '/dashboard/appointments',
-    icon: Calendar,
-    label: 'My Appointments',
-    description: 'Scheduled visits with doctors',
-    roles: ['patient'],
-  },
-  {
-    href: '/dashboard/prescriptions',
-    icon: Pill,
-    label: 'My Prescriptions',
-    description: 'Active medications',
-    roles: ['patient'],
-  },
-  {
-    href: '/dashboard/lab-tests',
-    icon: TestTube,
-    label: 'Lab Results',
-    description: 'Your test results',
-    roles: ['patient'],
-  },
+  // Note: appointments, prescriptions, and lab-tests are now in doctorRoutes with both roles
   {
     href: '/dashboard/consent',
     icon: ShieldCheck,

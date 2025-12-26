@@ -102,12 +102,23 @@ class HealthcareController {
       // Create patient wallet mapping in database
       let patientMapping;
       if (db.patientWalletMapping && typeof db.patientWalletMapping.create === 'function') {
+        // Get the user_id - either from the authenticated user creating the patient,
+        // or try to find the user account by email if patient is self-registering
+        let userId = doctorId; // Default to doctor creating the patient
+
+        // If email matches an existing user, link to that user
+        const existingUser = await db.user?.findUnique?.({ where: { email } });
+        if (existingUser) {
+          userId = existingUser.id;
+        }
+
         patientMapping = await db.patientWalletMapping.create({
           data: {
             email,
             name,
             walletAddress: patientWalletAddress,
             createdBy: doctorId,
+            user_id: userId, // ✅ Link to user account
           },
         });
       } else {
