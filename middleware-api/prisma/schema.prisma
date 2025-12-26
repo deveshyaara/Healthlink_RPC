@@ -151,6 +151,9 @@ model User {
   // Patient Profile Link
   patientProfile PatientWalletMapping? @relation("LinkedPatientProfile")
   
+  // Chat Messages
+  chatMessages ChatMessage[] @relation("UserChatMessages")
+  
   @@index([email], name: "idx_users_email")
   @@index([role], name: "idx_users_role")
   @@index([fabricEnrollmentId], name: "idx_users_fabric_enrollment_id")
@@ -431,8 +434,11 @@ model LabTest {
 model ChatMessage {
   id String @id @default(uuid()) @db.Uuid
   
-  // User and role info
+  // User relationship
   userId String @map("user_id") @db.Uuid
+  user User @relation("UserChatMessages", fields: [userId], references: [id], onDelete: Cascade)
+  
+  // Message role
   role String @db.VarChar(20) // 'user' or 'assistant'
   
   // Message content
@@ -452,4 +458,5 @@ model ChatMessage {
   @@index([createdAt], name: "idx_chat_messages_created_at")
   @@map("chat_messages")
 }
+
 
