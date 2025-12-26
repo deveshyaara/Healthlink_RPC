@@ -34,7 +34,7 @@ class PatientDataController {
 
             // Find patient record linked to this user
             const patient = await db.patientWalletMapping?.findFirst({
-                where: { user_id: userId }
+                where: { userId: userId }
             });
 
             if (!patient) {
@@ -91,7 +91,7 @@ class PatientDataController {
 
             // Find patient record linked to this user
             const patient = await db.patientWalletMapping?.findFirst({
-                where: { user_id: userId }
+                where: { userId: userId }
             });
 
             if (!patient) {
@@ -149,7 +149,7 @@ class PatientDataController {
 
             // Find patient record linked to this user
             const patient = await db.patientWalletMapping?.findFirst({
-                where: { user_id: userId }
+                where: { userId: userId }
             });
 
             if (!patient) {
@@ -207,7 +207,7 @@ class PatientDataController {
 
             // Find patient record linked to this user
             const patient = await db.patientWalletMapping?.findFirst({
-                where: { user_id: userId }
+                where: { userId: userId }
             });
 
             if (!patient) {
@@ -265,7 +265,7 @@ class PatientDataController {
 
             // Find patient record linked to this user
             const patient = await db.patientWalletMapping?.findFirst({
-                where: { user_id: userId }
+                where: { userId: userId }
             });
 
             if (!patient) {
