@@ -192,11 +192,15 @@ export const commonRoutes: NavRoute[] = [
 export function getRoutesForRole(role: string | undefined): NavRoute[] {
   if (!role) { return []; }
 
-  switch (role.toLowerCase()) {
+  const normalizedRole = role.toLowerCase();
+
+  switch (normalizedRole) {
     case 'doctor':
       return [...doctorRoutes, ...commonRoutes];
     case 'patient':
-      return [...patientRoutes, ...commonRoutes];
+      // Include patient-specific routes + shared routes from doctorRoutes that patients can access
+      const sharedRoutes = doctorRoutes.filter(route => route.roles.includes('patient'));
+      return [...patientRoutes, ...sharedRoutes, ...commonRoutes];
     case 'admin':
       return [...adminRoutes, ...commonRoutes];
     default:
