@@ -452,11 +452,20 @@ export const authApi = {
 export const medicalRecordsApi = {
   /**
    * Get all medical records for current user
-   * Backend route: GET /api/medical-records
-   * Function: GetRecordsByPatient
+   * Backend routes:
+   * - For patients: GET /api/patient/medical-records
+   * - For doctors: GET /api/doctor/medical-records
+   * Automatically selects correct endpoint based on user role
    */
   getAll: async (): Promise<any[]> => {
-    const response = await fetchApi<{ success: boolean; records?: any[]; data?: any[] }>('/api/medical-records', { method: 'GET' }, true);
+    // Get user role from localStorage
+    const user = typeof window !== 'undefined' ? JSON.parse(localStorage.getItem('user') || '{}') : {};
+    const role = user.role?.toLowerCase();
+
+    // Determine endpoint based on role
+    const endpoint = role === 'doctor' ? '/api/doctor/medical-records' : '/api/patient/medical-records';
+
+    const response = await fetchApi<{ success: boolean; records?: any[]; data?: any[] }>(endpoint, { method: 'GET' }, true);
     // Backend returns {success: true, records: [...], data: [...]}
     return response.records || response.data || (Array.isArray(response) ? response : []);
   },
@@ -465,9 +474,7 @@ export const medicalRecordsApi = {
    * Alias for getAll() for backward compatibility
    */
   getAllRecords: async (): Promise<any[]> => {
-    const response = await fetchApi<{ success: boolean; records?: any[]; data?: any[] }>('/api/medical-records', { method: 'GET' }, true);
-    // Backend returns {success: true, records: [...], data: [...]}
-    return response.records || response.data || (Array.isArray(response) ? response : []);
+    return medicalRecordsApi.getAll();
   },
 
   /**
@@ -558,11 +565,20 @@ export const patientsApi = {
 export const appointmentsApi = {
   /**
    * Get all appointments for current user
-   * Backend route: GET /api/appointments
-   * Function: GetAppointmentsByPatient or GetAppointmentsByDoctor (role-based)
+   * Backend routes:
+   * - For patients: GET /api/patient/appointments
+   * - For doctors: GET /api/doctor/appointments
+   * Automatically selects correct endpoint based on user role
    */
   getAll: async (): Promise<Appointment[]> => {
-    const response = await fetchApi<{ success: boolean; appointments?: Appointment[]; data?: Appointment[] }>('/api/appointments', { method: 'GET' }, true);
+    // Get user role from localStorage
+    const user = typeof window !== 'undefined' ? JSON.parse(localStorage.getItem('user') || '{}') : {};
+    const role = user.role?.toLowerCase();
+
+    // Determine endpoint based on role
+    const endpoint = role === 'doctor' ? '/api/doctor/appointments' : '/api/patient/appointments';
+
+    const response = await fetchApi<{ success: boolean; appointments?: Appointment[]; data?: Appointment[] }>(endpoint, { method: 'GET' }, true);
     // Backend returns {success: true, appointments: [...], data: [...]}
     return response.appointments || response.data || (Array.isArray(response) ? response : []);
   },
@@ -610,11 +626,20 @@ export const appointmentsApi = {
 export const prescriptionsApi = {
   /**
    * Get all prescriptions for current user
-   * Backend route: GET /api/prescriptions
-   * Function: GetPrescriptionsByPatient or GetPrescriptionsByDoctor
+   * Backend routes:
+   * - For patients: GET /api/patient/prescriptions
+   * - For doctors: GET /api/doctor/prescriptions
+   * Automatically selects correct endpoint based on user role
    */
   getAll: async (): Promise<Prescription[]> => {
-    const response = await fetchApi<{ success: boolean; prescriptions?: Prescription[]; data?: Prescription[] }>('/api/prescriptions', { method: 'GET' }, true);
+    // Get user role from localStorage
+    const user = typeof window !== 'undefined' ? JSON.parse(localStorage.getItem('user') || '{}') : {};
+    const role = user.role?.toLowerCase();
+
+    // Determine endpoint based on role
+    const endpoint = role === 'doctor' ? '/api/doctor/prescriptions' : '/api/patient/prescriptions';
+
+    const response = await fetchApi<{ success: boolean; prescriptions?: Prescription[]; data?: Prescription[] }>(endpoint, { method: 'GET' }, true);
     // Backend returns {success: true, prescriptions: [...], data: [...]}
     return response.prescriptions || response.data || (Array.isArray(response) ? response : []);
   },

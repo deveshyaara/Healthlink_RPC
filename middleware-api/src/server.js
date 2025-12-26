@@ -178,14 +178,30 @@ app.use('/api/health', async (req, res) => {
   AdminController.getHealth(req, res);
 });
 
-// Mount NEW healthcare routes (Ethereum-based)
+// ======================
+// DEDICATED ROLE-BASED ROUTES
+// ======================
+
+// Import dedicated route handlers
+import doctorDataRoutes from './routes/doctor-data.routes.js';
+
+// ✅ PATIENT-SPECIFIC ROUTES (queries by patientId)
+// These routes are for patients ONLY and query data where patient_id matches
+app.use('/api/patient', patientDataRoutes);
+
+// ✅ DOCTOR-SPECIFIC ROUTES (queries by doctorId)
+// These routes are for doctors ONLY and query data where doctor_id matches
+app.use('/api/doctor', doctorDataRoutes);
+
+// ======================
+// SHARED/VERSIONED HEALTHCARE ROUTES
+// ======================
+
+// Mount healthcare routes at versioned path for admin/create operations
 app.use(`/api/${API_VERSION}/healthcare`, healthcareRoutes);
 
-// ✅ Mount DATABASE-BACKED patient data routes (takes precedence over blockchain)
-// These routes query Supabase instead of blockchain for patient data
-app.use('/api', patientDataRoutes);
-
 // Mount medical records routes (aliased for frontend compatibility)
+// This is used for POST operations (creating records)
 app.use('/api/medical-records', healthcareRoutes);
 
 // Note: Patient data endpoints (appointments, prescriptions, consents, medical-records, lab-tests)

@@ -14,31 +14,31 @@ const router = express.Router();
 router.use(authenticateJWT);
 
 /**
- * GET /api/consents
+ * GET /api/patient/consents
  * Get all consent requests for current patient
  */
 router.get('/consents', patientDataController.getConsents.bind(patientDataController));
 
 /**
- * GET /api/medical-records
+ * GET /api/patient/medical-records
  * Get all medical records for current patient
  */
 router.get('/medical-records', patientDataController.getMedicalRecords.bind(patientDataController));
 
 /**
- * GET /api/appointments
+ * GET /api/patient/appointments
  * Get all appointments for current patient
  */
 router.get('/appointments', patientDataController.getAppointments.bind(patientDataController));
 
 /**
- * GET /api/prescriptions
+ * GET /api/patient/prescriptions
  * Get all prescriptions for current patient
  */
 router.get('/prescriptions', patientDataController.getPrescriptions.bind(patientDataController));
 
 /**
- * GET /api/lab-tests
+ * GET /api/patient/lab-tests
  * Get all lab tests for current patient
  */
 router.get('/lab-tests', patientDataController.getLabTests.bind(patientDataController));
