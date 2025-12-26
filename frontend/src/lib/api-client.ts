@@ -937,6 +937,17 @@ export const usersApi = {
   getUsers: async (): Promise<any[]> => {
     return fetchApi<any[]>('/api/users', { method: 'GET' });
   },
+
+  invite: async (invitationData: { email: string; role: 'patient' | 'doctor' }): Promise<any> => {
+    return fetchApi<any>('/api/users/invite', {
+      method: 'POST',
+      body: JSON.stringify(invitationData),
+    });
+  },
+
+  getInvitations: async (): Promise<any[]> => {
+    return fetchApi<any[]>('/api/users/invitations', { method: 'GET' }, true);
+  },
 };
 
 // ========================================
