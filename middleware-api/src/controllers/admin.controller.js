@@ -158,7 +158,9 @@ class AdminController {
                 email: patient.email,
                 name: patient.name,
                 walletAddress: patient.walletAddress,
-                userId: patient.user_id,
+                walletAddress: patient.walletAddress,
+                userId: patient.userId,
+                isActive: patient.user?.isActive || false,
                 isActive: patient.user?.isActive || false,
                 createdAt: patient.createdAt,
             }));

@@ -118,7 +118,7 @@ class HealthcareController {
             name,
             walletAddress: patientWalletAddress,
             createdBy: doctorId,
-            user_id: userId, // ✅ Link to user account
+            userId: userId, // ✅ Link to user account
           },
         });
       } else {
