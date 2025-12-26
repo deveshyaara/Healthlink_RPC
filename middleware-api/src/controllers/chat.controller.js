@@ -1,56 +1,260 @@
 /**
- * Chat Controller
- * Handles AI chatbot interactions using Google Gemini API directly
+ * Chat Controller - LangGraph Agent Integration
+ * Properly integrated Python LangGraph agent with Node.js backend
+ * No patchwork - production-ready implementation
  */
 
-import { GoogleGenerativeAI } from '@google/generative-ai';
+import { spawn } from 'child_process';
+import path from 'path';
+import { fileURLToPath } from 'url';
 import logger from '../utils/logger.js';
 import dbService from '../services/db.service.prisma.js';
 
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
 class ChatController {
   constructor() {
-    this.genAI = null;
-    this.model = null;
-    this.initializeGemini();
+    this.pythonPath = process.env.PYTHON_PATH || 'python3';
+    this.agentScriptPath = path.join(__dirname, '../../python_agent/run_agent.py');
+    this.initTimeout = 30000; // 30 seconds timeout for agent initialization
+    this.checkPythonAgent();
   }
 
   /**
-   * Initialize Google Gemini AI
+   * Verify Python agent is accessible on startup
    */
-  initializeGemini() {
+  async checkPythonAgent() {
     try {
-      const apiKey = process.env.GEMINI_API_KEY;
-      if (!apiKey) {
-        logger.warn('GEMINI_API_KEY not found - chat functionality will be limited');
-        return;
-      }
+      const testProcess = spawn(this.pythonPath, ['--version']);
 
-      this.genAI = new GoogleGenerativeAI(apiKey);
-      this.model = this.genAI.getGenerativeModel({
-        model: process.env.GEMINI_MODEL || 'gemini-1.5-flash',
-        generationConfig: {
-          temperature: parseFloat(process.env.LLM_TEMPERATURE || '0.2'),
-          maxOutputTokens: 1000,
-        },
+      testProcess.on('error', (err) => {
+        logger.error('Python runtime not found:', err);
+        logger.warn('Chat functionality will be limited - Python agent not available');
       });
 
-      logger.info('Google Gemini AI initialized for chat');
+      testProcess.on('close', (code) => {
+        if (code === 0) {
+          logger.info(`Python runtime found: ${this.pythonPath}`);
+          logger.info(`LangGraph agent path: ${this.agentScriptPath}`);
+        } else {
+          logger.warn('Python runtime check failed - chat may not work');
+        }
+      });
     } catch (error) {
-      logger.error('Failed to initialize Gemini AI:', error);
+      logger.error('Failed to check Python runtime:', error);
     }
   }
 
   /**
+   * Fetch patient context from database
+   * Returns real patient data for LangGraph agent
+   */
+  async fetchPatientContext(userId, userRole, userEmail) {
+    try {
+      if (!dbService || !dbService.isReady || !dbService.isReady()) {
+        logger.warn('Database not ready - returning empty context');
+        return {};
+      }
+
+      const db = dbService.prisma;
+      const context = {
+        appointments: [],
+        prescriptions: [],
+        records: [],
+        diagnoses: [],
+        medications: []
+      };
+
+      if (userRole === 'patient') {
+        // Find patient record
+        const patient = await db.patientWalletMapping?.findFirst({
+          where: { userId: userId },
+          include: {
+            user: {
+              select: {
+                email: true,
+                fullName: true
+              }
+            }
+          }
+        });
+
+        if (patient) {
+          // Fetch appointments
+          const appointments = await db.appointment?.findMany({
+            where: { patientId: patient.id },
+            orderBy: { scheduledAt: 'desc' },
+            take: 5,
+            select: {
+              appointmentId: true,
+              scheduledAt: true,
+              status: true,
+              notes: true
+            }
+          }) || [];
+
+          // Fetch prescriptions
+          const prescriptions = await db.prescription?.findMany({
+            where: { patientId: patient.id },
+            orderBy: { createdAt: 'desc' },
+            take: 10,
+            select: {
+              prescriptionId: true,
+              medication: true,
+              dosage: true,
+              frequency: true,
+              createdAt: true
+            }
+          }) || [];
+
+          // Fetch medical records
+          const records = await db.medicalRecord?.findMany({
+            where: { patientId: patient.id },
+            orderBy: { createdAt: 'desc' },
+            take: 5,
+            select: {
+              recordId: true,
+              diagnosis: true,
+              treatment: true,
+              createdAt: true
+            }
+          }) || [];
+
+          context.appointments = appointments;
+          context.prescriptions = prescriptions;
+          context.records = records;
+
+          // Extract unique diagnoses and medications
+          context.diagnoses = [...new Set(records.map(r => r.diagnosis).filter(Boolean))];
+          context.medications = [...new Set(prescriptions.map(p => p.medication).filter(Boolean))];
+        }
+      } else if (userRole === 'doctor') {
+        // For doctors, provide summary stats
+        const appointmentCount = await db.appointment?.count({
+          where: { doctorId: userId }
+        }) || 0;
+
+        const prescriptionCount = await db.prescription?.count({
+          where: { doctorId: userId }
+        }) || 0;
+
+        context.stats = {
+          totalAppointments: appointmentCount,
+          totalPrescriptions: prescriptionCount,
+          role: 'doctor'
+        };
+      }
+
+      return context;
+
+    } catch (error) {
+      logger.error('Failed to fetch patient context:', error);
+      return {};
+    }
+  }
+
+  /**
+   * Invoke Python LangGraph agent via child process
+   * @param {string} userId - User ID
+   * @param {string} userName - User display name
+   * @param {string} message - User message
+   * @param {string} threadId - Conversation thread ID
+   * @param {object} patientContext - Patient medical context
+   * @returns {Promise<object>} Agent response
+   */
+  async invokePythonAgent(userId, userName, message, threadId, patientContext = {}) {
+    return new Promise((resolve, reject) => {
+      const contextJson = JSON.stringify(patientContext);
+
+      logger.info(`Invoking Python agent for user: ${userId}`);
+
+      // Spawn Python process with arguments
+      const python = spawn(this.pythonPath, [
+        this.agentScriptPath,
+        userId,
+        userName,
+        message,
+        threadId || `thread-${userId}`,
+        contextJson
+      ], {
+        env: {
+          ...process.env,
+          PYTHONUNBUFFERED: '1' // Disable Python output buffering
+        }
+      });
+
+      let dataString = '';
+      let errorString = '';
+
+      // Collect stdout data
+      python.stdout.on('data', (data) => {
+        dataString += data.toString();
+      });
+
+      // Collect stderr data
+      python.stderr.on('data', (data) => {
+        errorString += data.toString();
+        logger.warn('Python agent stderr:', data.toString());
+      });
+
+      // Handle process errors
+      python.on('error', (error) => {
+        logger.error('Failed to spawn Python agent:', error);
+        reject(new Error(`Failed to start Python agent: ${error.message}`));
+      });
+
+      // Handle process exit
+      python.on('close', (code) => {
+        if (code !== 0) {
+          logger.error(`Python agent exited with code ${code}`);
+          logger.error('stderr:', errorString);
+          reject(new Error(`Python agent failed with exit code ${code}`));
+          return;
+        }
+
+        try {
+          const result = JSON.parse(dataString);
+
+          if (result.error) {
+            logger.error('Python agent returned error:', result.error);
+            reject(new Error(result.error));
+            return;
+          }
+
+          logger.info(`Python agent response received for user: ${userId}`);
+          resolve(result);
+
+        } catch (parseError) {
+          logger.error('Failed to parse Python agent response:', parseError);
+          logger.error('Raw output:', dataString);
+          reject(new Error('Invalid response from Python agent'));
+        }
+      });
+
+      // Set timeout
+      const timeout = setTimeout(() => {
+        python.kill();
+        reject(new Error('Python agent timed out'));
+      }, this.initTimeout);
+
+      python.on('close', () => clearTimeout(timeout));
+    });
+  }
+
+  /**
    * @route   POST /api/chat
-   * @desc    Send message to AI agent and get response
+   * @desc    Send message to LangGraph AI agent and get response
    * @access  Private (requires authentication)
    */
   async sendMessage(req, res) {
     const { message, thread_id } = req.body;
-    const userId = req.user?.userId || 'anonymous';
-    const userName = req.user?.name || 'User';
+    const userId = req.user?.userId || req.user?.id || 'anonymous';
+    const userName = req.user?.name || req.user?.fullName || 'User';
     const userRole = req.user?.role || 'patient';
+    const userEmail = req.user?.email;
 
+    // Validate input
     if (!message || message.trim().length === 0) {
       return res.status(400).json({
         status: 'error',
@@ -58,206 +262,128 @@ class ChatController {
         message: 'Message is required',
         error: {
           code: 'MISSING_MESSAGE',
-          details: 'Message cannot be empty',
-        },
-      });
-    }
-
-    if (!this.model) {
-      return res.status(503).json({
-        status: 'error',
-        statusCode: 503,
-        message: 'AI service unavailable',
-        error: {
-          code: 'AI_UNAVAILABLE',
-          details: 'Gemini API key not configured',
-        },
+          details: 'Message cannot be empty'
+        }
       });
     }
 
     try {
-      // Fetch user context from Database
-      let contextData = {
-        appointments: [],
-        prescriptions: [],
-        records: [],
-      };
+      // Fetch real patient context from database
+      logger.info(`Fetching patient context for user: ${userId}`);
+      const patientContext = await this.fetchPatientContext(userId, userRole, userEmail);
 
+      // Invoke Python LangGraph agent
+      const result = await this.invokePythonAgent(
+        userId,
+        userName,
+        message,
+        thread_id,
+        patientContext
+      );
+
+      // Save conversation to database
       try {
         if (dbService && dbService.isReady && dbService.isReady()) {
           const db = dbService.prisma;
-          const userEmail = req.user?.email;
-          let patientId = userId; // Default to userId
 
-          if (userRole === 'patient') {
-            // Try to find patient record by email to get correct patient ID
-            if (userEmail && db.patientWalletMapping) {
-              const patientRecord = await db.patientWalletMapping.findUnique({
-                where: { email: userEmail }
-              });
-              if (patientRecord) {
-                patientId = patientRecord.id;
-              }
+          await db.chatMessage?.create({
+            data: {
+              userId: userId,
+              role: 'user',
+              content: message,
+              threadId: result.thread_id || thread_id,
+              metadata: JSON.stringify({ userRole })
             }
+          }).catch(err => logger.warn('Failed to save user message:', err));
 
-            // Fetch Appointments
-            if (db.appointment) {
-              const appointments = await db.appointment.findMany({
-                where: {
-                  patientId: patientId,
-                  scheduledAt: { gte: new Date() }
-                },
-                orderBy: { scheduledAt: 'asc' },
-                take: 5,
-                include: { doctor: { select: { fullName: true } } }
-              });
-              contextData.appointments = appointments.map(a => ({
-                date: a.scheduledAt,
-                title: a.title,
-                doctor: a.doctor?.fullName,
-                status: a.status
-              }));
+          await db.chatMessage?.create({
+            data: {
+              userId: userId,
+              role: 'assistant',
+              content: result.response,
+              threadId: result.thread_id || thread_id,
+              metadata: JSON.stringify({ patientContextUsed: !!patientContext })
             }
-
-            // Fetch Prescriptions
-            if (db.prescription) {
-              const prescriptions = await db.prescription.findMany({
-                where: { patientId: patientId, status: 'ACTIVE' },
-                orderBy: { createdAt: 'desc' },
-                take: 5,
-              });
-              contextData.prescriptions = prescriptions.map(p => ({
-                medication: p.medication,
-                dosage: p.dosage,
-                instructions: p.instructions,
-                expiry: p.expiryDate
-              }));
-            }
-          }
+          }).catch(err => logger.warn('Failed to save AI response:', err));
         }
       } catch (dbError) {
-        logger.warn('Failed to fetch DB context for chat:', dbError);
-        // Continue without context
+        // Don't fail the request if DB save fails
+        logger.error('Failed to save chat history:', dbError);
       }
 
-      // Create healthcare-focused system prompt
-      const systemPrompt = `You are a helpful healthcare AI assistant for HealthLink.
-
-You are speaking with ${userName} (${userRole}).
-
-USER CONTEXT (From Database):
-Appointments: ${JSON.stringify(contextData.appointments)}
-Active Prescriptions: ${JSON.stringify(contextData.prescriptions)}
-
-IMPORTANT GUIDELINES:
-1. Be empathetic, supportive, and professional
-2. NEVER provide medical diagnoses or prescribe medications
-3. NEVER give specific medical advice or treatment recommendations
-4. If the user asks for medical advice, direct them to consult their healthcare provider
-5. You can help with general health information, appointment scheduling questions, and platform navigation
-6. Use the provided context to answer questions about their schedule or medications ("When is my next appointment?").
-7. Always remind users that you are an AI assistant, not a medical professional
-
-Keep responses concise but helpful.`;
-
-      // Generate response using Gemini
-      const chat = this.model.startChat({
-        history: [
-          {
-            role: 'user',
-            parts: [{ text: 'Hello, I need help with HealthLink.' }],
-          },
-          {
-            role: 'model',
-            parts: [{ text: systemPrompt }],
-          },
-        ],
-      });
-
-      const result = await chat.sendMessage(message);
-      const aiResponse = result.response.text();
-
-      logger.info('AI chat response generated', {
-        userId,
-        messageLength: message.length,
-        responseLength: aiResponse.length,
-      });
-
-      res.status(200).json({
+      // Return success response
+      return res.status(200).json({
         status: 'success',
         statusCode: 200,
         data: {
-          response: aiResponse,
-          user_id: userId,
-          thread_id: thread_id || `thread-${userId}`,
-          timestamp: new Date().toISOString(),
+          response: result.response,
+          thread_id: result.thread_id,
+          user_id: result.user_id,
+          timestamp: new Date().toISOString()
         },
+        metadata: {
+          agent: 'langgraph',
+          contextProvided: Object.keys(patientContext).length > 0
+        }
       });
 
     } catch (error) {
-      logger.error('Failed to generate AI response:', error);
+      logger.error('Chat request failed:', error);
 
-      res.status(500).json({
+      return res.status(500).json({
         status: 'error',
         statusCode: 500,
-        message: 'Failed to generate AI response: ' + error.message,
+        message: 'Failed to process your message',
         error: {
-          code: 'AI_ERROR',
-          details: error.message,
-          stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
-        },
+          code: 'AGENT_ERROR',
+          details: error.message
+        }
       });
     }
   }
 
   /**
    * @route   GET /api/chat/health
-   * @desc    Check if AI service is accessible
+   * @desc    Check if Python LangGraph agent is accessible
    * @access  Public
    */
   async healthCheck(req, res) {
     try {
-      const isAvailable = !!this.model;
+      // Test Python agent with simple message
+      const testResult = await this.invokePythonAgent(
+        'health-check',
+        'System',
+        'Hello, are you working?',
+        'health-check-thread',
+        {}
+      );
 
-      res.status(200).json({
+      return res.status(200).json({
         status: 'success',
         statusCode: 200,
+        message: 'Python LangGraph agent is healthy',
         data: {
-          service: 'HealthLink AI Chat',
-          available: isAvailable,
-          model: process.env.GEMINI_MODEL || 'gemini-1.5-flash',
-          timestamp: new Date().toISOString(),
-        },
+          pythonPath: this.pythonPath,
+          agentScriptPath: this.agentScriptPath,
+          testResponse: testResult.response?.substring(0, 100) + '...',
+          timestamp: new Date().toISOString()
+        }
       });
-    } catch (error) {
-      logger.error('Health check failed:', error);
 
-      res.status(503).json({
+    } catch (error) {
+      logger.error('Python agent health check failed:', error);
+
+      return res.status(503).json({
         status: 'error',
         statusCode: 503,
-        message: 'AI service health check failed',
+        message: 'Python LangGraph agent is unavailable',
         error: {
-          code: 'HEALTH_CHECK_FAILED',
-          details: 'Unable to verify AI service status',
-        },
+          code: 'AGENT_UNAVAILABLE',
+          details: error.message
+        }
       });
     }
   }
 }
 
-// Singleton instance
-let chatControllerInstance = null;
-
-/**
- * Get or create chat controller instance
- * @returns {ChatController}
- */
-export const getChatControllerInstance = () => {
-  if (!chatControllerInstance) {
-    chatControllerInstance = new ChatController();
-  }
-  return chatControllerInstance;
-};
-
-// Export singleton instance as default
-export default getChatControllerInstance();
+export default new ChatController();

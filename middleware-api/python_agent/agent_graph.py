@@ -33,43 +33,29 @@ class AgentState(TypedDict):
 # -----------------
 def fetch_patient_context(state: AgentState) -> Dict[str, Any]:
     """
-    Node 1: Fetch patient data from database and blockchain
+    Node 1: Use patient data provided by Node.js backend
     
-    NOTE: Currently returns mock data. In production, this should:
-    - Query Supabase/PostgreSQL for basic patient info
-    - Query Ethereum contracts for medical records
-    - Integrate with middleware-api endpoints
+    The patient context is now fetched from the database by Node.js
+    and passed to this agent as part of the initial state.
     """
-    user_id = state["user_id"]
     existing_context = state.get("patient_context", {})
     
-    patient_context = {}
+    # Patient context is already provided by Node.js with real database data
+    # No need to query again - just structure it for the LLM
     
-    try:
-        # TODO: Replace with actual API calls to middleware-api
-        # Example:
-        # response = requests.get(f"http://localhost:3001/api/patients/{user_id}")
-        # patient_data = response.json()
-        
-        # MOCK DATA (temporary)
-        # Preserve the user name from the initial state
-        patient_context["name"] = existing_context.get("name", "Patient")
-        patient_context["age"] = "N/A"
-        patient_context["gender"] = "Not specified"
-        patient_context["email"] = "patient@example.com"
-        patient_context["medical_history"] = "No data available"
-        patient_context["diagnoses"] = []
-        patient_context["medications"] = []
-        patient_context["last_visit"] = "N/A"
-        
-    except Exception as e:
-        # Provide minimal fallback context
-        patient_context = {
-            "name": existing_context.get("name", "Patient"),
-            "age": "Unknown",
-            "medical_history": "No data available",
-            "error": str(e)
-        }
+    patient_context = {
+        "name": existing_context.get("name", "Patient"),
+        "age": existing_context.get("age", "Unknown"),
+        "gender": existing_context.get("gender", "Not specified"),
+        "email": existing_context.get("email", "Not provided"),
+        "appointments": existing_context.get("appointments", []),
+        "prescriptions": existing_context.get("prescriptions", []),
+        "records": existing_context.get("records", []),
+        "diagnoses": existing_context.get("diagnoses", []),
+        "medications": existing_context.get("medications", []),
+        "last_visit": existing_context.get("last_visit", "N/A"),
+        "stats": existing_context.get("stats", {})
+    }
     
     return {"patient_context": patient_context}
 
@@ -84,31 +70,66 @@ def generate_response(state: AgentState) -> Dict[str, Any]:
     patient_context = state["patient_context"]
     messages = state["messages"]
     
-    # Extract patient details
+    # Extract patient details from real database data
     name = patient_context.get("name", "Patient")
     age = patient_context.get("age", "Unknown")
     gender = patient_context.get("gender", "Not specified")
-    medical_history = patient_context.get("medical_history", "No medical history available")
-    diagnoses = ", ".join(patient_context.get("diagnoses", []))
-    medications = ", ".join(patient_context.get("medications", []))
     
-    # Construct dynamic system prompt with patient context
+    # Real data from database
+    appointments = patient_context.get("appointments", [])
+    prescriptions = patient_context.get("prescriptions", [])
+    records = patient_context.get("records", [])
+    diagnoses = patient_context.get("diagnoses", [])
+    medications = patient_context.get("medications", [])
+    
+    # Format medical history from records
+    medical_history = "No medical records on file"
+    if records:
+        recent_records = records[:3]  # Most recent 3
+        medical_history = "; ".join([
+            f"{r.get('diagnosis', 'Unknown diagnosis')} (treated with {r.get('treatment', 'N/A')})"
+            for r in recent_records
+        ])
+    
+    # Format recent appointments
+    recent_appointments = "No recent appointments"
+    if appointments:
+        recent_apts = appointments[:2]
+        recent_appointments = "; ".join([
+            f"{a.get('scheduledAt', 'Unknown date')} - {a.get('status', 'Unknown status')}"
+            for a in recent_apts
+        ])
+    
+    # Format current medications from prescriptions
+    current_meds = "None on record"
+    if medications:
+        current_meds = ", ".join(medications)
+    elif prescriptions:
+        current_meds = ", ".join([p.get('medication', 'Unknown') for p in prescriptions[:5]])
+    
+    diagnoses_str = ", ".join(diagnoses) if diagnoses else "None on record"
+    
+    # Construct dynamic system prompt with REAL patient context
     system_prompt = f"""You are a helpful and empathetic medical assistant AI for HealthLink, an Ethereum-based healthcare platform.
 
 You are currently speaking to **{name}**, who is **{age} years old** and identifies as **{gender}**.
 
-**Patient Medical Context:**
-- **Medical History:** {medical_history}
-- **Current Diagnoses:** {diagnoses or "None on record"}
-- **Current Medications:** {medications or "None on record"}
+**Patient Medical Context (Real Data from Database):**
+- **Recent Medical History:** {medical_history}
+- **Current Diagnoses:** {diagnoses_str}
+- **Current Medications:** {current_meds}
+- **Recent Appointments:** {recent_appointments}
+- **Total Prescriptions on File:** {len(prescriptions)}
+- **Total Medical Records:** {len(records)}
 
 **Important Guidelines:**
-1. Provide personalized advice based on the patient's specific medical context
+1. Provide personalized advice based on the patient's ACTUAL medical context shown above
 2. Always be empathetic and supportive in your tone
-3. DO NOT provide medical diagnoses or prescribe medications
-4. If the question requires immediate medical attention, advise the patient to contact their healthcare provider
-5. Reference their specific conditions and medications when relevant
+3. DO NOT provide medical diagnoses or prescribe new medications
+4. Reference their specific conditions, medications, and appointments when relevant
+5. If the question requires immediate medical attention, advise the patient to contact their healthcare provider
 6. Be clear that you are an AI assistant and not a replacement for professional medical advice
+7. Use the patient's name naturally in conversation
 
 Answer the patient's question based on their medical context while following these guidelines."""
 
@@ -180,7 +201,7 @@ healthcare_agent = create_healthcare_agent()
 # -----------------
 # 6. HELPER FUNCTION FOR EASY INVOCATION
 # -----------------
-def invoke_agent(user_id: str, user_name: str, message: str, thread_id: str = None) -> Dict[str, Any]:
+def invoke_agent(user_id: str, user_name: str, message: str, thread_id: str = None, patient_context: Dict[str, Any] = None) -> Dict[str, Any]:
     """
     Helper function to invoke the healthcare agent.
     
@@ -189,6 +210,7 @@ def invoke_agent(user_id: str, user_name: str, message: str, thread_id: str = No
         user_name: Patient/user display name
         message: User's question/message
         thread_id: Optional thread ID for conversation tracking
+        patient_context: Patient medical context from Node.js (real database data)
         
     Returns:
         Dictionary containing response and metadata
@@ -197,11 +219,16 @@ def invoke_agent(user_id: str, user_name: str, message: str, thread_id: str = No
         # Prepare config with thread ID
         config = {"configurable": {"thread_id": thread_id or f"thread-{user_id}"}}
         
+        # Merge provided patient context with user name
+        initial_patient_context = {"name": user_name}
+        if patient_context:
+            initial_patient_context.update(patient_context)
+        
         # Prepare initial state
         initial_state = {
             "messages": [HumanMessage(content=message)],
             "user_id": user_id,
-            "patient_context": {"name": user_name},  # Pre-populate with user name
+            "patient_context": initial_patient_context,
             "response": ""
         }
         

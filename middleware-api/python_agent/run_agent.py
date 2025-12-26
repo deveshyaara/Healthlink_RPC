@@ -4,13 +4,14 @@ Entry point for running the HealthLink AI agent from Node.js
 This script is invoked by Express via child_process.spawn()
 
 Usage:
-    python run_agent.py <user_id> <user_name> <message> [thread_id]
+    python run_agent.py <user_id> <user_name> <message> <thread_id> <patient_context_json>
 
 Input:
     - user_id: Patient/user identifier
     - user_name: Patient/user display name
     - message: User's question
-    - thread_id (optional): Conversation thread ID
+    - thread_id: Conversation thread ID
+    - patient_context_json: JSON string with patient medical context
 
 Output:
     - Prints JSON response to stdout for Node.js to capture
@@ -23,20 +24,30 @@ from agent_graph import invoke_agent
 def main():
     try:
         # Parse command-line arguments
-        if len(sys.argv) < 4:
-            raise ValueError("Usage: python run_agent.py <user_id> <user_name> <message> [thread_id]")
+        if len(sys.argv) < 5:
+            raise ValueError("Usage: python run_agent.py <user_id> <user_name> <message> <thread_id> [patient_context_json]")
         
         user_id = sys.argv[1]
         user_name = sys.argv[2]
         message = sys.argv[3]
-        thread_id = sys.argv[4] if len(sys.argv) > 4 else None
+        thread_id = sys.argv[4]
         
-        # Invoke the LangGraph agent
+        # Parse patient context if provided
+        patient_context = {}
+        if len(sys.argv) > 5:
+            try:
+                patient_context = json.loads(sys.argv[5])
+            except json.JSONDecodeError as e:
+                # Invalid JSON - use empty context
+                patient_context = {}
+        
+        # Invoke the LangGraph agent with patient context
         result = invoke_agent(
             user_id=user_id,
             user_name=user_name,
             message=message,
-            thread_id=thread_id
+            thread_id=thread_id,
+            patient_context=patient_context
         )
         
         # Output JSON response to stdout (Node.js will capture this)

@@ -9,12 +9,12 @@ const healthcareController = new HealthcareController();
 
 // Sanity checks: ensure controller methods exist to avoid obscure Express errors
 const expectedHandlers = [
-  'createMedicalRecord', 'getCurrentUserRecords', 'getRecordsByPatient',
+  'createMedicalRecord', 'getRecordsByPatient',
   'createPatient', 'getPatient', 'getPatientsForDoctor', 'getPatientByEmail',
   'getMedicalRecord', 'getMedicalRecordsForDoctor',
-  'createConsent', 'getCurrentUserConsents', 'getConsent', 'revokeConsent', 'getConsentRequestsForDoctor',
-  'getCurrentUserAppointments', 'createAppointment', 'getAppointment', 'updateAppointment', 'cancelAppointment', 'getAppointmentsForDoctor',
-  'getCurrentUserPrescriptions', 'createPrescription', 'getPrescription', 'updatePrescription', 'getPrescriptionsForDoctor',
+  'createConsent', 'getConsent', 'revokeConsent', 'getConsentRequestsForDoctor',
+  'createAppointment', 'getAppointment', 'updateAppointment', 'cancelAppointment', 'getAppointmentsForDoctor',
+  'createPrescription', 'getPrescription', 'updatePrescription', 'getPrescriptionsForDoctor',
   'getLabTestsForDoctor',
   'registerDoctor', 'verifyDoctor', 'getVerifiedDoctors', 'getAuditRecords',
 ];
@@ -156,12 +156,9 @@ router.get('/records/:recordId', authenticateJWT, healthcareController.getMedica
  */
 router.post('/consents', authenticateJWT, requirePatient, healthcareController.createConsent);
 
-/**
- * @route   GET /api/consents
- * @desc    Get all consents for current user
- * @access  Protected
- */
-router.get('/consents', authenticateJWT, healthcareController.getCurrentUserConsents);
+// Consents GET route moved to dedicated patient/doctor controllers
+// Patients: GET /api/patient/consents
+// Doctors: GET /api/doctor/consents (if needed)
 
 /**
  * @route   GET /api/consents/:consentId
@@ -181,19 +178,13 @@ router.patch('/consents/:consentId/revoke', authenticateJWT, healthcareControlle
 // Appointment Routes
 // ======================
 
-/**
- * @route   GET /api/appointments
- * @desc    Get all appointments for current user
- * @access  Protected
- */
-router.get('/appointments', authenticateJWT, healthcareController.getCurrentUserAppointments);
+// Appointments GET route moved to dedicated patient/doctor controllers
+// Patients: GET /api/patient/appointments
+// Doctors: GET /api/doctor/appointments
 
-/**
- * @route   GET /api/v1/healthcare/records
- * @desc    Get all medical records for current authenticated user (patient or doctor)
- * @access  Protected
- */
-router.get('/records', authenticateJWT, healthcareController.getCurrentUserRecords);
+// Medical records GET route moved to dedicated patient/doctor controllers
+// Patients: GET /api/patient/medical-records
+// Doctors: GET /api/doctor/medical-records
 
 /**
  * @route   POST /api/v1/healthcare/appointments
@@ -227,12 +218,9 @@ router.post('/appointments/:appointmentId/cancel', authenticateJWT, healthcareCo
 // Prescription Routes
 // ======================
 
-/**
- * @route   GET /api/prescriptions
- * @desc    Get all prescriptions for current user
- * @access  Protected
- */
-router.get('/prescriptions', authenticateJWT, healthcareController.getCurrentUserPrescriptions);
+// Prescriptions GET route moved to dedicated patient/doctor controllers
+// Patients: GET /api/patient/prescriptions
+// Doctors: GET /api/doctor/prescriptions
 
 /**
  * @route   POST /api/v1/healthcare/prescriptions
