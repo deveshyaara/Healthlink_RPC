@@ -266,7 +266,7 @@ async function fetchApi<T>(
   if (token) {
     defaultHeaders['Authorization'] = `Bearer ${token}`;
     console.log('🔑 [API Client] Auth token present - will be sent with request to:', endpoint);
-  } else {
+  } else if (!endpoint.startsWith('/api/auth') && !endpoint.startsWith('/api/storage') && !endpoint.startsWith('/api/public') && !endpoint.startsWith('/api/health')) {
     console.warn('⚠️ [API Client] No auth token found for request to:', endpoint);
   }
 

@@ -200,73 +200,75 @@ function DoctorPatientsPageContent() {
               )}
             </div>
           ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Patient ID</TableHead>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Email</TableHead>
-                  <TableHead>Age</TableHead>
-                  <TableHead>Gender</TableHead>
-                  <TableHead>Phone</TableHead>
-                  <TableHead>Blood Group</TableHead>
-                  <TableHead>Records</TableHead>
-                  <TableHead>Last Visit</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredPatients.map((patient) => (
-                  <TableRow key={patient.patientId}>
-                    <TableCell className="font-medium">
-                      <div className="flex items-center gap-2">
-                        <FileText className="h-4 w-4 text-muted-foreground" />
-                        {patient.patientId}
-                      </div>
-                    </TableCell>
-                    <TableCell>{patient.name}</TableCell>
-                    <TableCell>{patient.email || '—'}</TableCell>
-                    <TableCell>{patient.age || '—'}</TableCell>
-                    <TableCell>{patient.gender || '—'}</TableCell>
-                    <TableCell>{patient.phoneNumber || '—'}</TableCell>
-                    <TableCell>{patient.bloodGroup || '—'}</TableCell>
-                    <TableCell>
-                      <Badge variant="outline">{patient.recordCount || 0} records</Badge>
-                    </TableCell>
-                    <TableCell>
-                      {patient.lastVisit
-                        ? new Date(patient.lastVisit).toLocaleDateString()
-                        : '—'}
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant="default">{patient.status || 'Active'}</Badge>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-2">
-                        <Link href={`/dashboard/records?patientEmail=${encodeURIComponent(patient.email || patient.patientId)}`}>
-                          <Button variant="outline" size="sm">
-                            <Eye className="mr-2 h-4 w-4" />
-                            View Records
-                          </Button>
-                        </Link>
-                        <Button
-                          variant="default"
-                          size="sm"
-                          onClick={() => {
-                            setSelectedPatientEmail(patient.email || patient.patientId);
-                            setShowUploadDialog(true);
-                          }}
-                        >
-                          <PlusCircle className="mr-2 h-4 w-4" />
-                          Add Record
-                        </Button>
-                      </div>
-                    </TableCell>
+            <div className="rounded-md border overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Patient ID</TableHead>
+                    <TableHead>Name</TableHead>
+                    <TableHead>Email</TableHead>
+                    <TableHead>Age</TableHead>
+                    <TableHead>Gender</TableHead>
+                    <TableHead>Phone</TableHead>
+                    <TableHead>Blood Group</TableHead>
+                    <TableHead>Records</TableHead>
+                    <TableHead>Last Visit</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Actions</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                </TableHeader>
+                <TableBody>
+                  {filteredPatients.map((patient) => (
+                    <TableRow key={patient.patientId}>
+                      <TableCell className="font-medium">
+                        <div className="flex items-center gap-2">
+                          <FileText className="h-4 w-4 text-muted-foreground" />
+                          {patient.patientId}
+                        </div>
+                      </TableCell>
+                      <TableCell>{patient.name}</TableCell>
+                      <TableCell>{patient.email || '—'}</TableCell>
+                      <TableCell>{patient.age || '—'}</TableCell>
+                      <TableCell>{patient.gender || '—'}</TableCell>
+                      <TableCell>{patient.phoneNumber || '—'}</TableCell>
+                      <TableCell>{patient.bloodGroup || '—'}</TableCell>
+                      <TableCell>
+                        <Badge variant="outline">{patient.recordCount || 0} records</Badge>
+                      </TableCell>
+                      <TableCell>
+                        {patient.lastVisit
+                          ? new Date(patient.lastVisit).toLocaleDateString()
+                          : '—'}
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant="default">{patient.status || 'Active'}</Badge>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-2">
+                          <Link href={`/dashboard/records?patientEmail=${encodeURIComponent(patient.email || patient.patientId)}`}>
+                            <Button variant="outline" size="sm">
+                              <Eye className="mr-2 h-4 w-4" />
+                              View Records
+                            </Button>
+                          </Link>
+                          <Button
+                            variant="default"
+                            size="sm"
+                            onClick={() => {
+                              setSelectedPatientEmail(patient.email || patient.patientId);
+                              setShowUploadDialog(true);
+                            }}
+                          >
+                            <PlusCircle className="mr-2 h-4 w-4" />
+                            Add Record
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
           )}
         </CardContent>
       </Card>

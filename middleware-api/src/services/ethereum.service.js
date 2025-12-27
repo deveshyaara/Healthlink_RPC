@@ -237,7 +237,7 @@ class EthereumService {
    */
   _decodeRevertData(raw) {
     try {
-      if (!raw || typeof raw !== 'string') {return null;}
+      if (!raw || typeof raw !== 'string') { return null; }
       // Standard Error(string) selector
       if (raw.startsWith('0x08c379a0')) {
         const hex = raw.slice(10);
@@ -317,6 +317,14 @@ class EthereumService {
     try {
       // Load deployment addresses
       const deploymentPath = path.join(__dirname, '..', '..', '..', 'ethereum-contracts', 'deployment-addresses.json');
+
+      // Check if deployment file exists before trying to read it
+      if (!fs.existsSync(deploymentPath)) {
+        logger.warn('⚠️  deployment-addresses.json not found - using in-memory storage fallback');
+        logger.info('✅ Ethereum Service initialized in fallback mode (no smart contracts)');
+        return;
+      }
+
       const deploymentData = JSON.parse(fs.readFileSync(deploymentPath, 'utf8'));
 
       // Load contract ABIs
@@ -354,7 +362,8 @@ class EthereumService {
       logger.info('✅ Contracts loaded: %o', Object.keys(this.contracts));
     } catch (error) {
       logger.error('Failed to load contracts:', error);
-      throw error;
+      logger.warn('⚠️  Using in-memory storage fallback');
+      // Don't throw - allow service to continue with in-memory storage
     }
   }
 

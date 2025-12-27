@@ -15,7 +15,7 @@ const __dirname = path.dirname(__filename);
 
 class ChatController {
   constructor() {
-    this.pythonPath = process.env.PYTHON_PATH || 'python3';
+    this.pythonPath = process.env.PYTHON_PATH || 'python';
     this.agentScriptPath = path.join(__dirname, '../../python_agent/run_agent.py');
     this.initTimeout = 30000; // 30 seconds timeout for agent initialization
     this.checkPythonAgent();
@@ -103,7 +103,7 @@ class ChatController {
               prescriptionId: true,
               medication: true,
               dosage: true,
-              frequency: true,
+              instructions: true,
               createdAt: true,
             },
           }) || [];

@@ -76,14 +76,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (storedToken) {
         try {
           const apiUrl = getApiBaseUrl();
+
+          // Add timeout to prevent infinite loading
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout
+
           const response = await fetch(
             `${apiUrl}/api/auth/me`,
             {
               headers: {
                 'Authorization': `Bearer ${storedToken}`,
               },
+              signal: controller.signal,
             },
           );
+
+          clearTimeout(timeoutId);
 
           if (response.ok) {
             const jsonData = await response.json();
@@ -111,7 +119,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             clearStoredToken();
           }
         } catch (error) {
-          logger.error('Auth verification failed:', error);
+          if (error instanceof Error && error.name === 'AbortError') {
+            logger.warn('Auth verification timed out - proceeding without token');
+          } else {
+            logger.error('Auth verification failed:', error);
+          }
           clearStoredToken();
         }
       }
