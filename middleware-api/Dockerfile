@@ -1,4 +1,5 @@
-FROM node:20-bullseye
+# Change "bullseye" to "bookworm"
+FROM node:20-bookworm
 
 # Install Python 3 and pip
 RUN apt-get update && \
