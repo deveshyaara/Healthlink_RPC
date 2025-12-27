@@ -182,10 +182,10 @@ class EthereumService {
 
         // Check if error is retryable
         const isRetryable = errorMessage.includes('nonce too low') ||
-                           errorMessage.includes('replacement transaction underpriced') ||
-                           errorMessage.includes('network error') ||
-                           errorMessage.includes('timeout') ||
-                           errorMessage.includes('connection');
+          errorMessage.includes('replacement transaction underpriced') ||
+          errorMessage.includes('network error') ||
+          errorMessage.includes('timeout') ||
+          errorMessage.includes('connection');
 
         if (!isRetryable || attempt === maxRetries - 1) {
           // Re-sync nonce on final failure
@@ -237,7 +237,7 @@ class EthereumService {
    */
   _decodeRevertData(raw) {
     try {
-      if (!raw || typeof raw !== 'string') return null;
+      if (!raw || typeof raw !== 'string') {return null;}
       // Standard Error(string) selector
       if (raw.startsWith('0x08c379a0')) {
         const hex = raw.slice(10);
@@ -322,7 +322,7 @@ class EthereumService {
       // Load contract ABIs
       const artifactsPath = path.join(__dirname, '..', '..', '..', 'ethereum-contracts', 'artifacts', 'contracts');
 
-      const contractNames = ['HealthLink', 'PatientRecords', 'Appointments', 'Prescriptions', 'DoctorCredentials'];
+      const contractNames = ['HealthLink', 'PatientRecords', 'Appointments', 'Prescriptions', 'DoctorCredentials', 'InsuranceClaims'];
 
       for (const name of contractNames) {
         const abiPath = path.join(artifactsPath, `${name}.sol`, `${name}.json`);
@@ -478,7 +478,7 @@ class EthereumService {
     }
 
     const rec = this._stores.records.get(recordId);
-    if (!rec) {return { exists: false };}
+    if (!rec) { return { exists: false }; }
     return {
       recordId: rec.recordId,
       patientId: rec.patientId,
@@ -802,7 +802,7 @@ class EthereumService {
     const contract = this.getContract('Appointments');
     if (contract) {
       const apt = await contract.getAppointment(appointmentId);
-      if (!apt) {return null;}
+      if (!apt) { return null; }
       return {
         appointmentId: apt.appointmentId,
         patientId: apt.patientId,
@@ -817,7 +817,7 @@ class EthereumService {
     }
 
     const apt = this._stores.appointments.get(appointmentId);
-    if (!apt) {return null;}
+    if (!apt) { return null; }
     return {
       appointmentId: apt.appointmentId,
       patientId: apt.patientId,
@@ -863,7 +863,7 @@ class EthereumService {
     }
 
     const apt = this._stores.appointments.get(appointmentId);
-    if (!apt) {throw new Error('Appointment not found');}
+    if (!apt) { throw new Error('Appointment not found'); }
     apt.status = statusArg;
     apt.updatedAt = Date.now();
     this._stores.appointments.set(appointmentId, apt);
@@ -876,12 +876,12 @@ class EthereumService {
       return await this.sendTransaction(
         contract.updateAppointmentNotes,
         appointmentId,
-        notes || ''
+        notes || '',
       );
     }
 
     const apt = this._stores.appointments.get(appointmentId);
-    if (!apt) {throw new Error('Appointment not found');}
+    if (!apt) { throw new Error('Appointment not found'); }
     apt.notes = notes || apt.notes;
     apt.updatedAt = Date.now();
     this._stores.appointments.set(appointmentId, apt);
@@ -943,7 +943,7 @@ class EthereumService {
       return { transactionHash: `local-pres-${prescriptionId}-${now}`, blockNumber: 0, gasUsed: '0', status: 'success' };
     } catch (err) {
       logger.error('createPrescription contract call failed', {
-        prescriptionId, patientId, doctorId, medArgSample: (medArg || '').slice(0,200), dosageArg, instructionsArg, expiryArg, err: err.message,
+        prescriptionId, patientId, doctorId, medArgSample: (medArg || '').slice(0, 200), dosageArg, instructionsArg, expiryArg, err: err.message,
       });
       throw err;
     }
@@ -953,7 +953,7 @@ class EthereumService {
    * Validate ethereum address (simple check)
    */
   isValidEthAddress(address) {
-    if (!address || typeof address !== 'string') {return false;}
+    if (!address || typeof address !== 'string') { return false; }
     return /^0x[a-fA-F0-9]{40}$/.test(address);
   }
 
@@ -1081,7 +1081,7 @@ class EthereumService {
     const contract = this.getContract('Prescriptions');
     if (contract) {
       const rx = await contract.getPrescription(prescriptionId);
-      if (!rx) {return null;}
+      if (!rx) { return null; }
       return {
         prescriptionId: rx.prescriptionId,
         patientId: rx.patientId,
@@ -1096,7 +1096,7 @@ class EthereumService {
     }
 
     const p = this._stores.prescriptions.get(prescriptionId);
-    if (!p) {return null;}
+    if (!p) { return null; }
     return {
       prescriptionId: p.prescriptionId,
       patientId: p.patientId,
@@ -1203,6 +1203,199 @@ class EthereumService {
     const contract = this.getContract(contractName);
     const tx = await contract.grantAdminRole(address);
     return await this.waitForTransaction(tx);
+  }
+
+  // ====== Insurance Claims Contract Methods ======
+
+  /**
+   * Submit insurance claim to blockchain
+   * @param {string} claimId - Unique claim identifier
+   * @param {string} policyNumber - Insurance policy number
+   * @param {string} patientId - Patient blockchain ID
+   * @param {string} providerId - Hospital/doctor ID
+   * @param {number} claimedAmount - Amount claimed (in wei)
+   * @param {string[]} supportingDocs - Array of IPFS hashes
+   */
+  async submitInsuranceClaim(claimId, policyNumber, patientId, providerId, claimedAmount, supportingDocs = []) {
+    const contract = this.getContract('InsuranceClaims');
+    if (!contract) {
+      logger.warn('InsuranceClaims contract not available, skipping blockchain submission');
+      return null;
+    }
+
+    try {
+      // Convert amount to wei if it's not already
+      const amountInWei = typeof claimedAmount === 'string' ?
+        claimedAmount :
+        Math.floor(claimedAmount * 100); // Store as cents for precision
+
+      return await this.sendTransaction(
+        contract.submitClaim,
+        claimId,
+        policyNumber,
+        patientId,
+        providerId,
+        amountInWei,
+        supportingDocs,
+      );
+    } catch (error) {
+      logger.error('Failed to submit claim to blockchain:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Verify insurance claim on blockchain
+   * @param {string} claimId - Claim identifier
+   */
+  async verifyInsuranceClaim(claimId) {
+    const contract = this.getContract('InsuranceClaims');
+    if (!contract) {
+      logger.warn('InsuranceClaims contract not available');
+      return null;
+    }
+
+    try {
+      return await this.sendTransaction(contract.verifyClaim, claimId);
+    } catch (error) {
+      logger.error('Failed to verify claim on blockchain:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Approve insurance claim on blockchain
+   * @param {string} claimId - Claim identifier
+   * @param {number} approvedAmount - Approved amount (in wei)
+   */
+  async approveInsuranceClaim(claimId, approvedAmount) {
+    const contract = this.getContract('InsuranceClaims');
+    if (!contract) {
+      logger.warn('InsuranceClaims contract not available');
+      return null;
+    }
+
+    try {
+      // Convert amount to wei if needed
+      const amountInWei = typeof approvedAmount === 'string' ?
+        approvedAmount :
+        Math.floor(approvedAmount * 100);
+
+      return await this.sendTransaction(
+        contract.approveClaim,
+        claimId,
+        amountInWei,
+      );
+    } catch (error) {
+      logger.error('Failed to approve claim on blockchain:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Reject insurance claim on blockchain
+   * @param {string} claimId - Claim identifier
+   * @param {string} reason - Rejection reason
+   */
+  async rejectInsuranceClaim(claimId, reason) {
+    const contract = this.getContract('InsuranceClaims');
+    if (!contract) {
+      logger.warn('InsuranceClaims contract not available');
+      return null;
+    }
+
+    try {
+      return await this.sendTransaction(
+        contract.rejectClaim,
+        claimId,
+        reason || 'No reason provided',
+      );
+    } catch (error) {
+      logger.error('Failed to reject claim on blockchain:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get insurance claim from blockchain
+   * @param {string} claimId - Claim identifier
+   */
+  async getInsuranceClaim(claimId) {
+    const contract = this.getContract('InsuranceClaims');
+    if (!contract) {
+      return null;
+    }
+
+    try {
+      const claim = await contract.getClaim(claimId);
+      return {
+        claimId: claim.claimId,
+        policyNumber: claim.policyNumber,
+        patientId: claim.patientId,
+        providerId: claim.providerId,
+        claimedAmount: claim.claimedAmount.toString(),
+        approvedAmount: claim.approvedAmount.toString(),
+        status: Number(claim.status),
+        supportingDocuments: claim.supportingDocuments,
+        submittedBy: claim.submittedBy,
+        verifiedBy: claim.verifiedBy,
+        approvedBy: claim.approvedBy,
+        submittedAt: Number(claim.submittedAt),
+        updatedAt: Number(claim.updatedAt),
+        rejectionReason: claim.rejectionReason,
+        exists: claim.exists,
+      };
+    } catch (error) {
+      logger.error('Failed to get claim from blockchain:', error);
+      return null;
+    }
+  }
+
+  // ====== Pharmacy Integration (Prescriptions Contract) ======
+
+  /**
+   * Verify prescription QR code hash on blockchain
+   * @param {string} prescriptionId - Prescription identifier
+   * @param {string} qrHash - QR code hash to verify
+   */
+  async verifyPrescriptionQR(prescriptionId, qrHash) {
+    const contract = this.getContract('Prescriptions');
+    if (!contract) {
+      logger.warn('Prescriptions contract not available');
+      return null;
+    }
+
+    try {
+      const isValid = await contract.verifyPrescriptionQR(prescriptionId, qrHash);
+      return isValid;
+    } catch (error) {
+      logger.error('Failed to verify prescription QR on blockchain:', error);
+      return false;
+    }
+  }
+
+  /**
+   * Fill prescription on blockchain (mark as dispensed)
+   * @param {string} prescriptionId - Prescription identifier
+   * @param {string} pharmacistId - Pharmacist ID who is dispensing
+   */
+  async fillPrescription(prescriptionId, pharmacistId) {
+    const contract = this.getContract('Prescriptions');
+    if (!contract) {
+      logger.warn('Prescriptions contract not available');
+      return null;
+    }
+
+    try {
+      return await this.sendTransaction(
+        contract.fillPrescription,
+        prescriptionId,
+        pharmacistId,
+      );
+    } catch (error) {
+      logger.error('Failed to fill prescription on blockchain:', error);
+      throw error;
+    }
   }
 }
 

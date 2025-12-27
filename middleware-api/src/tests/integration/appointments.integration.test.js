@@ -37,7 +37,7 @@ beforeAll(async () => {
     fabricEnrollmentId: 'int-doc',
     fullName: 'Int Doctor',
     role: 'DOCTOR',
-  }});
+  } });
 
   const patient = await dbService.prisma.patientWalletMapping.create({ data: {
     id: 'patient-int-1',
@@ -45,7 +45,7 @@ beforeAll(async () => {
     name: 'Int Patient',
     walletAddress: '0xPatientInt',
     createdBy: doctor.id,
-  }});
+  } });
 
   const apt = await dbService.prisma.appointment.create({ data: {
     appointmentId: 'int-apt-1',
@@ -54,11 +54,11 @@ beforeAll(async () => {
     status: 'SCHEDULED',
     patientId: patient.id,
     doctorId: doctor.id,
-  }});
+  } });
 });
 
 afterAll(async () => {
-  if (!INTEGRATION_DB) return;
+  if (!INTEGRATION_DB) {return;}
   // Cleanup test data
   try {
     await dbService.prisma.userAuditLog.deleteMany({ where: { action: { in: ['appointment.updated','appointment.cancelled'] } } });

@@ -9,14 +9,16 @@ import { appointmentsApi } from '@/lib/api-client';
 import { Calendar, Clock, User, PlusCircle } from 'lucide-react';
 import { ErrorBanner } from '@/components/ui/error-banner';
 import { ScheduleAppointmentDialog } from '@/components/doctor/DoctorActions';
+import { useRouter } from 'next/navigation';
 import type { AppointmentStatus } from '@/types';
 
 interface Appointment {
   appointmentId: string;
   patientId: string;
   doctorId: string;
-  appointmentDate: string;
-  appointmentTime: string;
+  appointmentDate?: string; // Old field
+  scheduledAt?: string; // New field from backend
+  appointmentTime?: string;
   status: AppointmentStatus;
   type: string;
   notes?: string;
@@ -29,6 +31,7 @@ export default function AppointmentsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showScheduleDialog, setShowScheduleDialog] = useState(false);
+  const router = useRouter();
 
   const fetchAppointments = async () => {
     try {
@@ -69,6 +72,61 @@ export default function AppointmentsPage() {
       case 'NO_SHOW': return 'outline';
       default: return 'outline';
     }
+  };
+
+  // Helper function to safely format date
+  const formatAppointmentDate = (appointment: Appointment): string => {
+    try {
+      // Try scheduledAt first (new field), then appointmentDate (old field)
+      const dateStr = appointment.scheduledAt || appointment.appointmentDate;
+
+      if (!dateStr) return 'No date set';
+
+      const date = new Date(dateStr);
+
+      // Check if date is valid
+      if (isNaN(date.getTime())) return 'Invalid date';
+
+      return date.toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric'
+      });
+    } catch (error) {
+      console.error('Date formatting error:', error);
+      return 'Invalid date';
+    }
+  };
+
+  // Helper function to extract time from scheduledAt or use appointmentTime
+  const formatAppointmentTime = (appointment: Appointment): string => {
+    try {
+      if (appointment.appointmentTime) {
+        return appointment.appointmentTime;
+      }
+
+      // Extract time from scheduledAt field
+      if (appointment.scheduledAt) {
+        const date = new Date(appointment.scheduledAt);
+        if (!isNaN(date.getTime())) {
+          return date.toLocaleTimeString('en-US', {
+            hour: '2-digit',
+            minute: '2-digit',
+            hour12: true
+          });
+        }
+      }
+
+      return 'No time set';
+    } catch (error) {
+      console.error('Time formatting error:', error);
+      return 'No time';
+    }
+  };
+
+  // Handle View Details click
+  const handleViewDetails = (appointment: Appointment) => {
+    router.push(`/dashboard/appointments/${appointment.appointmentId}`);
   };
 
   if (loading) {
@@ -148,9 +206,9 @@ export default function AppointmentsPage() {
                     <TableCell>
                       <div className="flex items-center gap-2">
                         <Calendar className="h-4 w-4" />
-                        {new Date(appointment.appointmentDate).toLocaleDateString()}
+                        {formatAppointmentDate(appointment)}
                         <Clock className="h-4 w-4 ml-2" />
-                        {appointment.appointmentTime}
+                        {formatAppointmentTime(appointment)}
                       </div>
                     </TableCell>
                     <TableCell>
@@ -162,7 +220,11 @@ export default function AppointmentsPage() {
                       </Badge>
                     </TableCell>
                     <TableCell>
-                      <Button variant="outline" size="sm">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleViewDetails(appointment)}
+                      >
                         View Details
                       </Button>
                     </TableCell>
@@ -189,3 +251,4 @@ export default function AppointmentsPage() {
     </div>
   );
 }
+

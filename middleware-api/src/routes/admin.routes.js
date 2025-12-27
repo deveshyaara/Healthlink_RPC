@@ -19,7 +19,7 @@ router.get('/stats', adminController.getStats.bind(adminController));
 // GET: All patients
 router.get('/users/patients', adminController.getPatients.bind(adminController));
 
-// GET: All doctors  
+// GET: All doctors
 router.get('/users/doctors', adminController.getDoctors.bind(adminController));
 
 // GET: Pending verifications

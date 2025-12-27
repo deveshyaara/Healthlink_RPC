@@ -15,6 +15,10 @@ import {
   Users,
   History,
   Settings,
+  Building2,
+  Stethoscope,
+  QrCode,
+  Shield,
 } from 'lucide-react';
 
 export interface NavRoute {
@@ -174,6 +178,48 @@ export const adminRoutes: NavRoute[] = [
 ];
 
 /**
+ * PHARMACY ROUTES (Phase 1)
+ * Pharmacist views for prescription verification and dispensing
+ */
+export const pharmacyRoutes: NavRoute[] = [
+  {
+    href: '/dashboard/pharmacy',
+    icon: QrCode,
+    label: 'Pharmacy',
+    description: 'E-prescription verification and dispensing',
+    roles: ['pharmacist', 'admin'],
+  },
+];
+
+/**
+ * HOSPITAL ROUTES (Phase 1)
+ * Hospital management for staff and departments
+ */
+export const hospitalRoutes: NavRoute[] = [
+  {
+    href: '/dashboard/hospital',
+    icon: Building2,
+    label: 'Hospital Management',
+    description: 'Manage departments and staff',
+    roles: ['hospital_admin', 'doctor', 'admin'],
+  },
+];
+
+/**
+ * INSURANCE ROUTES (Phase 1)
+ * Insurance claims and policy management
+ */
+export const insuranceRoutes: NavRoute[] = [
+  {
+    href: '/dashboard/insurance',
+    icon: Shield,
+    label: 'Insurance',
+    description: 'Claims and policy management',
+    roles: ['insurance', 'patient', 'admin'],
+  },
+];
+
+/**
  * COMMON ROUTES (appears for all roles)
  */
 export const commonRoutes: NavRoute[] = [
@@ -196,13 +242,19 @@ export function getRoutesForRole(role: string | undefined): NavRoute[] {
 
   switch (normalizedRole) {
     case 'doctor':
-      return [...doctorRoutes, ...commonRoutes];
+      return [...doctorRoutes, ...hospitalRoutes, ...commonRoutes];
     case 'patient':
       // Include patient-specific routes + shared routes from doctorRoutes that patients can access
       const sharedRoutes = doctorRoutes.filter(route => route.roles.includes('patient'));
-      return [...patientRoutes, ...sharedRoutes, ...commonRoutes];
+      return [...patientRoutes, ...sharedRoutes, ...insuranceRoutes, ...commonRoutes];
     case 'admin':
-      return [...adminRoutes, ...commonRoutes];
+      return [...adminRoutes, ...pharmacyRoutes, ...hospitalRoutes, ...insuranceRoutes, ...commonRoutes];
+    case 'pharmacist':
+      return [...pharmacyRoutes, ...commonRoutes];
+    case 'hospital_admin':
+      return [...hospitalRoutes, ...commonRoutes];
+    case 'insurance':
+      return [...insuranceRoutes, ...commonRoutes];
     default:
       return commonRoutes;
   }
@@ -230,7 +282,7 @@ export function canAccessRoute(userRole: string | undefined, routeHref: string):
     return true;
   }
 
-  const allRoutes = [...doctorRoutes, ...patientRoutes, ...adminRoutes, ...commonRoutes];
+  const allRoutes = [...doctorRoutes, ...patientRoutes, ...adminRoutes, ...pharmacyRoutes, ...hospitalRoutes, ...insuranceRoutes, ...commonRoutes];
 
   // First, try exact match
   const exactRoute = allRoutes.find((r) => r.href === routeHref);
@@ -260,6 +312,19 @@ export function canAccessRoute(userRole: string | undefined, routeHref: string):
     return true;
   }
 
+  // Phase 1 routes
+  if (routeHref.startsWith('/dashboard/pharmacy') && (normalizedRole === 'pharmacist' || normalizedRole === 'admin')) {
+    return true;
+  }
+
+  if (routeHref.startsWith('/dashboard/hospital') && (normalizedRole === 'hospital_admin' || normalizedRole === 'doctor' || normalizedRole === 'admin')) {
+    return true;
+  }
+
+  if (routeHref.startsWith('/dashboard/insurance') && (normalizedRole === 'insurance' || normalizedRole === 'patient' || normalizedRole === 'admin')) {
+    return true;
+  }
+
   // Default deny for safety
   return false;
 }
@@ -268,7 +333,7 @@ export function canAccessRoute(userRole: string | undefined, routeHref: string):
  * Check if a route path is restricted to specific role
  */
 export function isRestrictedRoute(pathname: string): { isRestricted: boolean; allowedRoles: string[] } {
-  const allRoutes = [...doctorRoutes, ...patientRoutes, ...adminRoutes, ...commonRoutes];
+  const allRoutes = [...doctorRoutes, ...patientRoutes, ...adminRoutes, ...pharmacyRoutes, ...hospitalRoutes, ...insuranceRoutes, ...commonRoutes];
   const route = allRoutes.find((r) => pathname.startsWith(r.href));
 
   if (!route) {
@@ -285,7 +350,7 @@ export function isRestrictedRoute(pathname: string): { isRestricted: boolean; al
  * Get page title from route href
  */
 export function getPageTitle(href: string, _role?: string): string {
-  const allRoutes = [...doctorRoutes, ...patientRoutes, ...adminRoutes, ...commonRoutes];
+  const allRoutes = [...doctorRoutes, ...patientRoutes, ...adminRoutes, ...pharmacyRoutes, ...hospitalRoutes, ...insuranceRoutes, ...commonRoutes];
   const route = allRoutes.find((r) => r.href === href);
   return route?.label || 'Dashboard';
 }
@@ -294,7 +359,7 @@ export function getPageTitle(href: string, _role?: string): string {
  * Get page description from route href
  */
 export function getPageDescription(href: string, _role?: string): string {
-  const allRoutes = [...doctorRoutes, ...patientRoutes, ...adminRoutes, ...commonRoutes];
+  const allRoutes = [...doctorRoutes, ...patientRoutes, ...adminRoutes, ...pharmacyRoutes, ...hospitalRoutes, ...insuranceRoutes, ...commonRoutes];
   const route = allRoutes.find((r) => r.href === href);
   return route?.description || '';
 }

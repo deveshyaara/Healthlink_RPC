@@ -6,7 +6,7 @@ import express from 'express';
 jest.unstable_mockModule('../middleware/auth.middleware.js', () => ({
   authenticateJWT: jest.fn((req, res, next) => {
     const auth = req.headers.authorization;
-    if (!auth) return res.status(401).json({ message: 'No authentication token provided' });
+    if (!auth) {return res.status(401).json({ message: 'No authentication token provided' });}
     const role = String(req.headers['x-test-role'] || 'doctor');
     const id = String(req.headers['x-test-id'] || 'user-1');
     req.user = { id, userId: id, role, walletAddress: id };
@@ -24,7 +24,7 @@ jest.unstable_mockModule('../services/transaction.service.js', () => ({
     getAppointment: jest.fn(async (id) => ({ success: true, data: { appointmentId: id, patientId: 'patient-1', doctorId: 'doc-1', status: 'SCHEDULED', notes: 'initial' } })),
     updateAppointment: jest.fn(async (id, data) => ({ success: true, data: { id, ...data } })),
     cancelAppointment: jest.fn(async (id) => ({ success: true })),
-  }
+  },
 }));
 
 // Mock config that other modules import (avoid heavy side-effects)
@@ -43,13 +43,13 @@ jest.unstable_mockModule('../services/db.service.prisma.js', () => ({ __esModule
     userAuditLog: {
       create: jest.fn(async (obj) => ({ id: 1, ...obj.data })),
       findFirst: jest.fn(async (query) => null),
-    }
+    },
   },
   logAuditEvent: jest.fn(async (userId, action, metadata) => {
     // Simulate writing to userAuditLog
     return { userId, action, metadata };
-  })
-}}));
+  }),
+} }));
 
 let router;
 let app;

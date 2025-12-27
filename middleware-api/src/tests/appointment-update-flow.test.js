@@ -20,7 +20,7 @@ jest.unstable_mockModule('../services/transaction.service.js', () => ({
   default: {
     getAppointment: jest.fn(async (id) => ({ success: true, data: { appointmentId: id, patientId: 'patient-x', doctorId: 'doc-update', status: 'SCHEDULED', notes: 'initial' } })),
     updateAppointment: jest.fn(async (id, data) => ({ success: true, data: { id, ...data } })),
-  }
+  },
 }));
 
 // Mock logger to mute logs
@@ -35,7 +35,7 @@ jest.unstable_mockModule('../services/db.service.prisma.js', () => ({ __esModule
     },
     userAuditLog: {
       create: jest.fn(async (obj) => ({ id: 1, ...obj.data })),
-    }
+    },
   },
   logAuditEvent: jest.fn(async (userId, action, metadata) => ({ userId, action, metadata })),
 } }));

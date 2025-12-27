@@ -16,7 +16,7 @@ jest.unstable_mockModule('../config/fabric-config.js', () => ({
 // Local copy of the small helpers from EthereumService so tests don't pull in full service dependencies
 function _decodeRevertData(raw) {
   try {
-    if (!raw || typeof raw !== 'string') return null;
+    if (!raw || typeof raw !== 'string') {return null;}
     if (raw.startsWith('0x08c379a0')) {
       const hex = raw.slice(10);
       const lenHex = hex.slice(64, 128);
@@ -94,6 +94,5 @@ describe('EthereumService _formatTransactionError (local helpers)', () => {
 
     expect(svc._stores.appointments.get('apt-1').status).toBe(2);
   });
-
 
 });

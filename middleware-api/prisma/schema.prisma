@@ -125,6 +125,15 @@ model User {
   isActive      Boolean @default(true) @map("is_active")
   emailVerified Boolean @default(false) @map("email_verified")
   
+  // Phase 1: Two-Factor Authentication
+  twoFactorSecret String? @map("two_factor_secret") @db.Text
+  twoFactorEnabled Boolean @default(false) @map("two_factor_enabled")
+  backupCodes String[] @map("backup_codes") @default([])
+  
+  // Phase 1: Hospital Affiliation (for doctors/staff)
+  hospitalId String? @map("hospital_id") @db.Uuid
+  hospital Hospital? @relation(fields: [hospitalId], references: [id], onDelete: SetNull)
+  
   // Timestamps
   createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt   DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
@@ -253,6 +262,9 @@ model PatientWalletMapping {
   medicalRecords MedicalRecord[]
   consentRequests ConsentRequest[]
   labTests LabTest[]
+  
+  // Phase 1: Insurance Relations
+  insurancePolicies InsurancePolicy[]
 
   @@index([email], name: "idx_patient_wallet_email")
   @@index([walletAddress], name: "idx_patient_wallet_address")
@@ -459,4 +471,228 @@ model ChatMessage {
   @@map("chat_messages")
 }
 
+// ============================================================================
+// Phase 1: Hospital Management Models
+// ============================================================================
+
+model Hospital {
+  // Primary Key
+  id String @id @default(uuid()) @db.Uuid
+  
+  // Hospital Details
+  name String @db.VarChar(255)
+  registrationNumber String @unique @map("registration_number") @db.VarChar(100)
+  type String @db.VarChar(50) // Government, Private, Specialty
+  address String @db.Text
+  phone String? @db.VarChar(20)
+  email String? @db.VarChar(255)
+  isActive Boolean @default(true) @map("is_active")
+  
+  // Relations
+  departments Department[]
+  staff User[]
+  
+  // Timestamps
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+  
+  @@index([registrationNumber], name: "idx_hospitals_registration")
+  @@map("hospitals")
+}
+
+model Department {
+  // Primary Key
+  id String @id @default(uuid()) @db.Uuid
+  
+  // Department Details
+  name String @db.VarChar(255)
+  description String? @db.Text
+  
+  // Hospital Relation
+  hospitalId String @map("hospital_id") @db.Uuid
+  hospital Hospital @relation(fields: [hospitalId], references: [id], onDelete: Cascade)
+  
+  // Head Doctor (optional)
+  headDoctorId String? @map("head_doctor_id") @db.Uuid
+  
+  // Timestamps
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+  
+  @@index([hospitalId], name: "idx_departments_hospital_id")
+  @@map("departments")
+}
+
+// ============================================================================
+// Phase 1: Pharmacy Models
+// ============================================================================
+
+model Pharmacy {
+  // Primary Key
+  id String @id @default(uuid()) @db.Uuid
+  
+  // Pharmacy Details
+  name String @db.VarChar(255)
+  licenseNumber String @unique @map("license_number") @db.VarChar(100)
+  address String @db.Text
+  phone String? @db.VarChar(20)
+  email String? @db.VarChar(255)
+  isActive Boolean @default(true) @map("is_active")
+  
+  // Relations
+  inventory DrugInventory[]
+  
+  // Timestamps
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+  
+  @@index([licenseNumber], name: "idx_pharmacies_license")
+  @@map("pharmacies")
+}
+
+model DrugInventory {
+  // Primary Key
+  id String @id @default(uuid()) @db.Uuid
+  
+  // Pharmacy Relation
+  pharmacyId String @map("pharmacy_id") @db.Uuid
+  pharmacy Pharmacy @relation(fields: [pharmacyId], references: [id], onDelete: Cascade)
+  
+  // Drug Details
+  drugName String @map("drug_name") @db.VarChar(255)
+  batchNumber String @map("batch_number") @db.VarChar(100)
+  quantity Int
+  expiryDate DateTime @map("expiry_date") @db.Date
+  manufacturer String? @db.VarChar(255)
+  pricePerUnit Decimal? @map("price_per_unit") @db.Decimal(10, 2)
+  
+  // Timestamps
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+  
+  @@index([pharmacyId], name: "idx_drug_inventory_pharmacy_id")
+  @@index([expiryDate], name: "idx_drug_inventory_expiry")
+  @@map("drug_inventory")
+}
+
+// ============================================================================
+// Phase 1: Insurance Models
+// ============================================================================
+
+model InsuranceProvider {
+  // Primary Key
+  id String @id @default(uuid()) @db.Uuid
+  
+  // Provider Details
+  name String @db.VarChar(255)
+  registrationNumber String @unique @map("registration_number") @db.VarChar(100)
+  contactEmail String @map("contact_email") @db.VarChar(255)
+  contactPhone String? @map("contact_phone") @db.VarChar(20)
+  isActive Boolean @default(true) @map("is_active")
+  
+  // Relations  
+  policies InsurancePolicy[]
+  
+  // Timestamps
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+  
+  @@index([registrationNumber], name: "idx_insurance_providers_registration")
+  @@map("insurance_providers")
+}
+
+model InsurancePolicy {
+  // Primary Key
+  id String @id @default(uuid()) @db.Uuid
+  
+  // Policy Details
+  policyNumber String @unique @map("policy_number") @db.VarChar(100)
+  coverageAmount Decimal @map("coverage_amount") @db.Decimal(10, 2)
+  validFrom DateTime @map("valid_from") @db.Date
+  validUntil DateTime @map("valid_until") @db.Date
+  isActive Boolean @default(true) @map("is_active")
+  
+  // Provider Relation
+  providerId String @map("provider_id") @db.Uuid
+  provider InsuranceProvider @relation(fields: [providerId], references: [id], onDelete: Cascade)
+  
+  // Patient Relation
+  patientId String @map("patient_id") @db.Uuid
+  patient PatientWalletMapping @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  
+  // Relations
+  claims InsuranceClaim[]
+  
+  // Timestamps
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+  
+  @@index([policyNumber], name: "idx_insurance_policies_number")
+  @@index([patientId], name: "idx_insurance_policies_patient_id")
+  @@map("insurance_policies")
+}
+
+model InsuranceClaim {
+  // Primary Key
+  id String @id @default(uuid()) @db.Uuid
+  
+  // Blockchain Reference
+  claimId String @unique @map("claim_id") @db.VarChar(255)
+  blockchainTxHash String? @map("blockchain_tx_hash") @db.VarChar(66)
+  
+  // Claim Details
+  claimedAmount Decimal @map("claimed_amount") @db.Decimal(10, 2)
+  approvedAmount Decimal? @map("approved_amount") @db.Decimal(10, 2)
+  status String @default("SUBMITTED") @db.VarChar(50) // SUBMITTED, VERIFIED, APPROVED, REJECTED, PAID
+  
+  // Policy Relation
+  policyId String @map("policy_id") @db.Uuid
+  policy InsurancePolicy @relation(fields: [policyId], references: [id], onDelete: Cascade)
+  
+  // Provider (Hospital/Doctor who submitted)
+  providerId String @map("provider_id") @db.Uuid
+  
+  // Supporting Documents (IPFS hashes)
+  supportingDocs String[] @map("supporting_docs")
+  
+  // Timestamps
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+  
+  @@index([claimId], name: "idx_insurance_claims_claim_id")
+  @@index([policyId], name: "idx_insurance_claims_policy_id")
+  @@index([status], name: "idx_insurance_claims_status")
+  @@map("insurance_claims")
+}
+
+// ============================================================================
+// Phase 1: System Audit Log (separate from UserAuditLog)
+// ============================================================================
+
+model SystemAuditLog {
+  // Primary Key
+  id String @id @default(uuid()) @db.Uuid
+  
+  // User (optional - system actions may not have user)
+  userId String? @map("user_id") @db.Uuid
+  
+  // Action Details
+  action String @db.VarChar(100) // DATA_ACCESS, CONSENT_GRANT, BLOCKCHAIN_TX, etc.
+  resourceType String @map("resource_type") @db.VarChar(50) // PATIENT_RECORD, PRESCRIPTION, etc.
+  resourceId String? @map("resource_id") @db.VarChar(255)
+  
+  // Metadata
+  metadata Json? // Additional context (flexible JSON)
+  ipAddress String? @map("ip_address") @db.Inet
+  userAgent String? @map("user_agent") @db.Text
+  
+  // Timestamp
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  
+  @@index([userId], name: "idx_system_audit_user_id")
+  @@index([action], name: "idx_system_audit_action")
+  @@index([resourceType], name: "idx_system_audit_resource_type")
+  @@index([createdAt(sort: Desc)], name: "idx_system_audit_created_at")
+  @@map("system_audit_logs")
+}
 

@@ -63,7 +63,7 @@ class ChatController {
         prescriptions: [],
         records: [],
         diagnoses: [],
-        medications: []
+        medications: [],
       };
 
       if (userRole === 'patient') {
@@ -74,10 +74,10 @@ class ChatController {
             user: {
               select: {
                 email: true,
-                fullName: true
-              }
-            }
-          }
+                fullName: true,
+              },
+            },
+          },
         });
 
         if (patient) {
@@ -90,8 +90,8 @@ class ChatController {
               appointmentId: true,
               scheduledAt: true,
               status: true,
-              notes: true
-            }
+              notes: true,
+            },
           }) || [];
 
           // Fetch prescriptions
@@ -104,8 +104,8 @@ class ChatController {
               medication: true,
               dosage: true,
               frequency: true,
-              createdAt: true
-            }
+              createdAt: true,
+            },
           }) || [];
 
           // Fetch medical records
@@ -117,8 +117,8 @@ class ChatController {
               recordId: true,
               diagnosis: true,
               treatment: true,
-              createdAt: true
-            }
+              createdAt: true,
+            },
           }) || [];
 
           context.appointments = appointments;
@@ -132,17 +132,17 @@ class ChatController {
       } else if (userRole === 'doctor') {
         // For doctors, provide summary stats
         const appointmentCount = await db.appointment?.count({
-          where: { doctorId: userId }
+          where: { doctorId: userId },
         }) || 0;
 
         const prescriptionCount = await db.prescription?.count({
-          where: { doctorId: userId }
+          where: { doctorId: userId },
         }) || 0;
 
         context.stats = {
           totalAppointments: appointmentCount,
           totalPrescriptions: prescriptionCount,
-          role: 'doctor'
+          role: 'doctor',
         };
       }
 
@@ -176,12 +176,12 @@ class ChatController {
         userName,
         message,
         threadId || `thread-${userId}`,
-        contextJson
+        contextJson,
       ], {
         env: {
           ...process.env,
-          PYTHONUNBUFFERED: '1' // Disable Python output buffering
-        }
+          PYTHONUNBUFFERED: '1', // Disable Python output buffering
+        },
       });
 
       let dataString = '';
@@ -262,8 +262,8 @@ class ChatController {
         message: 'Message is required',
         error: {
           code: 'MISSING_MESSAGE',
-          details: 'Message cannot be empty'
-        }
+          details: 'Message cannot be empty',
+        },
       });
     }
 
@@ -278,7 +278,7 @@ class ChatController {
         userName,
         message,
         thread_id,
-        patientContext
+        patientContext,
       );
 
       // Save conversation to database
@@ -292,8 +292,8 @@ class ChatController {
               role: 'user',
               content: message,
               threadId: result.thread_id || thread_id,
-              metadata: JSON.stringify({ userRole })
-            }
+              metadata: JSON.stringify({ userRole }),
+            },
           }).catch(err => logger.warn('Failed to save user message:', err));
 
           await db.chatMessage?.create({
@@ -302,8 +302,8 @@ class ChatController {
               role: 'assistant',
               content: result.response,
               threadId: result.thread_id || thread_id,
-              metadata: JSON.stringify({ patientContextUsed: !!patientContext })
-            }
+              metadata: JSON.stringify({ patientContextUsed: !!patientContext }),
+            },
           }).catch(err => logger.warn('Failed to save AI response:', err));
         }
       } catch (dbError) {
@@ -319,12 +319,12 @@ class ChatController {
           response: result.response,
           thread_id: result.thread_id,
           user_id: result.user_id,
-          timestamp: new Date().toISOString()
+          timestamp: new Date().toISOString(),
         },
         metadata: {
           agent: 'langgraph',
-          contextProvided: Object.keys(patientContext).length > 0
-        }
+          contextProvided: Object.keys(patientContext).length > 0,
+        },
       });
 
     } catch (error) {
@@ -336,8 +336,8 @@ class ChatController {
         message: 'Failed to process your message',
         error: {
           code: 'AGENT_ERROR',
-          details: error.message
-        }
+          details: error.message,
+        },
       });
     }
   }
@@ -355,7 +355,7 @@ class ChatController {
         'System',
         'Hello, are you working?',
         'health-check-thread',
-        {}
+        {},
       );
 
       return res.status(200).json({
@@ -366,8 +366,8 @@ class ChatController {
           pythonPath: this.pythonPath,
           agentScriptPath: this.agentScriptPath,
           testResponse: testResult.response?.substring(0, 100) + '...',
-          timestamp: new Date().toISOString()
-        }
+          timestamp: new Date().toISOString(),
+        },
       });
 
     } catch (error) {
@@ -379,8 +379,8 @@ class ChatController {
         message: 'Python LangGraph agent is unavailable',
         error: {
           code: 'AGENT_UNAVAILABLE',
-          details: error.message
-        }
+          details: error.message,
+        },
       });
     }
   }

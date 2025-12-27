@@ -15,13 +15,13 @@ function getPrismaClient() {
   throw new Error(
     hasDbUrl
       ? 'Database disconnected. Prisma failed to connect - check DATABASE_URL format.'
-      : 'DATABASE_URL environment variable is not set. Set it in Render dashboard.'
+      : 'DATABASE_URL environment variable is not set. Set it in Render dashboard.',
   );
 }
 
 // Helper to resolve the patient mapping model across possible prisma client naming
 function resolvePatientModel(db) {
-  if (!db) return null;
+  if (!db) {return null;}
   return db.patient || db.Patient;
 }
 
@@ -32,7 +32,7 @@ function resolvePatientModel(db) {
 class HealthcareController {
   // Resolve patient id by email (supports Prisma client or in-memory fallback)
   async resolvePatientId(email) {
-    if (!email) return null;
+    if (!email) {return null;}
     const db = getPrismaClient();
     const patient = db.patientWalletMapping && typeof db.patientWalletMapping.findUnique === 'function'
       ? await db.patientWalletMapping.findUnique({ where: { email } })
@@ -365,7 +365,7 @@ class HealthcareController {
         if (db && db.medicalRecord && typeof db.medicalRecord.create === 'function') {
           // Map incoming recordType strings to Prisma enum values where possible
           const mapRecordTypeToEnum = (rt) => {
-            if (!rt) return 'OTHER';
+            if (!rt) {return 'OTHER';}
             const normalized = String(rt).toUpperCase().replace(/[^A-Z0-9]/g, '_');
             const allowed = ['DIAGNOSIS', 'TREATMENT', 'PRESCRIPTION', 'LAB_RESULT', 'IMAGING', 'OTHER'];
             return allowed.includes(normalized) ? normalized : 'OTHER';
@@ -534,7 +534,7 @@ class HealthcareController {
         if (db.medicalRecord && typeof db.medicalRecord.findMany === 'function') {
           const records = await db.medicalRecord.findMany({
             where: { patientId },
-            orderBy: { createdAt: 'desc' }
+            orderBy: { createdAt: 'desc' },
           });
           result = { success: true, data: records, records: records, count: records.length };
         } else {
@@ -589,7 +589,7 @@ class HealthcareController {
 
             if (db.patientWalletMapping && typeof db.patientWalletMapping.findUnique === 'function') {
               const patientRecord = await db.patientWalletMapping.findUnique({
-                where: { email: userIdentifier }
+                where: { email: userIdentifier },
               });
 
               if (patientRecord) {
@@ -611,8 +611,8 @@ class HealthcareController {
                   select: {
                     id: true,
                     fullName: true,
-                    email: true
-                  }
+                    email: true,
+                  },
                 },
               },
               orderBy: { createdAt: 'desc' },
@@ -1527,8 +1527,8 @@ class HealthcareController {
         const db = getPrismaClient();
         if (db && db.prescription && typeof db.prescription.findMany === 'function') {
           const where = {};
-          if (userRole === 'patient') where.patientId = userIdentifier;
-          if (userRole === 'doctor') where.doctorId = userIdentifier;
+          if (userRole === 'patient') {where.patientId = userIdentifier;}
+          if (userRole === 'doctor') {where.doctorId = userIdentifier;}
 
           prescriptions = await db.prescription.findMany({
             where,
@@ -1549,7 +1549,7 @@ class HealthcareController {
                 },
               },
             },
-            orderBy: { createdAt: 'desc' }
+            orderBy: { createdAt: 'desc' },
           });
         } else if (userRole === 'admin') {
           // Admins can see all prescriptions (implementation needed)
@@ -1616,7 +1616,7 @@ class HealthcareController {
                   },
                 },
               },
-              orderBy: { scheduledAt: 'desc' }
+              orderBy: { scheduledAt: 'desc' },
             }) || [];
           } else {
             appointments = [];
@@ -1651,7 +1651,7 @@ class HealthcareController {
                   },
                 },
               },
-              orderBy: { scheduledAt: 'desc' }
+              orderBy: { scheduledAt: 'desc' },
             }) || [];
           } else {
             appointments = [];

@@ -1,8 +1,16 @@
 ﻿import express from 'express';
 import userController from '../controllers/user.controller.js';
+import adminController from '../controllers/admin.controller.js';
 import { authenticateJWT, requireAdmin } from '../middleware/auth.middleware.js';
 
 const router = express.Router();
+
+/**
+ * @route   GET /api/users
+ * @desc    Get all users (admin only)
+ * @access  Admin only
+ */
+router.get('/', authenticateJWT, requireAdmin, adminController.getUsers.bind(adminController));
 
 /**
  * @route   POST /api/users/invite

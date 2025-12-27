@@ -3,6 +3,7 @@ pragma solidity ^0.8.24;
 
 import "@openzeppelin/contracts/access/AccessControl.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
+import "@openzeppelin/contracts/utils/Strings.sol";
 
 /**
  * @title Prescriptions
@@ -28,6 +29,8 @@ contract Prescriptions is AccessControl, ReentrancyGuard {
         PrescriptionStatus status;
         string filledBy; // Pharmacist ID
         uint256 filledDate;
+        string qrCodeHash; // Phase 1: SHA256 hash of QR code for pharmacy verification
+        bool isDispensed; // Phase 1: Quick dispensed check
         uint256 createdAt;
         uint256 updatedAt;
         bool exists;
@@ -86,6 +89,8 @@ contract Prescriptions is AccessControl, ReentrancyGuard {
             status: PrescriptionStatus.Active,
             filledBy: "",
             filledDate: 0,
+            qrCodeHash: generateQRCodeHash(_prescriptionId, block.timestamp),
+            isDispensed: false,
             createdAt: block.timestamp,
             updatedAt: block.timestamp,
             exists: true
@@ -237,7 +242,80 @@ contract Prescriptions is AccessControl, ReentrancyGuard {
         grantRole(PHARMACIST_ROLE, _pharmacist);
     }
 
+    function revokePharmacistRole(address _pharmacist) external onlyRole(ADMIN_ROLE) {
+        revokeRole(PHARMACIST_ROLE, _pharmacist);
+    }
+
     function grantAdminRole(address _admin) external onlyRole(DEFAULT_ADMIN_ROLE) {
         grantRole(ADMIN_ROLE, _admin);
+    }
+
+    // ============================================================================
+    // Phase 1: QR Code Verification Functions
+    // ============================================================================
+
+    /**
+     * @notice Verify prescription by QR code hash
+     * @dev Used by pharmacies to verify prescription authenticity before dispensing
+     * @param _prescriptionId Prescription identifier
+     * @param _qrHash QR code hash to verify against stored hash
+     * @return isValid Whether the QR code is valid and prescription can be dispensed
+     */
+    function verifyPrescriptionQR(
+        string memory _prescriptionId,
+        string memory _qrHash
+    ) external view returns (bool isValid) {
+        require(prescriptions[_prescriptionId].exists, "Prescription does not exist");
+        
+        Prescription memory prescription = prescriptions[_prescriptionId];
+        
+        // Check if QR hash matches
+        if (keccak256(bytes(prescription.qrCodeHash)) != keccak256(bytes(_qrHash))) {
+            return false;
+        }
+        
+        // Check if prescription is active
+        if (prescription.status != PrescriptionStatus.Active) {
+            return false;
+        }
+        
+        // Check if already dispensed
+        if (prescription.isDispensed) {
+            return false;
+        }
+        
+        // Check if expired
+        if (block.timestamp > prescription.expiryDate) {
+            return false;
+        }
+        
+        return true;
+    }
+
+    /**
+     * @notice Generate QR code hash for a prescription (internal utility)
+     * @dev Combines prescription ID and timestamp for unique QR code
+     * @param _prescriptionId Prescription identifier
+     * @param _timestamp Creation timestamp
+     * @return QR code hash
+     */
+    function generateQRCodeHash(
+        string memory _prescriptionId,
+        uint256 _timestamp
+    ) internal pure returns (string memory) {
+        return string(abi.encodePacked(
+            _prescriptionId,
+            "-",
+            Strings.toString(_timestamp)
+        ));
+    }
+
+    /**
+     * @notice Mark prescription as dispensed (called during fillPrescription)
+     * @param _prescriptionId Prescription to mark as dispensed
+     */
+    function markAsDispensed(string memory _prescriptionId) internal {
+        prescriptions[_prescriptionId].isDispensed = true;
+        prescriptions[_prescriptionId].updatedAt = block.timestamp;
     }
 }

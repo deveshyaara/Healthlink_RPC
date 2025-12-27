@@ -18,12 +18,19 @@ import userRoutes from './routes/user.routes.js';
 import storageRoutes from './routes/storage.routes.js';
 import chatRoutes from './routes/chat.routes.js';
 import adminRoutes from './routes/admin.routes.js';
+import auditRoutes from './routes/audit.routes.js';
 import patientDataRoutes from './routes/patient-data.routes.js'; // ✅ Database-backed patient data
 import swaggerUi from 'swagger-ui-express';
 import swaggerSpec from './config/swagger.js';
 import ethereumService from './services/ethereum.service.js';
 import StorageService from './services/storage.service.js';
 import dbService from './services/db.service.prisma.js';
+
+// Phase 1: Import feature flags and new routes
+import { featureFlags, logFeatureFlagsStatus } from './config/feature-flags.config.js';
+import pharmacyRoutes from './routes/pharmacy.routes.js';
+import hospitalRoutes from './routes/hospital.routes.js';
+import insuranceRoutes from './routes/insurance.routes.js';
 
 /**
  * HealthLink Middleware API Server
@@ -166,17 +173,8 @@ app.use('/api/storage', storageRoutes);
 // Mount admin routes (must be before other routes to avoid conflicts)
 app.use('/api/v1/admin', adminRoutes);
 
-// Mount users API (for admin dashboard)
-app.use('/api/users', authenticateJWT, async (req, res, next) => {
-  const AdminController = (await import('./controllers/admin.controller.js')).default;
-  AdminController.getUsers(req, res, next);
-});
-
-// Mount health API (for admin dashboard)
-app.use('/api/health', async (req, res) => {
-  const AdminController = (await import('./controllers/admin.controller.js')).default;
-  AdminController.getHealth(req, res);
-});
+// Mount audit routes (for admin audit logs)
+app.use('/api/v1/audit', auditRoutes);
 
 // ======================
 // DEDICATED ROLE-BASED ROUTES
@@ -219,6 +217,28 @@ app.use(`/api/${API_VERSION}`, transactionRoutes);
 
 // Mount wallet routes
 app.use(`/api/${API_VERSION}/wallet`, walletRoutes);
+
+// ======================
+// Phase 1: New Role-Based Routes
+// ======================
+
+// Mount pharmacy routes (feature flag protected)
+if (featureFlags.enablePharmacy) {
+  app.use('/api/v1/pharmacy', pharmacyRoutes);
+  logger.info('✅ Pharmacy routes enabled');
+}
+
+// Mount hospital routes (feature flag protected)
+if (featureFlags.enableHospital) {
+  app.use('/api/v1/hospital', hospitalRoutes);
+  logger.info('✅ Hospital routes enabled');
+}
+
+// Mount insurance routes (feature flag protected)
+if (featureFlags.enableInsurance) {
+  app.use('/api/v1/insurance', insuranceRoutes);
+  logger.info('✅ Insurance routes enabled');
+}
 
 // Serve API documentation (Swagger UI) at /api-docs
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
@@ -327,6 +347,11 @@ const startServer = async () => {
     console.log('📋 Validating environment variables...');
     validateEnvironment();
     console.log('✅ Environment validation passed');
+
+    // Log feature flags status early
+    console.log('\n📋 Feature Flags Status:');
+    logFeatureFlagsStatus(logger);
+    console.log('');
 
     // Initialize Ethereum service first
     try {
