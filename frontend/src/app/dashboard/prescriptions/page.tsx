@@ -9,6 +9,7 @@ import { CreatePrescriptionForm } from '@/components/forms/create-prescription-f
 import { useState, useEffect } from 'react';
 import { prescriptionsApi } from '@/lib/api-client';
 import { useAuth } from '@/contexts/auth-context';
+import { useRouter } from 'next/navigation';
 import { Pill, PlusCircle, FileText } from 'lucide-react';
 import { ErrorBanner } from '@/components/ui/error-banner';
 
@@ -31,6 +32,7 @@ interface Prescription {
 
 export default function PrescriptionsPage() {
   const { user } = useAuth();
+  const router = useRouter();
   const [prescriptions, setPrescriptions] = useState<Prescription[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -183,7 +185,11 @@ export default function PrescriptionsPage() {
                       </Badge>
                     </TableCell>
                     <TableCell>
-                      <Button variant="outline" size="sm">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => router.push(`/dashboard/prescriptions/${prescription.prescriptionId}`)}
+                      >
                         View Details
                       </Button>
                     </TableCell>

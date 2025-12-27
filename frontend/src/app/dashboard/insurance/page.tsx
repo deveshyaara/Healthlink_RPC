@@ -9,6 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { insuranceAPI } from '@/lib/api/phase1';
 import { toast } from 'sonner';
 import { ClaimSubmitterDialog } from '@/components/insurance/ClaimSubmitterDialog';
+import { ClaimReviewCard } from '@/components/insurance/ClaimReviewCard';
 
 export default function InsuranceDashboard() {
     const [policies, setPolicies] = useState<any[]>([]);
@@ -190,57 +191,92 @@ export default function InsuranceDashboard() {
                 </TabsList>
 
                 <TabsContent value="claims" className="space-y-4">
-                    <Card>
-                        <CardHeader>
-                            <CardTitle>Insurance Claims</CardTitle>
-                            <CardDescription>
-                                View and manage all insurance claims
-                            </CardDescription>
-                        </CardHeader>
-                        <CardContent>
+                    {userRole === 'insurance_admin' ? (
+                        // Insurance Admin View - Full Claim Review
+                        <div className="space-y-4">
+                            <Card>
+                                <CardHeader>
+                                    <CardTitle>Claims Requiring Review</CardTitle>
+                                    <CardDescription>
+                                        Review and approve or reject pending insurance claims
+                                    </CardDescription>
+                                </CardHeader>
+                            </Card>
+
                             {claims.length > 0 ? (
-                                <div className="space-y-3">
+                                <div className="grid gap-4 md:grid-cols-2">
                                     {claims.map((claim) => (
-                                        <div key={claim.id} className="p-4 border rounded-lg">
-                                            <div className="flex justify-between items-start mb-2">
-                                                <div>
-                                                    <h3 className="font-semibold">{claim.claimId}</h3>
-                                                    <p className="text-sm text-muted-foreground">
-                                                        Policy: {claim.policy?.policyNumber}
-                                                    </p>
-                                                </div>
-                                                {getStatusBadge(claim.status)}
-                                            </div>
-                                            <div className="grid grid-cols-2 gap-4 mt-3 text-sm">
-                                                <div>
-                                                    <p className="text-muted-foreground">Claimed Amount</p>
-                                                    <p className="font-semibold">₹{claim.claimedAmount.toLocaleString()}</p>
-                                                </div>
-                                                {claim.approvedAmount && (
-                                                    <div>
-                                                        <p className="text-muted-foreground">Approved Amount</p>
-                                                        <p className="font-semibold text-green-600">
-                                                            ₹{claim.approvedAmount.toLocaleString()}
-                                                        </p>
-                                                    </div>
-                                                )}
-                                            </div>
-                                            {userRole === 'insurance' && claim.status === 'VERIFIED' && (
-                                                <div className="flex gap-2 mt-4">
-                                                    <Button size="sm" variant="default">Approve</Button>
-                                                    <Button size="sm" variant="destructive">Reject</Button>
-                                                </div>
-                                            )}
-                                        </div>
+                                        <ClaimReviewCard
+                                            key={claim.id}
+                                            claim={claim}
+                                            onUpdate={() => loadData({ role: userRole })}
+                                        />
                                     ))}
                                 </div>
                             ) : (
-                                <p className="text-muted-foreground text-center py-8">
-                                    No claims found.
-                                </p>
+                                <Card>
+                                    <CardContent className="py-12">
+                                        <p className="text-muted-foreground text-center">
+                                            No claims to review at this time.
+                                        </p>
+                                    </CardContent>
+                                </Card>
                             )}
-                        </CardContent>
-                    </Card>
+                        </div>
+                    ) : (
+                        // Patient / Hospital View - Read-Only Claims List
+                        <Card>
+                            <CardHeader>
+                                <CardTitle>Insurance Claims</CardTitle>
+                                <CardDescription>
+                                    {userRole === 'patient'
+                                        ? 'View status of your insurance claims'
+                                        : 'View and manage insurance claims'}
+                                </CardDescription>
+                            </CardHeader>
+                            <CardContent>
+                                {claims.length > 0 ? (
+                                    <div className="space-y-3">
+                                        {claims.map((claim) => (
+                                            <div key={claim.id} className="p-4 border rounded-lg">
+                                                <div className="flex justify-between items-start mb-2">
+                                                    <div>
+                                                        <h3 className="font-semibold">Claim #{claim.id.slice(0, 8)}</h3>
+                                                        <p className="text-sm text-muted-foreground">
+                                                            Policy: {claim.policy?.policyNumber || 'N/A'}
+                                                        </p>
+                                                    </div>
+                                                    {getStatusBadge(claim.status)}
+                                                </div>
+                                                <div className="grid grid-cols-2 gap-4 mt-3 text-sm">
+                                                    <div>
+                                                        <p className="text-muted-foreground">Claimed Amount</p>
+                                                        <p className="font-semibold">₹{claim.claimedAmount?.toLocaleString()}</p>
+                                                    </div>
+                                                    {claim.approvedAmount && (
+                                                        <div>
+                                                            <p className="text-muted-foreground">Approved Amount</p>
+                                                            <p className="font-semibold text-green-600">
+                                                                ₹{claim.approvedAmount.toLocaleString()}
+                                                            </p>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                                <div className="mt-3 text-sm">
+                                                    <p className="text-muted-foreground">Submitted</p>
+                                                    <p>{new Date(claim.createdAt).toLocaleDateString()}</p>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                ) : (
+                                    <p className="text-muted-foreground text-center py-8">
+                                        No claims found.
+                                    </p>
+                                )}
+                            </CardContent>
+                        </Card>
+                    )}
                 </TabsContent>
 
                 {userRole === 'patient' && (

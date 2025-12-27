@@ -9,6 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { useState, useEffect } from 'react';
 import { consentsApi } from '@/lib/api-client';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { useToast } from '@/hooks/use-toast';
 import { logger } from '@/lib/logger';
@@ -40,6 +41,7 @@ export default function ConsentPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [consentToRevoke, setConsentToRevoke] = useState<string | null>(null);
+  const [selectedConsent, setSelectedConsent] = useState<Consent | null>(null);
   const { toast } = useToast();
 
   const fetchConsents = async () => {
@@ -125,9 +127,9 @@ export default function ConsentPage() {
               <CardTitle className="font-headline text-2xl">Consent Management</CardTitle>
               <p className="text-muted-foreground">Control who has access to your records.</p>
             </div>
-            <Button>
+            <Button disabled title="Feature coming soon - Contact your administrator to grant consent">
               <PlusCircle className="mr-2 h-4 w-4" />
-                        Grant Consent
+              Grant Consent
             </Button>
           </div>
         </CardHeader>
@@ -149,12 +151,12 @@ export default function ConsentPage() {
               </div>
               <h3 className="text-lg font-medium mb-2">No consents yet</h3>
               <p className="text-muted-foreground mb-6">
-              You haven&apos;t granted access to your medical records yet.
-              Click the button above to grant consent to healthcare providers.
+                You haven&apos;t granted access to your medical records yet.
+                Click the button above to grant consent to healthcare providers.
               </p>
-              <Button>
+              <Button disabled title="Feature coming soon - Contact your administrator to grant consent">
                 <PlusCircle className="mr-2 h-4 w-4" />
-                            Grant Your First Consent
+                Grant Your First Consent
               </Button>
             </div>
           ) : (
@@ -191,13 +193,15 @@ export default function ConsentPage() {
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
                           <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                          <DropdownMenuItem>View Details</DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => setSelectedConsent(consent)}>
+                            View Details
+                          </DropdownMenuItem>
                           {(consent.status !== 'Revoked' && consent.status !== 'revoked' && consent.status !== 'Expired' && consent.status !== 'expired') && (
                             <DropdownMenuItem
                               onClick={() => setConsentToRevoke(consent.consentId)}
                               className="text-destructive"
                             >
-                                                        Revoke Access
+                              Revoke Access
                             </DropdownMenuItem>
                           )}
                           <DropdownMenuSeparator />
@@ -212,6 +216,67 @@ export default function ConsentPage() {
           )}
         </CardContent>
       </Card>
+
+      {/* Consent Details Dialog */}
+      <Dialog open={!!selectedConsent} onOpenChange={(open) => !open && setSelectedConsent(null)}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Consent Details</DialogTitle>
+          </DialogHeader>
+          {selectedConsent && (
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="text-sm font-medium text-muted-foreground">Consent ID</label>
+                  <p className="text-sm font-mono">{selectedConsent.consentId}</p>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-muted-foreground">Status</label>
+                  <p>
+                    <Badge variant={statusVariant[selectedConsent.status || 'active'] || 'secondary'}>
+                      {selectedConsent.status || 'Active'}
+                    </Badge>
+                  </p>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-muted-foreground">Patient ID</label>
+                  <p className="text-sm font-mono">{selectedConsent.patientId}</p>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-muted-foreground">Granted To</label>
+                  <p className="text-sm font-mono">{selectedConsent.granteeId}</p>
+                </div>
+                <div className="col-span-2">
+                  <label className="text-sm font-medium text-muted-foreground">Scope</label>
+                  <p>{selectedConsent.scope}</p>
+                </div>
+                <div className="col-span-2">
+                  <label className="text-sm font-medium text-muted-foreground">Purpose</label>
+                  <p>{selectedConsent.purpose}</p>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-muted-foreground">Valid Until</label>
+                  <p>{new Date(selectedConsent.validUntil).toLocaleDateString('en-US', {
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric'
+                  })}</p>
+                </div>
+                {selectedConsent.createdAt && (
+                  <div>
+                    <label className="text-sm font-medium text-muted-foreground">Created</label>
+                    <p>{new Date(selectedConsent.createdAt).toLocaleDateString('en-US', {
+                      year: 'numeric',
+                      month: 'long',
+                      day: 'numeric'
+                    })}</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
 
       <ConfirmDialog
         open={consentToRevoke !== null}

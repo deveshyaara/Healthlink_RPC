@@ -587,6 +587,14 @@ export const appointmentsApi = {
   },
 
   /**
+   * Get appointment by ID
+   * Backend route: GET /api/appointments/:appointmentId
+   */
+  getById: async (appointmentId: string): Promise<Appointment> => {
+    return fetchApi<Appointment>(`/api/appointments/${appointmentId}`, { method: 'GET' });
+  },
+
+  /**
    * Create new appointment
    * Backend route: POST /api/v1/healthcare/appointments
    * Function: CreateAppointment
@@ -645,6 +653,14 @@ export const prescriptionsApi = {
     const response = await fetchApi<{ success: boolean; prescriptions?: Prescription[]; data?: Prescription[] }>(endpoint, { method: 'GET' }, true);
     // Backend returns {success: true, prescriptions: [...], data: [...]}
     return response.prescriptions || response.data || (Array.isArray(response) ? response : []);
+  },
+
+  /**
+   * Get prescription by ID
+   * Backend route: GET /api/prescriptions/:prescriptionId
+   */
+  getById: async (prescriptionId: string): Promise<Prescription> => {
+    return fetchApi<Prescription>(`/api/prescriptions/${prescriptionId}`, { method: 'GET' });
   },
 
   /**

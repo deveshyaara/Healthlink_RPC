@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { Building2, Users, BarChart3, Plus } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -11,6 +12,7 @@ import { AddDepartmentDialog } from '@/components/hospital/AddDepartmentDialog';
 import { HospitalAnalytics } from '@/components/hospital/HospitalAnalytics';
 
 export default function HospitalDashboard() {
+    const router = useRouter();
     const [hospitalId, setHospitalId] = useState<string | null>(null);
     const [stats, setStats] = useState({
         staffCount: 0,
@@ -207,7 +209,11 @@ export default function HospitalDashboard() {
                                                     </p>
                                                 )}
                                             </div>
-                                            <Button variant="outline" size="sm">
+                                            <Button
+                                                variant="outline"
+                                                size="sm"
+                                                onClick={() => router.push(`/dashboard/hospital/${member.id}`)}
+                                            >
                                                 View Details
                                             </Button>
                                         </div>

@@ -3,6 +3,8 @@
  * Centralized API calls for pharmacy, hospital, and insurance features
  */
 
+import { authUtils } from '../auth-utils';
+
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
 
 // Helper function to make authenticated API calls
@@ -10,7 +12,7 @@ async function apiCall<T>(
     endpoint: string,
     options: RequestInit = {}
 ): Promise<T> {
-    const token = localStorage.getItem('token');
+    const token = authUtils.getToken();
 
     const headers = {
         'Content-Type': 'application/json',

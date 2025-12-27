@@ -97,10 +97,32 @@ export default function SignupPage() {
                 <SelectContent>
                   <SelectItem value="patient">Patient</SelectItem>
                   <SelectItem value="doctor">Healthcare Provider</SelectItem>
-                  <SelectItem value="admin">Administrator</SelectItem>
+                  <SelectItem value="hospital_admin">Hospital Administrator</SelectItem>
+                  <SelectItem value="insurance_admin">Insurance Administrator</SelectItem>
+                  <SelectItem value="admin">System Administrator</SelectItem>
                 </SelectContent>
               </Select>
             </div>
+
+            {/* Helper text for organizational roles */}
+            {formData.role === 'hospital_admin' && (
+              <div className="p-3 text-sm bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded">
+                <p className="font-medium">Hospital Administrator</p>
+                <p className="text-muted-foreground mt-1">
+                  After registration, contact the system admin to assign you to your hospital. You'll need your hospital ID.
+                </p>
+              </div>
+            )}
+
+            {formData.role === 'insurance_admin' && (
+              <div className="p-3 text-sm bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded">
+                <p className="font-medium">Insurance Administrator</p>
+                <p className="text-muted-foreground mt-1">
+                  After registration, contact the system admin to assign you to your insurance company. You'll need your insurance company ID.
+                </p>
+              </div>
+            )}
+
             <Button type="submit" className="w-full" disabled={loading}>
               {loading ? 'Creating Account...' : 'Create Account'}
             </Button>
@@ -108,9 +130,9 @@ export default function SignupPage() {
         </CardContent>
         <CardFooter className="flex flex-col gap-4">
           <p className="text-center text-sm text-muted-foreground">
-                        Already have an account?{' '}
+            Already have an account?{' '}
             <Link href="/login" className="text-primary hover:underline font-medium">
-                            Log In
+              Log In
             </Link>
           </p>
         </CardFooter>
