@@ -128,24 +128,26 @@ export default function Home() {
                 whileHover={{ scale: 1.02, rotateY: 5 }}
                 className="relative aspect-[4/3] rounded-[2rem] shadow-2xl overflow-hidden border border-white/20 backdrop-blur-sm bg-white/5 transform-style-3d"
               >
-                {heroImage && (
-                  <Image
-                    src={heroImage.url}
-                    alt={heroImage.alt}
-                    fill
-                    style={{ objectFit: 'cover' }}
-                    className="transition-transform duration-700"
-                    priority
-                  />
-                )}
+                {/* Blockchain Health Background Image */}
+                <Image
+                  src="/blockchain-health.png"
+                  alt="Blockchain Healthcare Network"
+                  fill
+                  style={{ objectFit: 'cover' }}
+                  className="opacity-80 transition-transform duration-700"
+                  priority
+                />
 
-                {/* Floating Cards with Parallax */}
+                {/* Overlay gradient for better card visibility */}
+                <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent" />
+
+                {/* Floating Status Card with Parallax */}
                 <motion.div
                   initial={{ x: 50, opacity: 0 }}
                   animate={{ x: 0, opacity: 1 }}
                   transition={{ delay: 1, duration: 0.5 }}
                   whileHover={{ y: -5 }}
-                  className="absolute bottom-8 left-8 bg-white/90 dark:bg-neutral-900/90 backdrop-blur-md p-4 rounded-xl shadow-lg border border-white/20 max-w-[200px]"
+                  className="absolute bottom-8 left-8 bg-white/90 dark:bg-neutral-900/90 backdrop-blur-md p-4 rounded-xl shadow-lg border border-white/20 max-w-[200px] z-10"
                 >
                   <div className="flex items-center gap-3 mb-2">
                     <div className="h-8 w-8 rounded-full bg-green-100 flex items-center justify-center">

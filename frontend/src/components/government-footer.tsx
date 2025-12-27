@@ -101,18 +101,18 @@ export function GovernmentFooter() {
             <ul className="space-y-3 text-sm">
               <li className="flex items-start gap-2">
                 <MapPin className="h-4 w-4 mt-1 flex-shrink-0" />
-                <span>Ministry of Health & Family Welfare<br />Nirman Bhawan, New Delhi - 110011</span>
+                <span>HealthLink Pro HQ<br />San Francisco, CA - 94105</span>
               </li>
               <li className="flex items-center gap-2">
                 <Phone className="h-4 w-4" />
                 <a href="tel:1800-XXX-XXXX" className="hover:text-government-blue transition-colors">
-                  1800-XXX-XXXX (Toll Free)
+                  1-800-HEALTH-PRO (Toll Free)
                 </a>
               </li>
               <li className="flex items-center gap-2">
                 <Mail className="h-4 w-4" />
-                <a href="mailto:support@healthlinkpro.gov.in" className="hover:text-government-blue transition-colors">
-                  support@healthlinkpro.gov.in
+                <a href="mailto:support@healthlinkpro.com" className="hover:text-government-blue transition-colors">
+                  support@healthlinkpro.com
                 </a>
               </li>
             </ul>
@@ -120,60 +120,13 @@ export function GovernmentFooter() {
         </div>
       </div>
 
-      {/* Government Links Bar */}
-      <div className="bg-neutral-950 py-4">
-        <div className="container mx-auto px-4">
-          <div className="flex flex-wrap justify-center gap-6 text-xs text-neutral-400">
-            <a
-              href="https://www.india.gov.in"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="hover:text-government-blue transition-colors"
-            >
-              India.gov.in
-            </a>
-            <a
-              href="https://www.mygov.in"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="hover:text-government-blue transition-colors"
-            >
-              MyGov.in
-            </a>
-            <a
-              href="https://www.digitalindia.gov.in"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="hover:text-government-blue transition-colors"
-            >
-              Digital India
-            </a>
-            <a
-              href="https://www.data.gov.in"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="hover:text-government-blue transition-colors"
-            >
-              Data.gov.in
-            </a>
-            <a
-              href="https://www.abdm.gov.in"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="hover:text-government-blue transition-colors"
-            >
-              Ayushman Bharat Digital Mission
-            </a>
-          </div>
-        </div>
-      </div>
 
       {/* Copyright Bar */}
       <div className="bg-government-blue py-3">
         <div className="container mx-auto px-4">
           <div className="flex flex-col md:flex-row justify-between items-center gap-2 text-xs text-white">
             <p>
-              © {currentYear} HealthLink Pro. All rights reserved. | A Government of India Initiative
+              © {currentYear} HealthLink Pro. All rights reserved. | Blockchain-Powered Healthcare Platform
             </p>
             <p>
               Last Updated: {new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
@@ -185,7 +138,7 @@ export function GovernmentFooter() {
       {/* Accessibility Statement */}
       <div className="sr-only">
         This website is designed to be accessible to all users including those using assistive technologies.
-        For any accessibility issues, please contact us at accessibility@healthlinkpro.gov.in
+        For any accessibility issues, please contact us at accessibility@healthlinkpro.com
       </div>
     </footer>
   );

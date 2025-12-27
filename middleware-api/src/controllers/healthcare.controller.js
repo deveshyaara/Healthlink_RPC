@@ -21,7 +21,7 @@ function getPrismaClient() {
 
 // Helper to resolve the patient mapping model across possible prisma client naming
 function resolvePatientModel(db) {
-  if (!db) {return null;}
+  if (!db) { return null; }
   return db.patient || db.Patient;
 }
 
@@ -32,7 +32,7 @@ function resolvePatientModel(db) {
 class HealthcareController {
   // Resolve patient id by email (supports Prisma client or in-memory fallback)
   async resolvePatientId(email) {
-    if (!email) {return null;}
+    if (!email) { return null; }
     const db = getPrismaClient();
     const patient = db.patientWalletMapping && typeof db.patientWalletMapping.findUnique === 'function'
       ? await db.patientWalletMapping.findUnique({ where: { email } })
@@ -365,7 +365,7 @@ class HealthcareController {
         if (db && db.medicalRecord && typeof db.medicalRecord.create === 'function') {
           // Map incoming recordType strings to Prisma enum values where possible
           const mapRecordTypeToEnum = (rt) => {
-            if (!rt) {return 'OTHER';}
+            if (!rt) { return 'OTHER'; }
             const normalized = String(rt).toUpperCase().replace(/[^A-Z0-9]/g, '_');
             const allowed = ['DIAGNOSIS', 'TREATMENT', 'PRESCRIPTION', 'LAB_RESULT', 'IMAGING', 'OTHER'];
             return allowed.includes(normalized) ? normalized : 'OTHER';
@@ -890,13 +890,23 @@ class HealthcareController {
         return res.status(404).json({ success: false, error: 'Appointment not found' });
       }
 
-      // Authorization: patients can only access their own appointments
+      // Authorization check for patients
       const userIdentifier = req.user.userId || req.user.id || req.user.walletAddress;
       const userRole = req.user.role;
 
       if (userRole === 'patient') {
-        const patientIdOnRecord = result.data.patientId || result.data.patient?.id || result.data.patientId;
-        if (patientIdOnRecord !== userIdentifier && patientIdOnRecord !== req.user.walletAddress) {
+        const patientIdOnRecord = result.data.patientId || result.data.patient?.id;
+
+        // Check if userIdentifier matches
+        let hasAccess = patientIdOnRecord === userIdentifier || patientIdOnRecord === req.user.walletAddress;
+
+        // If user is identified by email, resolve to patient ID
+        if (!hasAccess && req.user.email) {
+          const resolvedPatientId = await this.resolvePatientId(req.user.email);
+          hasAccess = resolvedPatientId === patientIdOnRecord;
+        }
+
+        if (!hasAccess) {
           return res.status(403).json({ success: false, error: 'Patients can only access their own appointments' });
         }
       }
@@ -926,8 +936,18 @@ class HealthcareController {
       const userRole = req.user.role;
 
       if (userRole === 'patient') {
-        const patientIdOnRecord = result.data.patientId || result.data.patient?.id || result.data.patientId;
-        if (patientIdOnRecord !== userIdentifier && patientIdOnRecord !== req.user.walletAddress) {
+        const patientIdOnRecord = result.data.patientId || result.data.patient?.id;
+
+        // Check if userIdentifier matches
+        let hasAccess = patientIdOnRecord === userIdentifier || patientIdOnRecord === req.user.walletAddress;
+
+        // If user is identified by email, resolve to patient ID
+        if (!hasAccess && req.user.email) {
+          const resolvedPatientId = await this.resolvePatientId(req.user.email);
+          hasAccess = resolvedPatientId === patientIdOnRecord;
+        }
+
+        if (!hasAccess) {
           return res.status(403).json({ success: false, error: 'Patients can only access their own prescriptions' });
         }
       }
@@ -1527,8 +1547,8 @@ class HealthcareController {
         const db = getPrismaClient();
         if (db && db.prescription && typeof db.prescription.findMany === 'function') {
           const where = {};
-          if (userRole === 'patient') {where.patientId = userIdentifier;}
-          if (userRole === 'doctor') {where.doctorId = userIdentifier;}
+          if (userRole === 'patient') { where.patientId = userIdentifier; }
+          if (userRole === 'doctor') { where.doctorId = userIdentifier; }
 
           prescriptions = await db.prescription.findMany({
             where,
