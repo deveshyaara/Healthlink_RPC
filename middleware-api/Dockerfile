@@ -14,7 +14,7 @@ COPY prisma ./prisma/
 COPY prisma.config.ts ./
 
 # Install Node.js dependencies
-RUN npm ci --only=production
+RUN npm install --only=production
 
 # Generate Prisma Client
 RUN npx prisma generate
