@@ -202,6 +202,10 @@ app.use(`/api/${API_VERSION}/healthcare`, healthcareRoutes);
 // This is used for POST operations (creating records)
 app.use('/api/medical-records', healthcareRoutes);
 
+// ✅ Add explicit aliases for frontend compatibility (Direct ID access)
+app.get('/api/appointments/:appointmentId', authenticateJWT, healthcareController.getAppointment);
+app.get('/api/prescriptions/:prescriptionId', authenticateJWT, healthcareController.getPrescription);
+
 // Note: Patient data endpoints (appointments, prescriptions, consents, medical-records, lab-tests)
 // are now handled by the database-backed patient-data router mounted above.
 // This queries Supabase instead of blockchain for better performance and RLS security.

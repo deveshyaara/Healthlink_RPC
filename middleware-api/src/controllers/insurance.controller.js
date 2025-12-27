@@ -303,6 +303,11 @@ class InsuranceController {
       // Filter by user role
       if (userRole === 'hospital_admin') {
         where.providerId = req.user.userId;
+      } else if (userRole === 'patient') {
+        // Patients can only see claims for their own policies
+        where.policy = {
+          patientId: req.user.userId
+        };
       }
       // Insurance and admin see all
 

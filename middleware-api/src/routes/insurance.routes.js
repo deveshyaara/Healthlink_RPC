@@ -91,7 +91,7 @@ router.get(
 router.get(
   '/claims',
   authenticateJWT,
-  requireRole('insurance', 'hospital_admin', 'admin'),
+  requireRole('insurance', 'hospital_admin', 'admin', 'patient'),
   insuranceController.listClaims,
 );
 
