@@ -265,6 +265,9 @@ async function fetchApi<T>(
 
   if (token) {
     defaultHeaders['Authorization'] = `Bearer ${token}`;
+    console.log('🔑 [API Client] Auth token present - will be sent with request to:', endpoint);
+  } else {
+    console.warn('⚠️ [API Client] No auth token found for request to:', endpoint);
   }
 
   // Warn when there's no auth token for requests that are likely protected
@@ -676,20 +679,20 @@ export const prescriptionsApi = {
 export const consentsApi = {
   /**
    * Get all consents for current user
-   * Backend route: GET /api/consents
+   * Backend route: GET /api/patient/consents
    * Function: GetConsentsByPatient
    */
   getAll: async (): Promise<Consent[]> => {
-    return fetchApi<Consent[]>('/api/consents', { method: 'GET' }, true);
+    return fetchApi<Consent[]>('/api/patient/consents', { method: 'GET' }, true);
   },
 
   /**
    * Get specific consent by ID
-   * Backend route: GET /api/consents/:consentId
+   * Backend route: GET /api/patient/consents/:consentId
    * Function: GetConsent
    */
   getById: async (consentId: string): Promise<Consent> => {
-    return fetchApi<Consent>(`/api/consents/${consentId}`, { method: 'GET' });
+    return fetchApi<Consent>(`/api/patient/consents/${consentId}`, { method: 'GET' });
   },
 
   /**
@@ -706,11 +709,11 @@ export const consentsApi = {
 
   /**
    * Revoke consent
-   * Backend route: PATCH /api/consents/:consentId/revoke
+   * Backend route: PATCH /api/patient/consents/:consentId/revoke
    * Function: RevokeConsent
    */
   revoke: async (consentId: string): Promise<any> => {
-    return fetchApi<any>(`/api/consents/${consentId}/revoke`, {
+    return fetchApi<any>(`/api/patient/consents/${consentId}/revoke`, {
       method: 'PATCH',
     });
   },

@@ -133,6 +133,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setUser(response.user);
         authUtils.setUser(response.user);
 
+        console.log('✅ [Auth Context] Login successful - Token stored in localStorage');
+        console.log('🔑 [Auth Context] Token preview:', response.token.substring(0, 20) + '...');
+        console.log('👤 [Auth Context] User:', response.user.email, '-', response.user.role);
         logger.log('[Auth Context] Token stored, user set');
 
         toast({
