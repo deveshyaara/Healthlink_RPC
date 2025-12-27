@@ -6,11 +6,12 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge';
 import { useState, useEffect } from 'react';
 import { appointmentsApi } from '@/lib/api-client';
-import { Calendar, Clock, User, PlusCircle } from 'lucide-react';
+import { Calendar, Clock, User, PlusCircle, LayoutList, CalendarDays } from 'lucide-react';
 import { ErrorBanner } from '@/components/ui/error-banner';
 import { ScheduleAppointmentDialog } from '@/components/doctor/DoctorActions';
 import { useRouter } from 'next/navigation';
 import type { AppointmentStatus } from '@/types';
+import { AppointmentCalendar } from '@/components/calendar/appointment-calendar';
 
 interface Appointment {
   appointmentId: string;
@@ -31,6 +32,7 @@ export default function AppointmentsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showScheduleDialog, setShowScheduleDialog] = useState(false);
+  const [viewMode, setViewMode] = useState<'calendar' | 'list'>('list');
   const router = useRouter();
 
   const fetchAppointments = async () => {
@@ -152,89 +154,118 @@ export default function AppointmentsPage() {
             Manage patient appointments and schedules
           </p>
         </div>
-        <Button
-          className="bg-government-blue hover:bg-government-blue/90"
-          onClick={() => setShowScheduleDialog(true)}
-        >
-          <PlusCircle className="mr-2 h-4 w-4" />
-          Schedule Appointment
-        </Button>
+        <div className="flex items-center gap-2">
+          {/* View Toggle */}
+          <div className="flex items-center bg-gray-100 dark:bg-gray-800 rounded-lg p-1">
+            <Button
+              variant={viewMode === 'calendar' ? 'default' : 'ghost'}
+              size="sm"
+              onClick={() => setViewMode('calendar')}
+              className="gap-2"
+            >
+              <CalendarDays className="h-4 w-4" />
+              Calendar
+            </Button>
+            <Button
+              variant={viewMode === 'list' ? 'default' : 'ghost'}
+              size="sm"
+              onClick={() => setViewMode('list')}
+              className="gap-2"
+            >
+              <LayoutList className="h-4 w-4" />
+              List
+            </Button>
+          </div>
+          <Button
+            className="bg-government-blue hover:bg-government-blue/90"
+            onClick={() => setShowScheduleDialog(true)}
+          >
+            <PlusCircle className="mr-2 h-4 w-4" />
+            Schedule Appointment
+          </Button>
+        </div>
       </div>
 
-      {/* Error Banner */}
-      {error && (
-        <ErrorBanner
-          title="Failed to Load Appointments"
-          message={error}
-          onRetry={() => window.location.reload()}
+      {/* Calendar or Table View */}
+      {viewMode === 'calendar' ? (
+        <AppointmentCalendar
+          appointments={appointments.map(apt => ({
+            ...apt,
+            appointmentDate: apt.scheduledAt || apt.appointmentDate || new Date().toISOString(),
+            type: apt.type || 'General',
+          }))}
+          onAppointmentClick={(apt) => handleViewDetails({
+            ...apt,
+            type: apt.type || 'General',
+            status: apt.status as AppointmentStatus
+          })}
         />
-      )}
-
-      {/* Appointments Table */}
-      <Card>
-        <CardHeader>
-          <CardTitle>All Appointments</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {!error && appointments.length === 0 ? (
-            <div className="text-center py-8">
-              <Calendar className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
-              <p className="text-muted-foreground">No appointments found</p>
-            </div>
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Patient ID</TableHead>
-                  <TableHead>Doctor ID</TableHead>
-                  <TableHead>Date & Time</TableHead>
-                  <TableHead>Type</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {appointments.map((appointment) => (
-                  <TableRow key={appointment.appointmentId}>
-                    <TableCell className="font-medium">
-                      <div className="flex items-center gap-2">
-                        <User className="h-4 w-4" />
-                        {appointment.patientId}
-                      </div>
-                    </TableCell>
-                    <TableCell>{appointment.doctorId}</TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-2">
-                        <Calendar className="h-4 w-4" />
-                        {formatAppointmentDate(appointment)}
-                        <Clock className="h-4 w-4 ml-2" />
-                        {formatAppointmentTime(appointment)}
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant="outline">{appointment.type}</Badge>
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant={getStatusVariant(appointment.status)}>
-                        {String(appointment.status).replace(/_/g, ' ').toLowerCase().replace(/(^|\s)\S/g, t => t.toUpperCase())}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleViewDetails(appointment)}
-                      >
-                        View Details
-                      </Button>
-                    </TableCell>
+      ) : (
+        <Card>
+          <CardHeader>
+            <CardTitle>All Appointments</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {!error && appointments.length === 0 ? (
+              <div className="text-center py-8">
+                <Calendar className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
+                <p className="text-muted-foreground">No appointments found</p>
+              </div>
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Patient ID</TableHead>
+                    <TableHead>Doctor ID</TableHead>
+                    <TableHead>Date & Time</TableHead>
+                    <TableHead>Type</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Actions</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          )}
-        </CardContent>
-      </Card>
+                </TableHeader>
+                <TableBody>
+                  {appointments.map((appointment) => (
+                    <TableRow key={appointment.appointmentId}>
+                      <TableCell className="font-medium">
+                        <div className="flex items-center gap-2">
+                          <User className="h-4 w-4" />
+                          {appointment.patientId}
+                        </div>
+                      </TableCell>
+                      <TableCell>{appointment.doctorId}</TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-2">
+                          <Calendar className="h-4 w-4" />
+                          {formatAppointmentDate(appointment)}
+                          <Clock className="h-4 w-4 ml-2" />
+                          {formatAppointmentTime(appointment)}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant="outline">{appointment.type}</Badge>
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant={getStatusVariant(appointment.status)}>
+                          {String(appointment.status).replace(/_/g, ' ').toLowerCase().replace(/(^|\s)\S/g, t => t.toUpperCase())}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleViewDetails(appointment)}
+                        >
+                          View Details
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       {/* Schedule Appointment Dialog */}
       {showScheduleDialog && (

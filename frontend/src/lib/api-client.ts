@@ -198,8 +198,7 @@ export interface Consent {
 }
 
 export interface GrantConsentRequest {
-  patientId: string;
-  granteeId: string;
+  granteeEmail: string;
   scope: string;
   purpose: string;
   validUntil: string;
@@ -222,10 +221,11 @@ export interface LabTest {
 }
 
 export interface CreateLabTestRequest {
-  patientId: string;
-  doctorId: string;
-  testName: string;
+  patientEmail: string;
   testType: string;
+  testName: string;
+  priority: 'routine' | 'urgent' | 'asap';
+  instructions?: string;
 }
 
 // Dashboard Stats Types
@@ -960,14 +960,52 @@ export const auditApi = {
 };
 
 export const labTestsApi = {
+  /**
+   * Get all lab tests for current user (role-based)
+   * Backend route: GET /api/v1/healthcare/lab-tests or /api/doctor/lab-tests or /api/patient/lab-tests
+   */
   getAll: async (): Promise<LabTest[]> => {
-    return [];
+    try {
+      const response = await fetchApi<any>('/api/v1/healthcare/lab-tests', { method: 'GET' });
+      // Handle both array and object responses
+      if (Array.isArray(response)) {
+        return response;
+      }
+      return response?.data || response?.labTests || [];
+    } catch (error) {
+      logger.error('Failed to fetch lab tests:', error);
+      return [];
+    }
   },
-  getById: async (_id: string): Promise<LabTest> => {
-    throw new Error('Lab Tests API not yet implemented');
+
+  /**
+   * Get lab test by ID
+   * Backend route: GET /api/v1/healthcare/lab-tests/:id
+   */
+  getById: async (id: string): Promise<LabTest> => {
+    return fetchApi<LabTest>(`/api/v1/healthcare/lab-tests/${id}`, { method: 'GET' });
   },
-  create: async (_data: CreateLabTestRequest): Promise<LabTest> => {
-    throw new Error('Lab Tests API not yet implemented');
+
+  /**
+   * Create new lab test order
+   * Backend route: POST /api/v1/healthcare/lab-tests
+   */
+  create: async (data: CreateLabTestRequest): Promise<LabTest> => {
+    return fetchApi<LabTest>('/api/v1/healthcare/lab-tests', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  },
+
+  /**
+   * Update lab test results (for lab technicians)
+   * Backend route: PATCH /api/v1/healthcare/lab-tests/:id
+   */
+  updateResults: async (id: string, results: string, status: string): Promise<LabTest> => {
+    return fetchApi<LabTest>(`/api/v1/healthcare/lab-tests/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ results, status }),
+    });
   },
 };
 

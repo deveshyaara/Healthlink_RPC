@@ -11,6 +11,8 @@ import { useState, useEffect } from 'react';
 import { labTestsApi } from '@/lib/api-client';
 import { ErrorBanner } from '@/components/ui/error-banner';
 import { TestTube, PlusCircle, FileText, Search, Eye } from 'lucide-react';
+import { ActionModal } from '@/components/ui/action-modal';
+import { OrderLabTestForm } from '@/components/forms/order-lab-test-form';
 
 interface LabTest {
   labTestId: string;
@@ -36,6 +38,8 @@ export default function LabTestsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [showOrderDialog, setShowOrderDialog] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
     const fetchLabTests = async () => {
@@ -66,9 +70,9 @@ export default function LabTestsPage() {
       const filtered = labTests.filter(
         (test) =>
           test.labTestId.toLowerCase().includes(query) ||
-                    test.patientId.toLowerCase().includes(query) ||
-                    test.testName.toLowerCase().includes(query) ||
-                    test.testType.toLowerCase().includes(query),
+          test.patientId.toLowerCase().includes(query) ||
+          test.testName.toLowerCase().includes(query) ||
+          test.testType.toLowerCase().includes(query),
       );
       setFilteredLabTests(filtered);
     }
@@ -119,9 +123,7 @@ export default function LabTestsPage() {
         actionButton={{
           label: 'Order Lab Test',
           icon: PlusCircle,
-          onClick: () => {
-            toast.info('Feature Coming Soon', { description: 'Lab test ordering will be available in the next update.' });
-          },
+          onClick: () => setShowOrderDialog(true),
         }}
       />
 
@@ -160,11 +162,11 @@ export default function LabTestsPage() {
               {!searchQuery && (
                 <Button
                   variant="outline"
-                  onClick={() => toast.info('Feature Coming Soon', { description: 'Lab test ordering will be available soon.' })}
+                  onClick={() => setShowOrderDialog(true)}
                   className="mt-4"
                 >
                   <PlusCircle className="mr-2 h-4 w-4" />
-                                    Order First Lab Test
+                  Order First Lab Test
                 </Button>
               )}
             </div>
@@ -215,7 +217,7 @@ export default function LabTestsPage() {
                           onClick={() => toast.info('Lab Test Details', { description: `Viewing test ${test.labTestId}` })}
                         >
                           <Eye className="mr-1 h-3 w-3" />
-                                                    View
+                          View
                         </Button>
                         {test.results && (
                           <Button
@@ -224,7 +226,7 @@ export default function LabTestsPage() {
                             onClick={() => toast.info('Download Results', { description: 'File download will be available soon.' })}
                           >
                             <FileText className="mr-1 h-3 w-3" />
-                                                        Results
+                            Results
                           </Button>
                         )}
                       </div>
@@ -236,6 +238,37 @@ export default function LabTestsPage() {
           )}
         </CardContent>
       </Card>
+
+      {/* Order Lab Test Dialog */}
+      <ActionModal
+        isOpen={showOrderDialog}
+        onClose={() => {
+          setShowOrderDialog(false);
+          setIsSubmitting(false);
+        }}
+        title="Order Lab Test"
+        description="Create a new laboratory test order for a patient"
+      >
+        <OrderLabTestForm
+          onSuccess={() => {
+            setShowOrderDialog(false);
+            setIsSubmitting(false);
+            // Refresh lab tests list
+            const fetchLabTests = async () => {
+              try {
+                const data = await labTestsApi.getAll();
+                const testsList = Array.isArray(data) ? data : [];
+                setLabTests(testsList);
+                setFilteredLabTests(testsList);
+              } catch (err) {
+                console.error('Failed to refresh lab tests:', err);
+              }
+            };
+            fetchLabTests();
+          }}
+          onSubmitting={setIsSubmitting}
+        />
+      </ActionModal>
     </div>
   );
 }

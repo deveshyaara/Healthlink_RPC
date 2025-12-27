@@ -13,6 +13,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { useToast } from '@/hooks/use-toast';
 import { logger } from '@/lib/logger';
+import { ActionModal } from '@/components/ui/action-modal';
+import { GrantConsentForm } from '@/components/forms/grant-consent-form';
 
 interface Consent {
   consentId: string;
@@ -42,6 +44,7 @@ export default function ConsentPage() {
   const [error, setError] = useState<string | null>(null);
   const [consentToRevoke, setConsentToRevoke] = useState<string | null>(null);
   const [selectedConsent, setSelectedConsent] = useState<Consent | null>(null);
+  const [showGrantDialog, setShowGrantDialog] = useState(false);
   const { toast } = useToast();
 
   const fetchConsents = async () => {
@@ -127,7 +130,7 @@ export default function ConsentPage() {
               <CardTitle className="font-headline text-2xl">Consent Management</CardTitle>
               <p className="text-muted-foreground">Control who has access to your records.</p>
             </div>
-            <Button disabled title="Feature coming soon - Contact your administrator to grant consent">
+            <Button onClick={() => setShowGrantDialog(true)}>
               <PlusCircle className="mr-2 h-4 w-4" />
               Grant Consent
             </Button>
@@ -154,7 +157,7 @@ export default function ConsentPage() {
                 You haven&apos;t granted access to your medical records yet.
                 Click the button above to grant consent to healthcare providers.
               </p>
-              <Button disabled title="Feature coming soon - Contact your administrator to grant consent">
+              <Button onClick={() => setShowGrantDialog(true)}>
                 <PlusCircle className="mr-2 h-4 w-4" />
                 Grant Your First Consent
               </Button>
@@ -288,6 +291,21 @@ export default function ConsentPage() {
         cancelText="Cancel"
         variant="destructive"
       />
+
+      {/* Grant Consent Dialog */}
+      <ActionModal
+        isOpen={showGrantDialog}
+        onClose={() => setShowGrantDialog(false)}
+        title="Grant Consent"
+        description="Allow a healthcare provider to access your medical records"
+      >
+        <GrantConsentForm
+          onSuccess={() => {
+            setShowGrantDialog(false);
+            fetchConsents();
+          }}
+        />
+      </ActionModal>
     </>
   );
 }
