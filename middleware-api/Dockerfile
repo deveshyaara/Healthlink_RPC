@@ -1,4 +1,4 @@
-# Use Node 20 on Debian Bookworm (includes Python 3.11+)
+# Use Node 20 on Debian Bookworm
 FROM node:20-bookworm
 
 # Install Python 3, pip, and venv
@@ -8,30 +8,28 @@ RUN apt-get update && \
 
 WORKDIR /app
 
-# --- LAYER 1: Node Dependencies (Cached) ---
+# --- LAYER 1: Node & Prisma Dependencies ---
 COPY package*.json ./
 
-# Removed --only=production to ensure TypeScript/build tools are available.
-# If you are strictly running compiled JS, you can add it back.
-RUN npm install
-
-# --- LAYER 2: Prisma Generation (Cached) ---
+# !!! FIX: Copy Prisma files BEFORE npm install !!!
+# This allows the "postinstall" script to find the schema
 COPY prisma ./prisma/
 COPY prisma.config.ts ./
-RUN npx prisma generate
 
-# --- LAYER 3: Python Dependencies (Cached) ---
-# We copy ONLY the requirements file first.
-# This prevents re-installing all pip packages every time you change code.
+# Install dependencies (triggers "npx prisma generate" automatically via postinstall)
+RUN npm install
+
+# (Optional) You can remove the explicit "RUN npx prisma generate" line
+# because "npm install" just did it. But keeping it is harmless.
+
+# --- LAYER 2: Python Dependencies (Cached) ---
 COPY python_agent/requirements.txt ./python_agent/requirements.txt
 
 RUN cd python_agent && \
     pip3 install --no-cache-dir -r requirements.txt --break-system-packages && \
     cd ..
 
-# --- LAYER 4: Application Code ---
-# Now we copy the actual source code. 
-# This layer changes most often, so we put it last.
+# --- LAYER 3: Application Code ---
 COPY . .
 
 # Expose port
