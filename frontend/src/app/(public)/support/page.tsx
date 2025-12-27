@@ -188,7 +188,7 @@ export default function SupportPage() {
                       <Label htmlFor="name">Full Name *</Label>
                       <Input
                         id="name"
-                        placeholder="John Doe"
+                        placeholder="Rahul Sharma"
                         value={formData.name}
                         onChange={(e) => handleChange('name', e.target.value)}
                         required

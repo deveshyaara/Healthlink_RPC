@@ -22,7 +22,7 @@ async function main() {
   // Load contract ABIs
   const HealthLink = await ethers.getContractFactory("HealthLink");
   const PatientRecords = await ethers.getContractFactory("PatientRecords");
-  
+
   // Connect to deployed contracts
   const healthLink = HealthLink.attach(deployment.contracts.HealthLink);
   const patientRecords = PatientRecords.attach(deployment.contracts.PatientRecords);
@@ -30,8 +30,8 @@ async function main() {
   // Example 1: Create a patient
   console.log("📝 Creating a patient...");
   const patientId = "PAT001";
-  const publicData = JSON.stringify({ name: "John Doe", age: 35 });
-  
+  const publicData = JSON.stringify({ name: "Rahul Sharma", age: 35 });
+
   const tx1 = await healthLink.connect(admin).createPatient(patientId, publicData);
   await tx1.wait();
   console.log("✅ Patient created with ID:", patientId);

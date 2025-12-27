@@ -39,7 +39,7 @@ jest.unstable_mockModule('../controllers/auth.controller.js', () => {
     login: jest.fn(async (req, res) => {
       try {
         const { email, password } = req.body || {};
-        if (!email || !password) {return res.status(400).json({ success: false, error: 'Missing credentials' });}
+        if (!email || !password) { return res.status(400).json({ success: false, error: 'Missing credentials' }); }
         const svc = global.__AUTH_SERVICE__;
         const user = await svc.authenticateUser(email, password);
         // Use svc.generateToken if provided, else fallback to a default
@@ -56,11 +56,11 @@ jest.unstable_mockModule('../controllers/auth.controller.js', () => {
     register: jest.fn(async (req, res) => {
       try {
         const { name, email, password, role } = req.body || {};
-        if (!name || !email || !password) {return res.status(400).json({ success: false, error: 'Missing fields' });}
+        if (!name || !email || !password) { return res.status(400).json({ success: false, error: 'Missing fields' }); }
         const svc = global.__AUTH_SERVICE__;
         const userId = email.replace(/[^a-zA-Z0-9]/g, '');
         const existing = await svc.getUserById(userId);
-        if (existing) {return res.status(409).json({ success: false, error: 'User already exists' });}
+        if (existing) { return res.status(409).json({ success: false, error: 'User already exists' }); }
         const user = await svc.registerUser({ userId, email, password, role, name });
         // Ensure response reflects the request email (tests expect plus-address preservation)
         const responseUser = { ...(user || {}), email };
@@ -81,10 +81,10 @@ jest.unstable_mockModule('../controllers/auth.controller.js', () => {
     getMe: jest.fn(async (req, res) => {
       try {
         const userId = req.user?.id || req.user?.userId;
-        if (!userId) {return res.status(401).json({ success: false, error: 'Unauthorized' });}
+        if (!userId) { return res.status(401).json({ success: false, error: 'Unauthorized' }); }
         const svc = global.__AUTH_SERVICE__;
         const user = await svc.getUserById(userId);
-        if (!user) {return res.status(404).json({ success: false, error: 'User not found' });}
+        if (!user) { return res.status(404).json({ success: false, error: 'User not found' }); }
         return res.status(200).json({ success: true, user });
       } catch (err) {
         return res.status(500).json({ success: false, error: err.message || 'Profile error' });
@@ -141,7 +141,7 @@ describe('Authentication API', () => {
     it('should login successfully with valid credentials', async () => {
       const mockUser = {
         userId: '123',
-        name: 'John Doe',
+        name: 'Rahul Sharma',
         email: 'john@example.com',
         role: 'PATIENT',
       };
@@ -274,7 +274,7 @@ describe('Authentication API', () => {
     it('should return current user profile', async () => {
       const mockUser = {
         userId: '123',
-        name: 'John Doe',
+        name: 'Rahul Sharma',
         email: 'john@example.com',
         role: 'PATIENT',
       };
