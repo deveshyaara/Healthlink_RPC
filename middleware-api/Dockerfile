@@ -1,34 +1,37 @@
-# Change "bullseye" to "bookworm"
+# Use Node 20 on Debian Bookworm (includes Python 3.11+)
 FROM node:20-bookworm
 
-# Install Python 3 and pip
+# Install Python 3, pip, and venv
 RUN apt-get update && \
     apt-get install -y python3 python3-pip python3-venv && \
     rm -rf /var/lib/apt/lists/*
 
-# Set working directory
 WORKDIR /app
 
-# Copy package files for Node.js
+# --- LAYER 1: Node Dependencies (Cached) ---
 COPY package*.json ./
+
+# Removed --only=production to ensure TypeScript/build tools are available.
+# If you are strictly running compiled JS, you can add it back.
+RUN npm install
+
+# --- LAYER 2: Prisma Generation (Cached) ---
 COPY prisma ./prisma/
 COPY prisma.config.ts ./
-
-# Install Node.js dependencies
-RUN npm install --only=production
-
-# Generate Prisma Client
 RUN npx prisma generate
 
-# Copy Python agent directory
-COPY python_agent ./python_agent
+# --- LAYER 3: Python Dependencies (Cached) ---
+# We copy ONLY the requirements file first.
+# This prevents re-installing all pip packages every time you change code.
+COPY python_agent/requirements.txt ./python_agent/requirements.txt
 
-# Install Python dependencies for LangGraph
 RUN cd python_agent && \
-    pip3 install --no-cache-dir -r requirements.txt && \
+    pip3 install --no-cache-dir -r requirements.txt --break-system-packages && \
     cd ..
 
-# Copy application source code
+# --- LAYER 4: Application Code ---
+# Now we copy the actual source code. 
+# This layer changes most often, so we put it last.
 COPY . .
 
 # Expose port
