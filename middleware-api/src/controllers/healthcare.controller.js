@@ -685,9 +685,12 @@ class HealthcareController {
     try {
       const { consentId, patientId, doctorAddress, validityDays } = req.body;
 
-      if (!transactionService || typeof transactionService.createConsent !== 'function') {
-        logger.warn('Transaction service unavailable when attempting to create consent');
-        return res.status(503).json({ success: false, error: 'Blockchain transaction service is temporarily unavailable' });
+      if (!transactionService?.createConsent || typeof transactionService.createConsent !== 'function') {
+        logger.warn('Transaction service or createConsent method unavailable');
+        return res.status(503).json({
+          success: false,
+          error: 'Consent service is temporarily unavailable. Please try again later.'
+        });
       }
 
       const result = await transactionService.createConsent(
@@ -696,6 +699,7 @@ class HealthcareController {
 
       res.status(201).json(result);
     } catch (error) {
+      logger.error('Error creating consent:', error);
       next(error);
     }
   }
