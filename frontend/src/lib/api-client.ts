@@ -689,6 +689,58 @@ export const prescriptionsApi = {
 };
 
 // ========================================
+// LAB TESTS API
+// ========================================
+
+export const labTestsApi = {
+  /**
+   * Get all lab tests for current user
+   * Backend routes:
+   * - For patients: GET /api/patient/lab-tests
+   * - For doctors: GET /api/doctor/lab-tests
+   * Automatically selects correct endpoint based on user role
+   */
+  getAll: async (): Promise<LabTest[]> => {
+    // Get user role from localStorage
+    const user = typeof window !== 'undefined' ? JSON.parse(localStorage.getItem('user') || '{}') : {};
+    const role = user.role?.toLowerCase();
+
+    // Determine endpoint based on role
+    const endpoint = role === 'doctor' ? '/api/doctor/lab-tests' : '/api/patient/lab-tests';
+
+    try {
+      const response = await fetchApi<{ success: boolean; labTests?: LabTest[]; data?: LabTest[] }>(endpoint, { method: 'GET' }, true);
+      // Backend returns {success: true, labTests: [...], data: [...]}
+      return response.labTests || response.data || (Array.isArray(response) ? response : []);
+    } catch (error) {
+      // Gracefully handle 404 - lab tests feature may not be fully implemented yet
+      console.warn('[Lab Tests API] Failed to fetch lab tests:', error);
+      return [];
+    }
+  },
+
+  /**
+   * Get lab test by ID
+   * Backend route: GET /api/lab-tests/:labTestId
+   */
+  getById: async (labTestId: string): Promise<LabTest> => {
+    return fetchApi<LabTest>(`/api/lab-tests/${labTestId}`, { method: 'GET' });
+  },
+
+  /**
+   * Create new lab test
+   * Backend route: POST /api/v1/healthcare/lab-tests
+   * Function: CreateLabTest
+   */
+  create: async (labTestData: CreateLabTestRequest): Promise<LabTest> => {
+    return fetchApi<LabTest>('/api/v1/healthcare/lab-tests', {
+      method: 'POST',
+      body: JSON.stringify(labTestData),
+    });
+  },
+};
+
+// ========================================
 // CONSENTS API
 // ========================================
 
@@ -956,56 +1008,6 @@ export const auditApi = {
    */
   getById: async (id: string): Promise<AuditLog> => {
     return fetchApi<AuditLog>(`/api/v1/audit/logs/${id}`, { method: 'GET' });
-  },
-};
-
-export const labTestsApi = {
-  /**
-   * Get all lab tests for current user (role-based)
-   * Backend route: GET /api/v1/healthcare/lab-tests or /api/doctor/lab-tests or /api/patient/lab-tests
-   */
-  getAll: async (): Promise<LabTest[]> => {
-    try {
-      const response = await fetchApi<any>('/api/v1/healthcare/lab-tests', { method: 'GET' });
-      // Handle both array and object responses
-      if (Array.isArray(response)) {
-        return response;
-      }
-      return response?.data || response?.labTests || [];
-    } catch (error) {
-      logger.error('Failed to fetch lab tests:', error);
-      return [];
-    }
-  },
-
-  /**
-   * Get lab test by ID
-   * Backend route: GET /api/v1/healthcare/lab-tests/:id
-   */
-  getById: async (id: string): Promise<LabTest> => {
-    return fetchApi<LabTest>(`/api/v1/healthcare/lab-tests/${id}`, { method: 'GET' });
-  },
-
-  /**
-   * Create new lab test order
-   * Backend route: POST /api/v1/healthcare/lab-tests
-   */
-  create: async (data: CreateLabTestRequest): Promise<LabTest> => {
-    return fetchApi<LabTest>('/api/v1/healthcare/lab-tests', {
-      method: 'POST',
-      body: JSON.stringify(data),
-    });
-  },
-
-  /**
-   * Update lab test results (for lab technicians)
-   * Backend route: PATCH /api/v1/healthcare/lab-tests/:id
-   */
-  updateResults: async (id: string, results: string, status: string): Promise<LabTest> => {
-    return fetchApi<LabTest>(`/api/v1/healthcare/lab-tests/${id}`, {
-      method: 'PATCH',
-      body: JSON.stringify({ results, status }),
-    });
   },
 };
 

@@ -250,6 +250,8 @@ export default function PrescriptionDetailPage() {
                 data={prescription.prescriptionId}
                 title="Prescription QR Code"
                 filename={`prescription-${prescription.prescriptionId}.png`}
+                type="prescription"
+                useFullUrl={true}
             />
         </div>
     );

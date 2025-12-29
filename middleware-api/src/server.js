@@ -31,6 +31,7 @@ import { featureFlags, logFeatureFlagsStatus } from './config/feature-flags.conf
 import pharmacyRoutes from './routes/pharmacy.routes.js';
 import hospitalRoutes from './routes/hospital.routes.js';
 import insuranceRoutes from './routes/insurance.routes.js';
+import publicVerificationRoutes from './routes/public-verification.routes.js';
 
 /**
  * HealthLink Middleware API Server
@@ -160,6 +161,13 @@ app.get('/api/blockchain/status', (req, res) => {
 
 const API_VERSION = config.server.apiVersion;
 const PORT = process.env.PORT || 4000;
+
+// ======================
+// Public Routes (No Authentication)
+// ======================
+
+// Mount public verification routes (must be before auth routes)
+app.use('/api/public/verify', publicVerificationRoutes);
 
 // Mount authentication routes
 app.use('/api/auth', authRoutes);

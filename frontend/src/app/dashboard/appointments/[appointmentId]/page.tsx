@@ -257,6 +257,8 @@ export default function AppointmentDetailPage() {
                 data={appointment.appointmentId}
                 title="Appointment QR Code"
                 filename={`appointment-${appointment.appointmentId}.png`}
+                type="appointment"
+                useFullUrl={true}
             />
         </div>
     );

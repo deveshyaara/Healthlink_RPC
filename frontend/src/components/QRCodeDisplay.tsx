@@ -11,6 +11,8 @@ interface QRCodeDisplayProps {
     title?: string;
     filename?: string;
     size?: number;
+    useFullUrl?: boolean; // If true, encode full verification URL
+    type?: 'prescription' | 'appointment'; // Type for URL construction
 }
 
 /**
@@ -23,15 +25,22 @@ export function QRCodeDisplay({
     data,
     title = 'QR Code',
     filename = 'qrcode.png',
-    size = 256
+    size = 256,
+    useFullUrl = true,
+    type
 }: QRCodeDisplayProps) {
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const [error, setError] = useState<string | null>(null);
     const [generating, setGenerating] = useState(true);
 
+    // Construct full URL if requested
+    const qrData = useFullUrl && type && typeof window !== 'undefined'
+        ? `${window.location.origin}/verify/${type}/${data}`
+        : data;
+
     useEffect(() => {
         const generateQR = async () => {
-            if (!canvasRef.current || !data) {
+            if (!canvasRef.current || !qrData) { // Changed from 'data' to 'qrData'
                 setError('Unable to generate QR code');
                 setGenerating(false);
                 return;
@@ -41,7 +50,7 @@ export function QRCodeDisplay({
                 setGenerating(true);
                 setError(null);
 
-                await QRCode.toCanvas(canvasRef.current, data, {
+                await QRCode.toCanvas(canvasRef.current, qrData, {
                     width: size,
                     margin: 2,
                     color: {
@@ -60,7 +69,7 @@ export function QRCodeDisplay({
         };
 
         generateQR();
-    }, [data, size]);
+    }, [qrData, size]);
 
     const handleDownload = () => {
         if (!canvasRef.current) return;
