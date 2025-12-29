@@ -224,6 +224,9 @@ app.get('/api/prescriptions/:prescriptionId', authenticateJWT, healthcareControl
 // Mount user management routes (legacy, kept for compatibility)
 app.use('/api/users', userRoutes);
 
+// Mount user profile routes (for settings page)
+app.use('/api/user', userRoutes);
+
 // Mount legacy transaction routes (for backward compatibility)
 app.use(`/api/${API_VERSION}`, transactionRoutes);
 

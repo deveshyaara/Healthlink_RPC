@@ -449,6 +449,86 @@ export const authApi = {
 };
 
 // ========================================
+// USER PROFILE & SETTINGS API
+// ========================================
+
+export const userApi = {
+  /**
+   * Get current user profile
+   * Backend route: GET /api/user/profile
+   */
+  getProfile: async (): Promise<any> => {
+    return fetchApi<any>('/api/user/profile', { method: 'GET' });
+  },
+
+  /**
+   * Update user profile
+   * Backend route: PUT /api/user/profile
+   */
+  updateProfile: async (profileData: {
+    fullName?: string;
+    phone?: string;
+    avatarUrl?: string;
+    specialization?: string;
+    hospitalAffiliation?: string;
+    dateOfBirth?: string;
+    bloodGroup?: string;
+    emergencyContact?: string;
+  }): Promise<any> => {
+    return fetchApi<any>('/api/user/profile', {
+      method: 'PUT',
+      body: JSON.stringify(profileData),
+    });
+  },
+
+  /**
+   * Change user password
+   * Backend route: PUT /api/user/password
+   */
+  changePassword: async (passwordData: {
+    currentPassword: string;
+    newPassword: string;
+  }): Promise<any> => {
+    return fetchApi<any>('/api/user/password', {
+      method: 'PUT',
+      body: JSON.stringify(passwordData),
+    });
+  },
+
+  /**
+   * Update notification preferences
+   * Backend route: PUT /api/user/preferences
+   */
+  updatePreferences: async (preferences: {
+    emailNotifications?: boolean;
+    smsNotifications?: boolean;
+    pushNotifications?: boolean;
+    appointmentReminders?: boolean;
+    prescriptionAlerts?: boolean;
+  }): Promise<any> => {
+    return fetchApi<any>('/api/user/preferences', {
+      method: 'PUT',
+      body: JSON.stringify(preferences),
+    });
+  },
+
+  /**
+   * Update privacy settings
+   * Backend route: PUT /api/user/privacy
+   */
+  updatePrivacy: async (privacySettings: {
+    profileVisibility?: string;
+    shareDataWithResearch?: boolean;
+    allowMarketing?: boolean;
+  }): Promise<any> => {
+    return fetchApi<any>('/api/user/privacy', {
+      method: 'PUT',
+      body: JSON.stringify(privacySettings),
+    });
+  },
+};
+
+// ========================================
 // MEDICAL RECORDS API
 // ========================================
 

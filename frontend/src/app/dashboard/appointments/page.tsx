@@ -25,6 +25,15 @@ interface Appointment {
   notes?: string;
   prescriptionIds?: string[];
   labTestIds?: string[];
+  // Backend includes these via Prisma relations
+  patient?: {
+    name: string;
+    email?: string;
+  };
+  doctor?: {
+    fullName: string;
+    email?: string;
+  };
 }
 
 export default function AppointmentsPage() {
@@ -229,10 +238,10 @@ export default function AppointmentsPage() {
                       <TableCell className="font-medium">
                         <div className="flex items-center gap-2">
                           <User className="h-4 w-4" />
-                          {appointment.patientId}
+                          {appointment.patient?.name || appointment.patientId}
                         </div>
                       </TableCell>
-                      <TableCell>{appointment.doctorId}</TableCell>
+                      <TableCell>{appointment.doctor?.fullName || appointment.doctorId}</TableCell>
                       <TableCell>
                         <div className="flex items-center gap-2">
                           <Calendar className="h-4 w-4" />

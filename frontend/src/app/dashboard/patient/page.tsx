@@ -109,8 +109,8 @@ export default function PatientDashboard() {
                 {appointments.slice(0, 3).map((a) => (
                   <div key={a.appointmentId || `${a.patientId}-${a.appointmentDate}`} className="flex items-center justify-between border-b pb-2">
                     <div>
-                      <p className="font-medium">{a.doctorName || a.doctorId || 'Doctor'}</p>
-                      <p className="text-sm text-muted-foreground">{new Date(a.appointmentDate).toLocaleString()} - {a.type || 'Visit'}</p>
+                      <p className="font-medium">{a.doctor?.fullName || a.doctorName || 'Doctor'}</p>
+                      <p className="text-sm text-muted-foreground">{new Date(a.scheduledAt || a.appointmentDate).toLocaleString()} - {a.title || a.type || 'Visit'}</p>
                     </div>
                     <Button variant="outline" size="sm">Details</Button>
                   </div>

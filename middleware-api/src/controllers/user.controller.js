@@ -353,6 +353,319 @@ class UserController {
       next(error);
     }
   }
+
+  /**
+   * Get user profile
+   * GET /api/user/profile
+   */
+  async getProfile(req, res, next) {
+    try {
+      const userId = req.user?.id;
+
+      if (!userId) {
+        return res.status(401).json({
+          success: false,
+          error: 'User not authenticated',
+        });
+      }
+
+      const supabase = getSupabaseClient();
+
+      const { data: user, error } = await supabase
+        .from('healthlink_users')
+        .select('id, email, full_name, phone, avatar_url, role, license_number, specialization, hospital_affiliation, date_of_birth, blood_group, emergency_contact')
+        .eq('id', userId)
+        .single();
+
+      if (error || !user) {
+        logger.error('Failed to get user profile:', error);
+        return res.status(404).json({
+          success: false,
+          error: 'User profile not found',
+        });
+      }
+
+      res.status(200).json({
+        success: true,
+        user: {
+          id: user.id,
+          email: user.email,
+          fullName: user.full_name,
+          phone: user.phone,
+          avatarUrl: user.avatar_url,
+          role: user.role,
+          licenseNumber: user.license_number,
+          specialization: user.specialization,
+          hospitalAffiliation: user.hospital_affiliation,
+          dateOfBirth: user.date_of_birth,
+          bloodGroup: user.blood_group,
+          emergencyContact: user.emergency_contact,
+        },
+      });
+    } catch (error) {
+      logger.error('Get profile error:', error);
+      next(error);
+    }
+  }
+
+  /**
+   * Update user profile
+   * PUT /api/user/profile
+   */
+  async updateProfile(req, res, next) {
+    try {
+      const userId = req.user?.id;
+      const { fullName, phone, avatarUrl, specialization, hospitalAffiliation, dateOfBirth, bloodGroup, emergencyContact } = req.body;
+
+      if (!userId) {
+        return res.status(401).json({
+          success: false,
+          error: 'User not authenticated',
+        });
+      }
+
+      const supabase = getSupabaseClient();
+
+      // Build update object with only provided fields
+      const updateData = {};
+      if (fullName !== undefined) updateData.full_name = fullName;
+      if (phone !== undefined) updateData.phone = phone;
+      if (avatarUrl !== undefined) updateData.avatar_url = avatarUrl;
+      if (specialization !== undefined) updateData.specialization = specialization;
+      if (hospitalAffiliation !== undefined) updateData.hospital_affiliation = hospitalAffiliation;
+      if (dateOfBirth !== undefined) updateData.date_of_birth = dateOfBirth;
+      if (bloodGroup !== undefined) updateData.blood_group = bloodGroup;
+      if (emergencyContact !== undefined) updateData.emergency_contact = emergencyContact;
+
+      if (Object.keys(updateData).length === 0) {
+        return res.status(400).json({
+          success: false,
+          error: 'No fields to update',
+        });
+      }
+
+      const { data: user, error } = await supabase
+        .from('healthlink_users')
+        .update(updateData)
+        .eq('id', userId)
+        .select()
+        .single();
+
+      if (error) {
+        logger.error('Failed to update profile:', error);
+        return res.status(500).json({
+          success: false,
+          error: 'Failed to update profile',
+        });
+      }
+
+      logger.info(`Profile updated for user ${userId}`);
+
+      res.status(200).json({
+        success: true,
+        message: 'Profile updated successfully',
+        user: {
+          id: user.id,
+          email: user.email,
+          fullName: user.full_name,
+          phone: user.phone,
+          avatarUrl: user.avatar_url,
+          role: user.role,
+        },
+      });
+    } catch (error) {
+      logger.error('Update profile error:', error);
+      next(error);
+    }
+  }
+
+  /**
+   * Change user password
+   * PUT /api/user/password
+   */
+  async changePassword(req, res, next) {
+    try {
+      const userId = req.user?.id;
+      const { currentPassword, newPassword } = req.body;
+
+      if (!userId) {
+        return res.status(401).json({
+          success: false,
+          error: 'User not authenticated',
+        });
+      }
+
+      if (!currentPassword || !newPassword) {
+        return res.status(400).json({
+          success: false,
+          error: 'Current password and new password are required',
+        });
+      }
+
+      if (newPassword.length < 8) {
+        return res.status(400).json({
+          success: false,
+          error: 'New password must be at least 8 characters long',
+        });
+      }
+
+      const supabase = getSupabaseClient();
+
+      // Get user email to verify current password
+      const { data: user } = await supabase
+        .from('healthlink_users')
+        .select('email')
+        .eq('id', userId)
+        .single();
+
+      if (!user) {
+        return res.status(404).json({
+          success: false,
+          error: 'User not found',
+        });
+      }
+
+      // Verify current password by attempting to sign in
+      const { error: signInError } = await supabase.auth.signInWithPassword({
+        email: user.email,
+        password: currentPassword,
+      });
+
+      if (signInError) {
+        return res.status(401).json({
+          success: false,
+          error: 'Current password is incorrect',
+        });
+      }
+
+      // Update password
+      const { error: updateError } = await supabase.auth.updateUser({
+        password: newPassword,
+      });
+
+      if (updateError) {
+        logger.error('Failed to update password:', updateError);
+        return res.status(500).json({
+          success: false,
+          error: 'Failed to update password',
+        });
+      }
+
+      logger.info(`Password changed for user ${userId}`);
+
+      res.status(200).json({
+        success: true,
+        message: 'Password changed successfully',
+      });
+    } catch (error) {
+      logger.error('Change password error:', error);
+      next(error);
+    }
+  }
+
+  /**
+   * Update notification preferences
+   * PUT /api/user/preferences
+   */
+  async updatePreferences(req, res, next) {
+    try {
+      const userId = req.user?.id;
+      const { emailNotifications, smsNotifications, pushNotifications, appointmentReminders, prescriptionAlerts } = req.body;
+
+      if (!userId) {
+        return res.status(401).json({
+          success: false,
+          error: 'User not authenticated',
+        });
+      }
+
+      const supabase = getSupabaseClient();
+
+      // Store preferences as JSON
+      const preferences = {
+        emailNotifications: emailNotifications ?? true,
+        smsNotifications: smsNotifications ?? false,
+        pushNotifications: pushNotifications ?? true,
+        appointmentReminders: appointmentReminders ?? true,
+        prescriptionAlerts: prescriptionAlerts ?? true,
+      };
+
+      const { error } = await supabase
+        .from('healthlink_users')
+        .update({ notification_preferences: preferences })
+        .eq('id', userId);
+
+      if (error) {
+        logger.error('Failed to update preferences:', error);
+        return res.status(500).json({
+          success: false,
+          error: 'Failed to update preferences',
+        });
+      }
+
+      logger.info(`Preferences updated for user ${userId}`);
+
+      res.status(200).json({
+        success: true,
+        message: 'Preferences updated successfully',
+        preferences,
+      });
+    } catch (error) {
+      logger.error('Update preferences error:', error);
+      next(error);
+    }
+  }
+
+  /**
+   * Update privacy settings
+   * PUT /api/user/privacy
+   */
+  async updatePrivacy(req, res, next) {
+    try {
+      const userId = req.user?.id;
+      const { profileVisibility, shareDataWithResearch, allowMarketing } = req.body;
+
+      if (!userId) {
+        return res.status(401).json({
+          success: false,
+          error: 'User not authenticated',
+        });
+      }
+
+      const supabase = getSupabaseClient();
+
+      // Store privacy settings as JSON
+      const privacySettings = {
+        profileVisibility: profileVisibility || 'private',
+        shareDataWithResearch: shareDataWithResearch ?? false,
+        allowMarketing: allowMarketing ?? false,
+      };
+
+      const { error } = await supabase
+        .from('healthlink_users')
+        .update({ privacy_settings: privacySettings })
+        .eq('id', userId);
+
+      if (error) {
+        logger.error('Failed to update privacy settings:', error);
+        return res.status(500).json({
+          success: false,
+          error: 'Failed to update privacy settings',
+        });
+      }
+
+      logger.info(`Privacy settings updated for user ${userId}`);
+
+      res.status(200).json({
+        success: true,
+        message: 'Privacy settings updated successfully',
+        settings: privacySettings,
+      });
+    } catch (error) {
+      logger.error('Update privacy error:', error);
+      next(error);
+    }
+  }
 }
 
 export default new UserController();

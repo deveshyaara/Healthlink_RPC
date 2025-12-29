@@ -68,7 +68,7 @@ router.get('/prescription/:prescriptionId', async (req, res, next) => {
                         select: {
                             id: true,
                             fullName: true,
-                            specialization: true,
+                            doctorSpecialization: true,
                             doctorLicenseNumber: true,
                         },
                     },

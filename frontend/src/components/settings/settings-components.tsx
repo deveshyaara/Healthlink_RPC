@@ -10,6 +10,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { User, Lock, Bell, Shield, Save } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '@/contexts/auth-context';
+import { userApi } from '@/lib/api-client';
 
 export function ProfileSettings() {
     const { user } = useAuth();
@@ -24,14 +25,16 @@ export function ProfileSettings() {
     const handleSave = async () => {
         setLoading(true);
         try {
-            // TODO: Implement profile update API call
-            await new Promise(resolve => setTimeout(resolve, 1000));
+            await userApi.updateProfile({
+                fullName: profile.name,
+                phone: profile.phone,
+            });
             toast.success('Profile Updated', {
                 description: 'Your profile has been updated successfully',
             });
-        } catch (error) {
+        } catch (error: any) {
             toast.error('Update Failed', {
-                description: 'Failed to update profile. Please try again.',
+                description: error.message || 'Failed to update profile. Please try again.',
             });
         } finally {
             setLoading(false);
@@ -119,15 +122,17 @@ export function SecuritySettings() {
 
         setLoading(true);
         try {
-            // TODO: Implement password change API call
-            await new Promise(resolve => setTimeout(resolve, 1000));
+            await userApi.changePassword({
+                currentPassword: passwords.current,
+                newPassword: passwords.new,
+            });
             toast.success('Password Changed', {
                 description: 'Your password has been updated successfully',
             });
             setPasswords({ current: '', new: '', confirm: '' });
-        } catch (error) {
+        } catch (error: any) {
             toast.error('Change Failed', {
-                description: 'Failed to change password. Please try again.',
+                description: error.message || 'Failed to change password. Please try again.',
             });
         } finally {
             setLoading(false);
@@ -202,13 +207,19 @@ export function NotificationSettings() {
 
     const handleSave = async () => {
         try {
-            // TODO: Implement notification preferences API call
-            await new Promise(resolve => setTimeout(resolve, 500));
+            await userApi.updatePreferences({
+                emailNotifications: notifications.email,
+                pushNotifications: notifications.push,
+                appointmentReminders: notifications.appointments,
+                prescriptionAlerts: notifications.prescriptions,
+            });
             toast.success('Preferences Saved', {
                 description: 'Your notification preferences have been updated',
             });
-        } catch (error) {
-            toast.error('Save Failed');
+        } catch (error: any) {
+            toast.error('Save Failed', {
+                description: error.message || 'Failed to save preferences',
+            });
         }
     };
 
@@ -340,11 +351,16 @@ export function PrivacySettings() {
 
     const handleSave = async () => {
         try {
-            // TODO: Implement privacy settings API call
-            await new Promise(resolve => setTimeout(resolve, 500));
+            await userApi.updatePrivacy({
+                profileVisibility: privacy.profileVisibility,
+                shareDataWithResearch: privacy.dataSharing,
+                allowMarketing: privacy.analyticsTracking,
+            });
             toast.success('Privacy Settings Saved');
-        } catch (error) {
-            toast.error('Save Failed');
+        } catch (error: any) {
+            toast.error('Save Failed', {
+                description: error.message || 'Failed to save privacy settings',
+            });
         }
     };
 

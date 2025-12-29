@@ -40,4 +40,39 @@ router.post('/invitations/:token/accept', userController.acceptInvitation.bind(u
  */
 router.delete('/invitations/:id', authenticateJWT, requireAdmin, userController.cancelInvitation.bind(userController));
 
+/**
+ * @route   GET /api/user/profile
+ * @desc    Get current user profile
+ * @access  Protected
+ */
+router.get('/profile', authenticateJWT, userController.getProfile.bind(userController));
+
+/**
+ * @route   PUT /api/user/profile
+ * @desc    Update user profile
+ * @access  Protected
+ */
+router.put('/profile', authenticateJWT, userController.updateProfile.bind(userController));
+
+/**
+ * @route   PUT /api/user/password
+ * @desc    Change user password
+ * @access  Protected
+ */
+router.put('/password', authenticateJWT, userController.changePassword.bind(userController));
+
+/**
+ * @route   PUT /api/user/preferences
+ * @desc    Update notification preferences
+ * @access  Protected
+ */
+router.put('/preferences', authenticateJWT, userController.updatePreferences.bind(userController));
+
+/**
+ * @route   PUT /api/user/privacy
+ * @desc    Update privacy settings
+ * @access  Protected
+ */
+router.put('/privacy', authenticateJWT, userController.updatePrivacy.bind(userController));
+
 export default router;
