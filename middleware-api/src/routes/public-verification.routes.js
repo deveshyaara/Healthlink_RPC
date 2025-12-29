@@ -27,31 +27,51 @@ router.get('/prescription/:prescriptionId', async (req, res, next) => {
             });
         }
 
-        const db = getPrismaClient();
+        // Check database connection
+        let db;
+        try {
+            db = getPrismaClient();
+        } catch (dbError) {
+            logger.error('Database connection failed in public verification:', dbError);
+            return res.status(503).json({
+                success: false,
+                error: 'Service temporarily unavailable. Please try again later.',
+            });
+        }
 
         // Fetch prescription with minimal patient data
-        const prescription = await db.prescription.findUnique({
-            where: { prescriptionId },
-            include: {
-                doctor: {
-                    select: {
-                        id: true,
-                        fullName: true,
-                        specialization: true,
-                        licenseNumber: true,
+        let prescription;
+        try {
+            prescription = await db.prescription.findUnique({
+                where: { prescriptionId },
+                include: {
+                    doctor: {
+                        select: {
+                            id: true,
+                            fullName: true,
+                            specialization: true,
+                            licenseNumber: true,
+                        },
+                    },
+                    patient: {
+                        select: {
+                            id: true,
+                            name: true,
+                            // Explicitly exclude sensitive fields like email, phone, etc.
+                        },
                     },
                 },
-                patient: {
-                    select: {
-                        id: true,
-                        name: true,
-                        // Explicitly exclude sensitive fields like email, phone, etc.
-                    },
-                },
-            },
-        });
+            });
+        } catch (queryError) {
+            logger.error('Database query failed for prescription:', prescriptionId, queryError);
+            return res.status(500).json({
+                success: false,
+                error: 'Failed to retrieve prescription',
+            });
+        }
 
         if (!prescription) {
+            logger.info('Prescription not found:', prescriptionId);
             return res.status(404).json({
                 success: false,
                 error: 'Prescription not found',
@@ -94,8 +114,11 @@ router.get('/prescription/:prescriptionId', async (req, res, next) => {
             data: publicData,
         });
     } catch (error) {
-        logger.error('Prescription verification failed:', error);
-        next(error);
+        logger.error('Prescription verification failed with unexpected error:', error);
+        res.status(500).json({
+            success: false,
+            error: 'An unexpected error occurred',
+        });
     }
 });
 
