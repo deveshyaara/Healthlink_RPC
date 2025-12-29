@@ -20,6 +20,9 @@ router.get('/prescription/:prescriptionId', async (req, res, next) => {
     try {
         const { prescriptionId } = req.params;
 
+        logger.info('=== PUBLIC VERIFICATION REQUEST ===');
+        logger.info('Prescription ID:', prescriptionId);
+
         if (!prescriptionId) {
             return res.status(400).json({
                 success: false,
@@ -31,17 +34,33 @@ router.get('/prescription/:prescriptionId', async (req, res, next) => {
         let db;
         try {
             db = getPrismaClient();
+            logger.info('✅ Database connection successful');
         } catch (dbError) {
-            logger.error('Database connection failed in public verification:', dbError);
+            logger.error('❌ Database connection failed:', dbError);
             return res.status(503).json({
                 success: false,
                 error: 'Service temporarily unavailable. Please try again later.',
             });
         }
 
+        // First, try to find the prescription without includes to see if it exists at all
+        try {
+            const prescriptionExists = await db.prescription.findUnique({
+                where: { prescriptionId },
+            });
+
+            logger.info('Raw prescription lookup result:', prescriptionExists ? 'FOUND' : 'NOT FOUND');
+            if (prescriptionExists) {
+                logger.info('Prescription data:', JSON.stringify(prescriptionExists, null, 2));
+            }
+        } catch (checkError) {
+            logger.error('Error checking prescription existence:', checkError);
+        }
+
         // Fetch prescription with minimal patient data
         let prescription;
         try {
+            logger.info('Attempting full query with includes...');
             prescription = await db.prescription.findUnique({
                 where: { prescriptionId },
                 include: {
@@ -50,20 +69,29 @@ router.get('/prescription/:prescriptionId', async (req, res, next) => {
                             id: true,
                             fullName: true,
                             specialization: true,
-                            licenseNumber: true,
+                            doctorLicenseNumber: true,
                         },
                     },
                     patient: {
                         select: {
                             id: true,
                             name: true,
-                            // Explicitly exclude sensitive fields like email, phone, etc.
                         },
                     },
                 },
             });
+
+            if (prescription) {
+                logger.info('✅ Prescription found with includes');
+                logger.info('Doctor data:', prescription.doctor);
+                logger.info('Patient data:', prescription.patient);
+            } else {
+                logger.warn('❌ Prescription NOT found with includes');
+            }
         } catch (queryError) {
-            logger.error('Database query failed for prescription:', prescriptionId, queryError);
+            logger.error('❌ Database query failed:', queryError);
+            logger.error('Error details:', queryError.message);
+            logger.error('Stack:', queryError.stack);
             return res.status(500).json({
                 success: false,
                 error: 'Failed to retrieve prescription',
@@ -71,7 +99,7 @@ router.get('/prescription/:prescriptionId', async (req, res, next) => {
         }
 
         if (!prescription) {
-            logger.info('Prescription not found:', prescriptionId);
+            logger.info('404 Response: Prescription not found for ID:', prescriptionId);
             return res.status(404).json({
                 success: false,
                 error: 'Prescription not found',
@@ -93,8 +121,8 @@ router.get('/prescription/:prescriptionId', async (req, res, next) => {
             createdAt: prescription.createdAt,
             doctor: {
                 name: prescription.doctor?.fullName || 'Unknown',
-                specialization: prescription.doctor?.specialization,
-                licenseNumber: prescription.doctor?.licenseNumber,
+                specialization: prescription.doctor?.doctorSpecialization,
+                licenseNumber: prescription.doctor?.doctorLicenseNumber,
             },
             patient: {
                 name: prescription.patient?.name || 'Patient',
@@ -103,7 +131,7 @@ router.get('/prescription/:prescriptionId', async (req, res, next) => {
         };
 
         // Log verification attempt (for audit trail)
-        logger.info('Prescription verified', {
+        logger.info('✅ Prescription verified successfully', {
             prescriptionId,
             timestamp: new Date().toISOString(),
             ip: req.ip,
@@ -114,7 +142,9 @@ router.get('/prescription/:prescriptionId', async (req, res, next) => {
             data: publicData,
         });
     } catch (error) {
-        logger.error('Prescription verification failed with unexpected error:', error);
+        logger.error('❌ Prescription verification failed with unexpected error:', error);
+        logger.error('Error message:', error.message);
+        logger.error('Stack:', error.stack);
         res.status(500).json({
             success: false,
             error: 'An unexpected error occurred',
