@@ -888,9 +888,37 @@ class HealthcareController {
     try {
       const { appointmentId } = req.params;
 
-      const result = await transactionService.getAppointment(appointmentId);
+      // Fetch appointment from database instead of blockchain
+      const db = getPrismaClient();
+      if (!db?.appointment?.findUnique) {
+        return res.status(503).json({
+          success: false,
+          error: 'Database service unavailable'
+        });
+      }
 
-      if (!result || !result.data) {
+      const appointment = await db.appointment.findUnique({
+        where: { appointmentId },
+        include: {
+          patient: {
+            select: {
+              id: true,
+              email: true,
+              name: true,
+              walletAddress: true,
+            },
+          },
+          doctor: {
+            select: {
+              id: true,
+              fullName: true,
+              email: true,
+            },
+          },
+        },
+      });
+
+      if (!appointment) {
         return res.status(404).json({ success: false, error: 'Appointment not found' });
       }
 
@@ -899,7 +927,7 @@ class HealthcareController {
       const userRole = req.user.role;
 
       if (userRole === 'patient') {
-        const patientIdOnRecord = result.data.patientId || result.data.patient?.id;
+        const patientIdOnRecord = appointment.patientId || appointment.patient?.id;
 
         // Check if userIdentifier matches
         let hasAccess = patientIdOnRecord === userIdentifier || patientIdOnRecord === req.user.walletAddress;
@@ -915,8 +943,12 @@ class HealthcareController {
         }
       }
 
-      res.status(200).json(result);
+      res.status(200).json({
+        success: true,
+        data: appointment
+      });
     } catch (error) {
+      logger.error('Error fetching appointment:', error);
       next(error);
     }
   }
@@ -929,9 +961,37 @@ class HealthcareController {
     try {
       const { prescriptionId } = req.params;
 
-      const result = await transactionService.getPrescription(prescriptionId);
+      // Fetch prescription from database instead of blockchain
+      const db = getPrismaClient();
+      if (!db?.prescription?.findUnique) {
+        return res.status(503).json({
+          success: false,
+          error: 'Database service unavailable'
+        });
+      }
 
-      if (!result || !result.data) {
+      const prescription = await db.prescription.findUnique({
+        where: { prescriptionId },
+        include: {
+          patient: {
+            select: {
+              id: true,
+              email: true,
+              name: true,
+              walletAddress: true,
+            },
+          },
+          doctor: {
+            select: {
+              id: true,
+              fullName: true,
+              email: true,
+            },
+          },
+        },
+      });
+
+      if (!prescription) {
         return res.status(404).json({ success: false, error: 'Prescription not found' });
       }
 
@@ -940,7 +1000,7 @@ class HealthcareController {
       const userRole = req.user.role;
 
       if (userRole === 'patient') {
-        const patientIdOnRecord = result.data.patientId || result.data.patient?.id;
+        const patientIdOnRecord = prescription.patientId || prescription.patient?.id;
 
         // Check if userIdentifier matches
         let hasAccess = patientIdOnRecord === userIdentifier || patientIdOnRecord === req.user.walletAddress;
@@ -956,8 +1016,12 @@ class HealthcareController {
         }
       }
 
-      res.status(200).json(result);
+      res.status(200).json({
+        success: true,
+        data: prescription
+      });
     } catch (error) {
+      logger.error('Error fetching prescription:', error);
       next(error);
     }
   }
