@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { ArrowLeft, Pill, User, FileText, Calendar } from 'lucide-react';
 import { prescriptionsApi } from '@/lib/api-client';
+import { QRCodeDisplay } from '@/components/QRCodeDisplay';
 
 interface Medication {
     name: string;
@@ -243,6 +244,13 @@ export default function PrescriptionDetailPage() {
                     </CardContent>
                 </Card>
             )}
+
+            {/* QR Code Card */}
+            <QRCodeDisplay
+                data={prescription.prescriptionId}
+                title="Prescription QR Code"
+                filename={`prescription-${prescription.prescriptionId}.png`}
+            />
         </div>
     );
 }

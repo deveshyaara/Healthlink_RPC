@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { ArrowLeft, Calendar, Clock, User, FileText, MapPin } from 'lucide-react';
 import { appointmentsApi } from '@/lib/api-client';
 import type { AppointmentStatus } from '@/types';
+import { QRCodeDisplay } from '@/components/QRCodeDisplay';
 
 interface Appointment {
     appointmentId: string;
@@ -250,6 +251,13 @@ export default function AppointmentDetailPage() {
                     )}
                 </CardContent>
             </Card>
+
+            {/* QR Code Card */}
+            <QRCodeDisplay
+                data={appointment.appointmentId}
+                title="Appointment QR Code"
+                filename={`appointment-${appointment.appointmentId}.png`}
+            />
         </div>
     );
 }
