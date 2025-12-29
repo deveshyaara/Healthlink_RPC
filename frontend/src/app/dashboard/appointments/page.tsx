@@ -224,8 +224,8 @@ export default function AppointmentsPage() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Patient ID</TableHead>
-                    <TableHead>Doctor ID</TableHead>
+                    <TableHead>Patient Name</TableHead>
+                    <TableHead>Doctor Name</TableHead>
                     <TableHead>Date & Time</TableHead>
                     <TableHead>Type</TableHead>
                     <TableHead>Status</TableHead>
