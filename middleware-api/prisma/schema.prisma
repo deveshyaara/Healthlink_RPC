@@ -125,6 +125,12 @@ model User {
   isActive      Boolean @default(true) @map("is_active")
   emailVerified Boolean @default(false) @map("email_verified")
   
+  // Security: Admin can flag suspicious accounts
+  flagged Boolean @default(false) @map("flagged")
+  flaggedReason String? @map("flagged_reason") @db.Text
+  flaggedAt DateTime? @map("flagged_at") @db.Timestamptz(6)
+  flaggedBy String? @map("flagged_by") @db.Uuid
+  
   // Phase 1: Two-Factor Authentication
   twoFactorSecret String? @map("two_factor_secret") @db.Text
   twoFactorEnabled Boolean @default(false) @map("two_factor_enabled")

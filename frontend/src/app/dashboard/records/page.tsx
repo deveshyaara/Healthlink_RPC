@@ -193,9 +193,18 @@ export default function RecordsPage() {
       });
     } catch (error) {
       console.error('Failed to download record:', error);
-      toast.error('Download Failed', {
-        description: error instanceof Error ? error.message : 'Unable to download the file. Please try again.',
-      });
+
+      // Show user-friendly error message
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      if (errorMessage.includes('File not found') || errorMessage.includes('404')) {
+        toast.error('File Not Available', {
+          description: 'This record\'s file is not stored in the system. This typically happens with demo/test data. Only newly uploaded files can be downloaded.',
+        });
+      } else {
+        toast.error('Download Failed', {
+          description: errorMessage || 'Unable to download the file. Please try again.',
+        });
+      }
     }
   };
 

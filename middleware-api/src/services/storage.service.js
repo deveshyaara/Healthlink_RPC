@@ -8,6 +8,14 @@ import logger from '../utils/logger.js';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
+// Pinata SDK for IPFS storage
+let PinataSDK;
+try {
+  PinataSDK = (await import('@pinata/sdk')).default;
+} catch (err) {
+  logger.warn('⚠️ Pinata SDK not available - file uploads will fail');
+}
+
 /**
  * Secure Storage Service
  *
@@ -102,56 +110,87 @@ class StorageService {
   }
 
   /**
-     * Upload file to encrypted storage (STREAMING)
-     *
-     * @param {string} tempFilePath - Path to temporary uploaded file
-     * @param {Object} metadata - File metadata (originalName, mimeType, size)
-     * @returns {Promise<Object>} - { hash, size, isDuplicate, metadata }
-     */
+   * Upload file to Pinata IPFS
+   *
+   * @param {string} tempFilePath - Path to temporary uploaded file
+   * @param {Object} metadata - File metadata (originalName, mimeType, size)
+   * @returns {Promise<Object>} - { hash: IPFS_CID, size, metadata }
+   */
   async uploadFile(tempFilePath, metadata = {}) {
     try {
-      // Step 1: Calculate hash from temp file (streaming)
-      const hash = await this.calculateHashFromFile(tempFilePath);
-      const finalPath = path.join(this.uploadsDir, hash);
-
-      // Step 2: Check for deduplication
-      let isDuplicate = false;
-      if (fs.existsSync(finalPath)) {
-        logger.info(`⚡ File already exists (deduplicated): ${hash}`);
-        isDuplicate = true;
-
-        // Delete temp file
-        fs.unlinkSync(tempFilePath);
-      } else {
-        // Step 3: Encrypt and stream to final location
-        await this.encryptFile(tempFilePath, finalPath);
-
-        // Delete temp file after encryption
-        fs.unlinkSync(tempFilePath);
-        logger.info(`✅ File encrypted and uploaded: ${hash}`);
+      // Check if Pinata SDK is available
+      if (!PinataSDK) {
+        throw new Error('Pinata SDK not configured. Set PINATA_API_KEY and PINATA_SECRET_API_KEY in environment variables.');
       }
 
-      // Step 4: Get file stats
-      const stats = fs.statSync(finalPath);
+      // Initialize Pinata
+      const pinata = new PinataSDK(
+        process.env.PINATA_API_KEY,
+        process.env.PINATA_SECRET_API_KEY
+      );
 
-      // Step 5: Store metadata
-      const metadataPath = path.join(this.metadataDir, `${hash}.json`);
+      // Test authentication
+      try {
+        await pinata.testAuthentication();
+        logger.info('✅ Pinata authentication successful');
+      } catch (authError) {
+        logger.error('❌ Pinata authentication failed:', authError.message);
+        throw new Error('Pinata authentication failed. Check your API keys.');
+      }
+
+      // Create read stream for file upload
+      const readStream = fs.createReadStream(tempFilePath);
+
+      // Upload to Pinata IPFS
+      logger.info(`📤 Uploading file to Pinata: ${metadata.originalName}`);
+
+      const pinataResult = await pinata.pinFileToIPFS(readStream, {
+        pinataMetadata: {
+          name: metadata.originalName || 'medical-record',
+          keyvalues: {
+            uploadedBy: metadata.uploadedBy || 'unknown',
+            uploadedByRole: metadata.uploadedByRole || 'unknown',
+            mimeType: metadata.mimeType || 'application/octet-stream',
+            uploadedAt: new Date().toISOString()
+          }
+        },
+        pinataOptions: {
+          cidVersion: 1  // Use CIDv1 for better compatibility
+        }
+      });
+
+      const ipfsCID = pinataResult.IpfsHash;
+      const ipfsSize = pinataResult.PinSize;
+
+      logger.info(`✅ File uploaded to Pinata successfully: ${ipfsCID}`);
+
+      // Delete temp file after successful upload
+      if (fs.existsSync(tempFilePath)) {
+        fs.unlinkSync(tempFilePath);
+      }
+
+      // Store metadata locally for filename/MIME type reference
+      const metadataPath = path.join(this.metadataDir, `${ipfsCID}.json`);
       const metadataContent = {
-        hash,
+        ipfsCID,
+        hash: ipfsCID, // Alias for compatibility
         originalName: metadata.originalName || 'unknown',
         mimeType: metadata.mimeType || 'application/octet-stream',
-        size: metadata.size || stats.size,
+        size: metadata.size || ipfsSize,
         uploadedAt: new Date().toISOString(),
-        encrypted: true,
-        algorithm: this.algorithm,
+        uploadedBy: metadata.uploadedBy || 'anonymous',
+        uploadedByRole: metadata.uploadedByRole || 'unknown',
+        pinataUrl: `https://gateway.pinata.cloud/ipfs/${ipfsCID}`,
+        storedOn: 'pinata-ipfs',
         ...metadata,
       };
+
       fs.writeFileSync(metadataPath, JSON.stringify(metadataContent, null, 2));
 
       return {
-        hash,
-        size: stats.size,
-        isDuplicate,
+        hash: ipfsCID,  // Return IPFS CID instead of SHA-256
+        size: ipfsSize,
+        isDuplicate: false,  // Pinata handles deduplication internally
         metadata: metadataContent,
       };
     } catch (error) {
@@ -159,8 +198,8 @@ class StorageService {
       if (fs.existsSync(tempFilePath)) {
         fs.unlinkSync(tempFilePath);
       }
-      logger.error('❌ Upload failed:', error);
-      throw new Error(`File upload failed: ${error.message}`);
+      logger.error('❌ Pinata upload failed:', error);
+      throw new Error(`Pinata upload failed: ${error.message}`);
     }
   }
 

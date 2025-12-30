@@ -32,6 +32,7 @@ import pharmacyRoutes from './routes/pharmacy.routes.js';
 import hospitalRoutes from './routes/hospital.routes.js';
 import insuranceRoutes from './routes/insurance.routes.js';
 import publicVerificationRoutes from './routes/public-verification.routes.js';
+import complianceRoutes from './routes/compliance.routes.js';
 
 /**
  * HealthLink Middleware API Server
@@ -248,6 +249,10 @@ if (featureFlags.enableHospital) {
   app.use('/api/v1/hospital', hospitalRoutes);
   logger.info('✅ Hospital routes enabled');
 }
+
+// Mount compliance routes (admin/hospital_admin only)
+app.use('/api/compliance', complianceRoutes);
+logger.info('✅ Compliance & audit routes enabled');
 
 // Mount insurance routes (feature flag protected)
 if (featureFlags.enableInsurance) {

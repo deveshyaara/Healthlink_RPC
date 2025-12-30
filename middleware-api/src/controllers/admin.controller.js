@@ -65,6 +65,10 @@ class AdminController {
           phoneNumber: true,
           isActive: true,
           emailVerified: true,
+          flagged: true,
+          flaggedReason: true,
+          flaggedAt: true,
+          flaggedBy: true,
           createdAt: true,
           lastLoginAt: true,
         },
@@ -80,7 +84,10 @@ class AdminController {
         phone: user.phoneNumber,
         isActive: user.isActive,
         isVerified: user.emailVerified,
-        flagged: false, // TODO: Add flagged column to users table
+        flagged: user.flagged || false,
+        flaggedReason: user.flaggedReason,
+        flaggedAt: user.flaggedAt,
+        flaggedBy: user.flaggedBy,
         createdAt: user.createdAt,
         lastLogin: user.lastLoginAt,
       }));
@@ -235,6 +242,94 @@ class AdminController {
         online: false,
         error: error.message,
       });
+    }
+  }
+
+  /**
+   * Flag a user account
+   * POST /api/v1/admin/users/:userId/flag
+   */
+  async flagUser(req, res, next) {
+    try {
+      const db = getPrismaClient();
+      const { userId } = req.params;
+      const { reason } = req.body;
+      const adminId = req.user?.id;
+
+      if (!reason) {
+        return res.status(400).json({
+          success: false,
+          error: 'Reason for flagging is required',
+        });
+      }
+
+      const updatedUser = await db.user?.update({
+        where: { id: userId },
+        data: {
+          flagged: true,
+          flaggedReason: reason,
+          flaggedAt: new Date(),
+          flaggedBy: adminId,
+        },
+        select: {
+          id: true,
+          email: true,
+          fullName: true,
+          flagged: true,
+          flaggedReason: true,
+          flaggedAt: true,
+        },
+      });
+
+      logger.info(`User ${userId} flagged by admin ${adminId}: ${reason}`);
+
+      res.json({
+        success: true,
+        message: 'User flagged successfully',
+        data: updatedUser,
+      });
+    } catch (error) {
+      logger.error('Failed to flag user:', error);
+      next(error);
+    }
+  }
+
+  /**
+   * Unflag a user account
+   * POST /api/v1/admin/users/:userId/unflag
+   */
+  async unflagUser(req, res, next) {
+    try {
+      const db = getPrismaClient();
+      const { userId } = req.params;
+      const adminId = req.user?.id;
+
+      const updatedUser = await db.user?.update({
+        where: { id: userId },
+        data: {
+          flagged: false,
+          flaggedReason: null,
+          flaggedAt: null,
+          flaggedBy: null,
+        },
+        select: {
+          id: true,
+          email: true,
+          fullName: true,
+          flagged: true,
+        },
+      });
+
+      logger.info(`User ${userId} unflagged by admin ${adminId}`);
+
+      res.json({
+        success: true,
+        message: 'User unflagged successfully',
+        data: updatedUser,
+      });
+    } catch (error) {
+      logger.error('Failed to unflag user:', error);
+      next(error);
     }
   }
 }

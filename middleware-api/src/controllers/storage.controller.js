@@ -5,7 +5,7 @@ import logger from '../utils/logger.js';
  * Storage Controller
  *
  * Handles file upload and retrieval endpoints
- * Acts as Content-Addressable Storage (CAS) API
+ * Storage: Pinata IPFS for medical records
  */
 
 /**
@@ -13,9 +13,7 @@ import logger from '../utils/logger.js';
  * POST /api/storage/upload
  *
  * Accepts: multipart/form-data with 'file' field
- * Returns: { hash, size, metadata }
- *
- * Security: File is encrypted at rest using AES-256-GCM
+ * Returns: { hash: IPFS_CID, size, metadata }
  */
 export const uploadFile = async (req, res) => {
   try {
@@ -45,25 +43,23 @@ export const uploadFile = async (req, res) => {
       uploadedByRole: req.user?.role || 'unknown',
     };
 
-    // Upload file using storage service (now takes file path instead of buffer)
+    // Upload file to Pinata IPFS
     const result = await StorageService.getInstance().uploadFile(file.path, metadata);
 
-    logger.info(`File uploaded: ${result.hash} (${result.isDuplicate ? 'duplicate' : 'new'})`);
+    logger.info(`File uploaded to Pinata: ${result.hash}`);
 
-    return res.status(result.isDuplicate ? 200 : 201).json({
+    return res.status(201).json({
       status: 'success',
-      statusCode: result.isDuplicate ? 200 : 201,
-      message: result.isDuplicate
-        ? 'File already exists (deduplicated)'
-        : 'File uploaded and encrypted successfully',
+      statusCode: 201,
+      message: 'File uploaded to IPFS successfully',
       data: {
-        hash: result.hash,
+        hash: result.hash,  // IPFS CID
         size: result.size,
-        isDuplicate: result.isDuplicate,
         originalName: metadata.originalName,
         mimeType: metadata.mimeType,
-        encrypted: true,
+        ipfs: true,
         downloadUrl: `/api/storage/${result.hash}`,
+        pinataUrl: `https://gateway.pinata.cloud/ipfs/${result.hash}`,
       },
     });
   } catch (error) {
@@ -84,65 +80,68 @@ export const uploadFile = async (req, res) => {
  * Download/View file endpoint
  * GET /api/storage/:hash
  *
- * Returns: File stream with correct MIME type
+ * Returns: File stream from Pinata IPFS gateway
+ * Accepts IPFS CIDs (Qm... or bafy...)
  */
 export const getFile = async (req, res) => {
   try {
     const { hash } = req.params;
 
-    // Validate hash format
-    if (!/^[a-f0-9]{64}$/i.test(hash)) {
+    // Validate hash exists
+    if (!hash || hash.length < 10) {
       return res.status(400).json({
         status: 'error',
         statusCode: 400,
         message: 'Invalid hash format',
         error: {
           code: 'INVALID_HASH',
-          details: 'Hash must be 64 hexadecimal characters (SHA-256)',
+          details: 'IPFS CID is required',
         },
       });
     }
 
-    // Get file metadata first
-    const metadata = await StorageService.getInstance().getMetadata(hash);
+    logger.info(`Fetching file from Pinata IPFS: ${hash}`);
 
-    if (!metadata) {
+    // Try to get metadata for filename
+    let metadata;
+    try {
+      metadata = await StorageService.getInstance().getMetadata(hash);
+    } catch (err) {
+      logger.warn(`No local metadata for ${hash}`);
+    }
+
+    // Fetch from Pinata IPFS Gateway
+    const pinataGatewayUrl = `https://gateway.pinata.cloud/ipfs/${hash}`;
+    const fetchResponse = await fetch(pinataGatewayUrl);
+
+    if (!fetchResponse.ok) {
+      logger.error(`Pinata gateway error: ${fetchResponse.status} ${fetchResponse.statusText}`);
       return res.status(404).json({
         status: 'error',
         statusCode: 404,
-        message: 'File not found',
+        message: 'File not found on IPFS',
         error: {
           code: 'FILE_NOT_FOUND',
-          details: `No file found with hash: ${hash}`,
+          details: `No file found with IPFS CID: ${hash}`,
         },
       });
     }
 
     // Set appropriate headers
-    res.setHeader('Content-Type', metadata.mimeType || 'application/octet-stream');
-    res.setHeader('Content-Disposition', `inline; filename="${metadata.originalName}"`);
+    const contentType = metadata?.mimeType || fetchResponse.headers.get('content-type') || 'application/octet-stream';
+    const filename = metadata?.originalName || `file-${hash.substring(0, 12)}`;
+
+    res.setHeader('Content-Type', contentType);
+    res.setHeader('Content-Disposition', `inline; filename="${filename}"`);
     res.setHeader('X-Content-Hash', hash);
+    res.setHeader('X-Storage-Type', 'ipfs');
     res.setHeader('Cache-Control', 'public, max-age=31536000'); // 1 year (immutable)
 
-    // Stream file to response
-    const fileStream = StorageService.getInstance().getFileStream(hash);
+    // Stream the response from Pinata to client
+    const buffer = await fetchResponse.arrayBuffer();
+    res.send(Buffer.from(buffer));
 
-    fileStream.on('error', (error) => {
-      logger.error('❌ Stream error:', error);
-      if (!res.headersSent) {
-        res.status(500).json({
-          status: 'error',
-          statusCode: 500,
-          message: 'File streaming failed',
-          error: {
-            code: 'STREAM_ERROR',
-            details: error.message,
-          },
-        });
-      }
-    });
-
-    fileStream.pipe(res);
+    logger.info(`✅ Successfully served file from Pinata: ${hash}`);
 
   } catch (error) {
     logger.error('❌ Get file error:', error);
@@ -204,13 +203,16 @@ export const getMetadata = async (req, res) => {
  */
 export const getStats = async (req, res) => {
   try {
-    // TODO: Add admin-only middleware check
     const stats = StorageService.getInstance().getStats();
 
     return res.status(200).json({
       status: 'success',
       statusCode: 200,
-      data: stats,
+      data: {
+        ...stats,
+        storageType: 'pinata-ipfs',
+        note: 'Files are stored on Pinata IPFS, not local storage'
+      },
     });
   } catch (error) {
     logger.error('❌ Get stats error:', error);
@@ -229,26 +231,27 @@ export const getStats = async (req, res) => {
 /**
  * Delete file (admin only)
  * DELETE /api/storage/:hash
+ * Note: This only deletes local metadata. Files on IPFS are immutable.
  */
 export const deleteFile = async (req, res) => {
   try {
-    // TODO: Add admin-only middleware check
     const { hash } = req.params;
 
+    // We can only delete local metadata, not IPFS files
     const deleted = await StorageService.getInstance().deleteFile(hash);
 
     if (!deleted) {
       return res.status(404).json({
         status: 'error',
         statusCode: 404,
-        message: 'File not found',
+        message: 'Metadata not found',
       });
     }
 
     return res.status(200).json({
       status: 'success',
       statusCode: 200,
-      message: 'File deleted successfully',
+      message: 'Local metadata deleted (IPFS file remains immutable)',
       data: { hash },
     });
   } catch (error) {
@@ -256,7 +259,7 @@ export const deleteFile = async (req, res) => {
     return res.status(500).json({
       status: 'error',
       statusCode: 500,
-      message: 'File deletion failed',
+      message: 'Metadata deletion failed',
       error: {
         code: 'DELETE_FAILED',
         details: error.message,

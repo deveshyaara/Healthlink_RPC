@@ -1,11 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 
+export const dynamic = 'force-dynamic'; // Mark as runtime-only
+
+
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
 
     const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
-    const backendUrl = `${apiUrl}/api/auth/register`; 
+    const backendUrl = `${apiUrl}/api/auth/register`;
 
     const backendResponse = await fetch(backendUrl, {
       method: 'POST',

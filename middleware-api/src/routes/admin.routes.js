@@ -25,4 +25,10 @@ router.get('/users/doctors', adminController.getDoctors.bind(adminController));
 // GET: Pending verifications
 router.get('/users/pending', adminController.getPendingVerifications.bind(adminController));
 
+// POST: Flag a user
+router.post('/users/:userId/flag', adminController.flagUser.bind(adminController));
+
+// POST: Unflag a user
+router.post('/users/:userId/unflag', adminController.unflagUser.bind(adminController));
+
 export default router;

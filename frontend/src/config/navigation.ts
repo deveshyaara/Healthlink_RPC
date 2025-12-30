@@ -19,6 +19,8 @@ import {
   Stethoscope,
   QrCode,
   Shield,
+  Eye,
+  Activity,
 } from 'lucide-react';
 
 export interface NavRoute {
@@ -83,6 +85,13 @@ export const doctorRoutes: NavRoute[] = [
     description: 'Patient data access permissions',
     roles: ['doctor', 'patient'], // ✅ FIXED: Allow both doctors and patients
   },
+  {
+    href: '/dashboard/doctor/compliance',
+    icon: Activity,
+    label: 'Compliance Audit',
+    description: 'Your patient access audit log',
+    roles: ['doctor'],
+  },
 ];
 
 /**
@@ -104,14 +113,14 @@ export const patientRoutes: NavRoute[] = [
     description: 'Your medical documents',
     roles: ['patient'],
   },
-  // Note: appointments, prescriptions, and lab-tests are now in doctorRoutes with both roles
   {
-    href: '/dashboard/consent',
-    icon: ShieldCheck,
-    label: 'Consent Management',
-    description: 'Control who accesses your data',
+    href: '/dashboard/patient/data-access',
+    icon: Eye,
+    label: 'Data Access History',
+    description: 'See who accessed your medical data',
     roles: ['patient'],
   },
+  // Note: appointments, prescriptions, lab-tests, and consent are in doctorRoutes with both roles
 ];
 
 /**
@@ -189,6 +198,13 @@ export const pharmacyRoutes: NavRoute[] = [
     description: 'E-prescription verification and dispensing',
     roles: ['pharmacist', 'admin'],
   },
+  {
+    href: '/dashboard/pharmacy/compliance',
+    icon: Activity,
+    label: 'Compliance Audit',
+    description: 'Verification and dispensing compliance',
+    roles: ['pharmacist', 'admin'],
+  },
 ];
 
 /**
@@ -202,6 +218,13 @@ export const hospitalRoutes: NavRoute[] = [
     label: 'Hospital Management',
     description: 'Manage departments and staff',
     roles: ['hospital_admin', 'doctor', 'admin'],
+  },
+  {
+    href: '/dashboard/hospital/compliance',
+    icon: Shield,
+    label: 'Compliance',
+    description: 'Hospital compliance and audit reports',
+    roles: ['hospital_admin', 'admin'],
   },
 ];
 

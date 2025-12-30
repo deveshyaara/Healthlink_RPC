@@ -123,6 +123,14 @@ function DoctorRecordsPageContent() {
       URL.revokeObjectURL(url);
     } catch (error) {
       console.error('Download failed:', error);
+
+      // Show user-friendly error message
+      const errorMessage = error instanceof Error ? error.message : 'Download failed';
+      if (errorMessage.includes('File not found') || errorMessage.includes('404')) {
+        alert('⚠️ File Not Available\n\nThis record\'s file is not stored in the system. This typically happens with demo/test data. Only newly uploaded files can be downloaded.');
+      } else {
+        alert(`Download failed: ${errorMessage}`);
+      }
     }
   };
 

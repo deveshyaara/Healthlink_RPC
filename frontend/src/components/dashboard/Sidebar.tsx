@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import Link from 'next/link';
 import { useAuth } from '@/contexts/auth-context';
 import { getRoutesForRole } from '@/config/navigation';
-import { ChevronDown, Users, ServerCog, FileText, Settings as Cog, LayoutDashboard } from 'lucide-react';
+import { ChevronDown, Users, ServerCog, FileText, Settings as Cog, LayoutDashboard, Shield } from 'lucide-react';
 
 export default function Sidebar() {
   const { user } = useAuth();
@@ -59,6 +59,13 @@ export default function Sidebar() {
                 ))}
               </ul>
             )}
+          </li>
+
+          <li>
+            <Link href="/dashboard/admin/compliance" className="flex items-center gap-3 p-2 rounded hover:bg-neutral-100 dark:hover:bg-neutral-800">
+              <Shield className="h-5 w-5 text-government-navy" />
+              <span className="font-medium">Compliance</span>
+            </Link>
           </li>
 
           <li>

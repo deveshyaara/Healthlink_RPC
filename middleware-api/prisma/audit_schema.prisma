@@ -1,0 +1,79 @@
+// ============================================================================
+// Compliance & Audit Logging Models
+// ============================================================================
+
+enum AuditAction {
+  DATA_ACCESS
+  DATA_CREATE
+  DATA_UPDATE
+  DATA_DELETE
+  CONSENT_GRANTED
+  CONSENT_REVOKED
+  LOGIN
+  LOGOUT
+  EXPORT_DATA
+  SHARE_DATA
+  EMERGENCY_ACCESS
+  
+  @@map("audit_action")
+}
+
+enum ResourceType {
+  PATIENT_RECORD
+  MEDICAL_RECORD
+  PRESCRIPTION
+  APPOINTMENT
+  LAB_TEST
+  CONSENT_REQUEST
+  USER_PROFILE
+  INSURANCE_CLAIM
+  
+  @@map("resource_type")
+}
+
+model AuditLog {
+  id              String       @id @default(uuid()) @db.Uuid
+  userId          String       @map("user_id") @db.Uuid
+  action          AuditAction
+  resourceType    ResourceType @map("resource_type")
+  resourceId      String       @map("resource_id") @db.Uuid
+  details         Json?        // Additional context
+  timestamp       DateTime     @default(now())
+  ipAddress       String?      @map("ip_address") @db.VarChar(45)
+  userAgent       String?      @map("user_agent") @db.Text
+  emergency       Boolean      @default(false)
+  consentId       String?      @map("consent_id") @db.Uuid
+  blockchainHash  String?      @map("blockchain_hash") @db.VarChar(66)
+  success         Boolean      @default(true)
+  errorMessage    String?      @map("error_message") @db.Text
+  
+  // Relations
+  user            User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  consent         ConsentRequest? @relation(fields: [consentId], references: [id])
+  
+  @@index([userId])
+  @@index([timestamp])
+  @@index([resourceType, resourceId])
+  @@index([action])
+  @@map("audit_logs")
+}
+
+model ComplianceReport {
+  id              String   @id @default(uuid()) @db.Uuid
+  reportType      String   @map("report_type") @db.VarChar(50) // HIPAA, GDPR, etc.
+  startDate       DateTime @map("start_date")
+  endDate         DateTime @map("end_date")
+  generatedBy     String   @map("generated_by") @db.Uuid
+  generatedAt     DateTime @default(now()) @map("generated_at")
+  totalRecords    Int      @map("total_records")
+  violationsCount Int      @map("violations_count")
+  reportData      Json     @map("report_data")
+  fileUrl         String?  @map("file_url") @db.Text
+  
+  // Relations
+  generatedByUser User     @relation(fields: [generatedBy], references: [id])
+  
+  @@index([reportType])
+  @@index([generatedAt])
+  @@map("compliance_reports")
+}
