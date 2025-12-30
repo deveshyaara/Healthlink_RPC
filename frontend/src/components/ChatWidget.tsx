@@ -61,7 +61,9 @@ export function ChatWidget(): JSX.Element | null {
 
     try {
       const response = await chatApi.sendMessage(userMsg.text);
-      const botText = response?.data?.response || response?.reply || response?.message || 'Sorry, I could not process your message.';
+      console.log('Chat response:', response);
+      // api-client unwraps the response, so response IS the data object
+      const botText = response?.response || response?.data?.response || response?.reply || response?.message || 'Sorry, I could not process your message.';
       const botMsg: Message = { id: String(Date.now() + 1), role: 'bot', text: botText };
       setMessages((m) => [...m, botMsg]);
     } catch (error: unknown) {

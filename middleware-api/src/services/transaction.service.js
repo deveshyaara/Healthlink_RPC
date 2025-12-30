@@ -56,6 +56,61 @@ class TransactionService {
   }
 
   /**
+   * Get patient information
+   * @param {string} patientId - Patient ID (UUID or wallet address)
+   * @returns {Promise<Object>} Patient data from database
+   */
+  async getPatient(patientId) {
+    try {
+      // Import db service dynamically to avoid circular dependencies
+      const dbService = (await import('./db.service.prisma.js')).default;
+
+      if (!dbService || !dbService.isReady || !dbService.isReady()) {
+        throw new Error('Database service not available');
+      }
+
+      const db = dbService.prisma;
+
+      // Try to find patient by ID first, fallback to wallet address
+      let patient = await db.patientWalletMapping.findUnique({
+        where: { id: patientId }
+      });
+
+      if (!patient) {
+        // Try finding by wallet address
+        patient = await db.patientWalletMapping.findFirst({
+          where: { walletAddress: patientId }
+        });
+      }
+
+      if (!patient) {
+        throw new NotFoundError('Patient');
+      }
+
+      return {
+        success: true,
+        data: {
+          patientId: patient.id,
+          name: patient.name,
+          email: patient.email,
+          walletAddress: patient.walletAddress,
+          createdAt: patient.createdAt,
+          exists: true
+        },
+        functionName: 'getPatient',
+        timestamp: new Date().toISOString(),
+      };
+    } catch (error) {
+      logger.error('Service: getPatient failed:', error);
+      if (error.type === 'NOT_FOUND') {
+        throw error;
+      }
+      throw new Error(`Failed to get patient: ${error.message}`);
+    }
+  }
+
+
+  /**
    * Update patient data with additional information
    * @param {string} patientId - Patient ID
    * @param {Object} updatedData - Updated patient data
