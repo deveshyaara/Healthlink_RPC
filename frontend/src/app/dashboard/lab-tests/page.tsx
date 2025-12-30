@@ -8,25 +8,16 @@ import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { useState, useEffect } from 'react';
-import { labTestsApi } from '@/lib/api-client';
+import { labTestsApi, type LabTest } from '@/lib/api-client';
 import { ErrorBanner } from '@/components/ui/error-banner';
-import { TestTube, PlusCircle, FileText, Search, Eye } from 'lucide-react';
+import { TestTube, PlusCircle, FileText, Search, Eye, Upload } from 'lucide-react';
 import { ActionModal } from '@/components/ui/action-modal';
 import { OrderLabTestForm } from '@/components/forms/order-lab-test-form';
+import { UploadResultsDialog } from '@/components/lab/UploadResultsDialog';
+import { TestResultsView } from '@/components/lab/TestResultsView';
+import { useAuth } from '@/contexts/auth-context';
 
-interface LabTest {
-  labTestId: string;
-  appointmentId: string;
-  patientId: string;
-  doctorId: string;
-  testType: string;
-  testName: string;
-  instructions: string;
-  priority: 'routine' | 'urgent' | 'asap';
-  status?: 'pending' | 'completed' | 'cancelled';
-  results?: string;
-  createdAt?: string;
-}
+// Local LabTest interface removed in favor of api-client type
 
 /**
  * Lab Results Page
@@ -40,6 +31,10 @@ export default function LabTestsPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [showOrderDialog, setShowOrderDialog] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [selectedTest, setSelectedTest] = useState<LabTest | null>(null);
+  const [showUploadDialog, setShowUploadDialog] = useState(false);
+  const [showDetailsDialog, setShowDetailsDialog] = useState(false);
+  const { user } = useAuth();
 
   useEffect(() => {
     const fetchLabTests = async () => {
@@ -214,7 +209,10 @@ export default function LabTestsPage() {
                         <Button
                           variant="outline"
                           size="sm"
-                          onClick={() => toast.info('Lab Test Details', { description: `Viewing test ${test.labTestId}` })}
+                          onClick={() => {
+                            setSelectedTest(test);
+                            setShowDetailsDialog(true);
+                          }}
                         >
                           <Eye className="mr-1 h-3 w-3" />
                           View
@@ -227,6 +225,20 @@ export default function LabTestsPage() {
                           >
                             <FileText className="mr-1 h-3 w-3" />
                             Results
+                          </Button>
+                        )}
+                        {/* Lab staff can upload results for pending/in-progress tests */}
+                        {user?.role === 'lab' && test.status !== 'COMPLETED' && test.status !== 'CANCELLED' && (
+                          <Button
+                            variant="default"
+                            size="sm"
+                            onClick={() => {
+                              setSelectedTest(test);
+                              setShowUploadDialog(true);
+                            }}
+                          >
+                            <Upload className="mr-1 h-3 w-3" />
+                            Upload Results
                           </Button>
                         )}
                       </div>
@@ -269,6 +281,50 @@ export default function LabTestsPage() {
           onSubmitting={setIsSubmitting}
         />
       </ActionModal>
+
+      {/* Upload Results Dialog (Lab staff only) */}
+      {selectedTest && (
+        <UploadResultsDialog
+          isOpen={showUploadDialog}
+          onClose={() => {
+            setShowUploadDialog(false);
+            setSelectedTest(null);
+          }}
+          labId={user?.id || ''}
+          testId={selectedTest.labTestId}
+          testName={selectedTest.testName}
+          patientName={selectedTest.patientId}
+          onSuccess={() => {
+            // Refresh lab tests list
+            const fetchLabTests = async () => {
+              try {
+                const data = await labTestsApi.getAll();
+                const testsList = Array.isArray(data) ? data : [];
+                setLabTests(testsList);
+                setFilteredLabTests(testsList);
+              } catch (err) {
+                console.error('Failed to refresh lab tests:', err);
+              }
+            };
+            fetchLabTests();
+          }}
+        />
+      )}
+
+      {/* Test Details Dialog */}
+      {selectedTest && (
+        <ActionModal
+          isOpen={showDetailsDialog}
+          onClose={() => {
+            setShowDetailsDialog(false);
+            setSelectedTest(null);
+          }}
+          title="Test Details"
+          description="View detailed information and results"
+        >
+          <TestResultsView test={selectedTest as any} />
+        </ActionModal>
+      )}
     </div>
   );
 }

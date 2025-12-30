@@ -230,6 +230,25 @@ export const hospitalAPI = {
     },
 
     /**
+     * Delete department
+     */
+    deleteDepartment: async (hospitalId: string, departmentId: string) => {
+        return apiCall(`/api/v1/hospital/${hospitalId}/departments/${departmentId}`, {
+            method: 'DELETE',
+        });
+    },
+
+    /**
+     * Assign staff to department
+     */
+    assignStaffToDepartment: async (hospitalId: string, userId: string, departmentId: string) => {
+        return apiCall(`/api/v1/hospital/${hospitalId}/staff/${userId}`, {
+            method: 'PATCH',
+            body: JSON.stringify({ departmentId }),
+        });
+    },
+
+    /**
      * Add staff member to hospital
      */
     addStaff: async (hospitalId: string, data: { userId: string }) => {

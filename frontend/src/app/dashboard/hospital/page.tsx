@@ -9,7 +9,10 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { hospitalAPI } from '@/lib/api/phase1';
 import { toast } from 'sonner';
 import { AddDepartmentDialog } from '@/components/hospital/AddDepartmentDialog';
+import { EditDepartmentDialog } from '@/components/hospital/EditDepartmentDialog';
+import { AssignStaffDialog } from '@/components/hospital/AssignStaffDialog';
 import { HospitalAnalytics } from '@/components/hospital/HospitalAnalytics';
+import { Edit, UserPlus } from 'lucide-react';
 
 export default function HospitalDashboard() {
     const router = useRouter();
@@ -23,6 +26,9 @@ export default function HospitalDashboard() {
     const [departments, setDepartments] = useState<any[]>([]);
     const [staff, setStaff] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
+    const [selectedDepartment, setSelectedDepartment] = useState<any | null>(null);
+    const [showEditDialog, setShowEditDialog] = useState(false);
+    const [showAssignDialog, setShowAssignDialog] = useState(false);
 
     useEffect(() => {
         // Get hospitalId from user session
@@ -168,13 +174,39 @@ export default function HospitalDashboard() {
                             {departments.length > 0 ? (
                                 <div className="space-y-3">
                                     {departments.map((dept) => (
-                                        <div key={dept.id} className="p-4 border rounded-lg">
-                                            <h3 className="font-semibold">{dept.name}</h3>
-                                            {dept.description && (
-                                                <p className="text-sm text-muted-foreground mt-1">
-                                                    {dept.description}
-                                                </p>
-                                            )}
+                                        <div key={dept.id} className="p-4 border rounded-lg flex justify-between items-start">
+                                            <div className="flex-1">
+                                                <h3 className="font-semibold">{dept.name}</h3>
+                                                {dept.description && (
+                                                    <p className="text-sm text-muted-foreground mt-1">
+                                                        {dept.description}
+                                                    </p>
+                                                )}
+                                            </div>
+                                            <div className="flex gap-2">
+                                                <Button
+                                                    variant="outline"
+                                                    size="sm"
+                                                    onClick={() => {
+                                                        setSelectedDepartment(dept);
+                                                        setShowAssignDialog(true);
+                                                    }}
+                                                >
+                                                    <UserPlus className="h-4 w-4 mr-1" />
+                                                    Assign Staff
+                                                </Button>
+                                                <Button
+                                                    variant="outline"
+                                                    size="sm"
+                                                    onClick={() => {
+                                                        setSelectedDepartment(dept);
+                                                        setShowEditDialog(true);
+                                                    }}
+                                                >
+                                                    <Edit className="h-4 w-4 mr-1" />
+                                                    Edit
+                                                </Button>
+                                            </div>
                                         </div>
                                     ))}
                                 </div>

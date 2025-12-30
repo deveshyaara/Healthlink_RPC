@@ -665,11 +665,18 @@ class HealthcareController {
         });
       }
 
+      // Flatten the response for frontend compatibility
+      const flattenedRecords = records.map(record => ({
+        ...record,
+        patientName: record.patient?.name,
+        doctorName: record.doctor?.fullName || record.doctor?.name,
+      }));
+
       res.status(200).json({
         success: true,
-        data: records,
-        records: records, // Alias for frontend compatibility
-        count: Array.isArray(records) ? records.length : 0,
+        data: flattenedRecords,
+        records: flattenedRecords, // Alias for frontend compatibility
+        count: Array.isArray(flattenedRecords) ? flattenedRecords.length : 0,
       });
     } catch (error) {
       logger.error('getCurrentUserRecords error:', error);
@@ -735,7 +742,34 @@ class HealthcareController {
       // Validate required fields
       if (!patientEmail || !title || !scheduledAt) {
         return res.status(400).json({
+          success: false,
           error: 'Missing required fields: patientEmail, title, scheduledAt',
+        });
+      }
+
+      // Validate reason is provided (important for medical context)
+      if (!reason || reason.trim().length === 0) {
+        return res.status(400).json({
+          success: false,
+          error: 'Reason for appointment is required',
+        });
+      }
+
+      // Validate scheduledAt is a valid future date
+      const appointmentDate = new Date(scheduledAt);
+      if (isNaN(appointmentDate.getTime())) {
+        return res.status(400).json({
+          success: false,
+          error: 'Invalid scheduledAt date format. Please provide a valid ISO 8601 date string.',
+        });
+      }
+
+      // Ensure appointment is not in the past
+      const now = new Date();
+      if (appointmentDate < now) {
+        return res.status(400).json({
+          success: false,
+          error: 'Appointment cannot be scheduled in the past',
         });
       }
 
@@ -1074,7 +1108,33 @@ class HealthcareController {
       // Validate required fields
       if (!patientEmail || !medication) {
         return res.status(400).json({
+          success: false,
           error: 'Missing required fields: patientEmail, medication',
+        });
+      }
+
+      // Validate dosage is provided and not empty
+      if (!dosage || dosage.trim().length === 0) {
+        return res.status(400).json({
+          success: false,
+          error: 'Dosage is required (e.g., "500mg", "10ml", "2 tablets")',
+        });
+      }
+
+      // Validate frequency (from req.body, need to extract it first)
+      const { frequency, duration } = req.body;
+
+      if (!frequency || frequency.trim().length === 0) {
+        return res.status(400).json({
+          success: false,
+          error: 'Frequency is required (e.g., "twice daily", "once per day", "every 8 hours")',
+        });
+      }
+
+      if (!duration || duration.trim().length === 0) {
+        return res.status(400).json({
+          success: false,
+          error: 'Duration is required (e.g., "7 days", "2 weeks", "1 month")',
         });
       }
 

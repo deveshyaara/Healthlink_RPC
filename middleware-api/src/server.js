@@ -31,8 +31,10 @@ import { featureFlags, logFeatureFlagsStatus } from './config/feature-flags.conf
 import pharmacyRoutes from './routes/pharmacy.routes.js';
 import hospitalRoutes from './routes/hospital.routes.js';
 import insuranceRoutes from './routes/insurance.routes.js';
+import labRoutes from './routes/lab.routes.js';
 import publicVerificationRoutes from './routes/public-verification.routes.js';
 import complianceRoutes from './routes/compliance.routes.js';
+import doctorsathiRoutes from './routes/doctorsathi.routes.js';
 
 /**
  * HealthLink Middleware API Server
@@ -176,6 +178,9 @@ app.use('/api/auth', authRoutes);
 // Mount chat routes (AI agent)
 app.use('/api/chat', chatRoutes);
 
+// Mount DoctorSathi routes (AI doctor assistant)
+app.use('/api/doctorsathi', doctorsathiRoutes);
+
 // Mount storage routes (for IPFS/file storage)
 app.use('/api/storage', storageRoutes);
 
@@ -259,6 +264,10 @@ if (featureFlags.enableInsurance) {
   app.use('/api/v1/insurance', insuranceRoutes);
   logger.info('✅ Insurance routes enabled');
 }
+
+// Mount lab routes
+app.use('/api/v1/lab', labRoutes);
+logger.info('✅ Lab routes enabled');
 
 // Serve API documentation (Swagger UI) at /api-docs
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));

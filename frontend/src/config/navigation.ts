@@ -21,6 +21,7 @@ import {
   Shield,
   Eye,
   Activity,
+  Brain,
 } from 'lucide-react';
 
 export interface NavRoute {
@@ -41,6 +42,13 @@ export const doctorRoutes: NavRoute[] = [
     icon: LayoutDashboard,
     label: 'Dashboard',
     description: 'Overview of your practice',
+    roles: ['doctor'],
+  },
+  {
+    href: '/dashboard/doctor/doctorsathi',
+    icon: Brain,
+    label: 'DoctorSathi AI',
+    description: 'AI-powered workflow automation assistant',
     roles: ['doctor'],
   },
   {

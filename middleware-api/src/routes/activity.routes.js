@@ -1,8 +1,8 @@
-const express = require('express');
-const router = express.Router();
-const { PrismaClient } = require('@prisma/client');
-const { requireAuth } = require('../middleware/auth.middleware');
+import express from 'express';
+import { PrismaClient } from '@prisma/client';
+import { authenticateJWT } from '../middleware/auth.middleware.js';
 
+const router = express.Router();
 const prisma = new PrismaClient();
 
 /**
@@ -10,7 +10,7 @@ const prisma = new PrismaClient();
  * @desc    Get recent activity across the system
  * @access  Private
  */
-router.get('/recent', requireAuth, async (req, res) => {
+router.get('/recent', authenticateJWT, async (req, res) => {
     try {
         const limit = parseInt(req.query.limit) || 10;
         const userId = req.user.id;
@@ -154,4 +154,4 @@ function formatTimeAgo(date) {
     return `${months} month${months > 1 ? 's' : ''} ago`;
 }
 
-module.exports = router;
+export default router;

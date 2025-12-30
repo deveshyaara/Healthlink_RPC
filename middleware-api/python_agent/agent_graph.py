@@ -100,12 +100,26 @@ def generate_response(state: AgentState) -> Dict[str, Any]:
             for a in recent_apts
         ])
     
-    # Format current medications from prescriptions
+    # Format detailed prescriptions list
+    prescriptions_details = "No prescriptions on record"
+    if prescriptions:
+        prescriptions_list = []
+        for p in prescriptions:
+            p_id = p.get('prescriptionId', 'N/A')
+            med = p.get('medication', 'Unknown')
+            dose = p.get('dosage', 'N/A')
+            freq = p.get('frequency', 'N/A')
+            dur = p.get('duration', 'N/A')
+            status = p.get('status', 'ACTIVE')
+            prescriptions_list.append(f"- ID: {p_id} | Med: {med} | Dose: {dose} | Freq: {freq} | Duration: {dur} | Status: {status}")
+        prescriptions_details = "\n".join(prescriptions_list)
+
+    # Format current medications from prescriptions (simplified list)
     current_meds = "None on record"
     if medications:
         current_meds = ", ".join(medications)
     elif prescriptions:
-        current_meds = ", ".join([p.get('medication', 'Unknown') for p in prescriptions[:5]])
+        current_meds = ", ".join([f"{p.get('medication', 'Unknown')} ({p.get('dosage', '')})" for p in prescriptions[:5]])
     
     diagnoses_str = ", ".join(diagnoses) if diagnoses else "None on record"
     
@@ -121,6 +135,9 @@ You are currently speaking to **{name}**, who is **{age} years old** and identif
 - **Recent Appointments:** {recent_appointments}
 - **Total Prescriptions on File:** {len(prescriptions)}
 - **Total Medical Records:** {len(records)}
+
+**Detailed Prescription Records:**
+{prescriptions_details}
 
 **Important Guidelines:**
 1. Provide personalized advice based on the patient's ACTUAL medical context shown above

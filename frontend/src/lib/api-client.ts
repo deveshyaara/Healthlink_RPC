@@ -30,7 +30,7 @@ export interface AuthResponse {
     id: string;
     name: string;
     email: string;
-    role: 'patient' | 'doctor' | 'admin';
+    role: 'patient' | 'doctor' | 'admin' | 'lab';
     avatar?: string;
   };
 }
@@ -214,7 +214,7 @@ export interface LabTest {
   testName: string;
   instructions: string;
   priority: 'routine' | 'urgent' | 'asap';
-  status?: 'pending' | 'completed' | 'cancelled';
+  status?: 'PENDING' | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED' | 'pending' | 'completed' | 'cancelled';
   results?: string;
   createdAt?: string;
   updatedAt?: string;
@@ -248,7 +248,7 @@ export interface DashboardStats {
  * Base fetch wrapper with comprehensive error handling
  * Handles 404s gracefully for dashboard stats
  */
-async function fetchApi<T>(
+export async function fetchApi<T>(
   endpoint: string,
   options: RequestInit = {},
   handleNotFound: boolean = false
@@ -1112,6 +1112,13 @@ export const usersApi = {
   getInvitations: async (): Promise<any[]> => {
     return fetchApi<any[]>('/api/users/invitations', { method: 'GET' }, true);
   },
+
+  updateUser: async (userId: string, data: any): Promise<any> => {
+    return fetchApi<any>(`/api/users/${userId}`, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    });
+  },
 };
 
 // ========================================
@@ -1126,6 +1133,26 @@ export const healthApi = {
    */
   check: async (): Promise<any> => {
     return fetchApi<any>('/api/health', { method: 'GET' });
+  },
+};
+
+// ========================================
+// DOCTORSATHI AI API
+// ========================================
+
+export const doctorsathiApi = {
+  /**
+   * Send message to DoctorSathi AI assistant
+   * Backend route: POST /api/doctorsathi/chat
+   */
+  chat: async (message: string, threadId?: string): Promise<{ success: boolean; response: string; threadId: string; timestamp: string }> => {
+    return fetchApi<{ success: boolean; response: string; threadId: string; timestamp: string }>('/api/doctorsathi/chat', {
+      method: 'POST',
+      body: JSON.stringify({
+        message,
+        threadId: threadId || `thread-${Date.now()}`,
+      }),
+    });
   },
 };
 
