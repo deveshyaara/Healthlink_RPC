@@ -83,7 +83,7 @@ class AuthService {
    * @throws {Error} 'Database not connected' if Supabase unavailable
    */
   async registerUser(userData) {
-    const { userId, email, password, role, name, phoneNumber, ...extraFields } = userData;
+    const { userId, email, password, role, name, phoneNumber, walletAddress, ...extraFields } = userData;
 
     if (!this.useSupabase || !dbService.isReady()) {
       throw new Error('Database not connected. Please ensure Supabase is configured.');
@@ -94,7 +94,7 @@ class AuthService {
         email,
         password,
         role: role || 'patient',
-        fabricEnrollmentId: userId,
+        fabricEnrollmentId: walletAddress || userId, // Use walletAddress if provided, otherwise userId
         fullName: name || email.split('@')[0],
         phoneNumber: phoneNumber || null,
         ...extraFields,

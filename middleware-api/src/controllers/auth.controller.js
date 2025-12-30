@@ -127,6 +127,31 @@ class AuthController {
         });
       }
 
+      // Check if this email exists in patient_wallet_mappings (created by a doctor)
+      // If so, use that wallet address instead of the sanitized email
+      let walletAddress = userId; // Default to sanitized email
+      let existingPatient = null;
+
+      try {
+        const dbService = (await import('../services/db.service.prisma.js')).default;
+        const db = dbService.prisma;
+
+        if (db?.patientWalletMapping) {
+          existingPatient = await db.patientWalletMapping.findUnique({
+            where: { email },
+            select: { walletAddress: true, id: true }
+          });
+
+          if (existingPatient) {
+            walletAddress = existingPatient.walletAddress;
+            logger.info(`Found existing patient record for ${email}, using wallet: ${walletAddress}`);
+          }
+        }
+      } catch (patientLookupError) {
+        logger.warn(`Could not lookup patient wallet mapping: ${patientLookupError.message}`);
+        // Continue with sanitized email as fallback
+      }
+
       // Note: Blockchain operations use admin identity
       // User blockchain identity registration is no longer required
       // Users will authenticate via JWT and blockchain operations use admin credentials
@@ -138,6 +163,7 @@ class AuthController {
         password,
         role: role || 'client',
         name,
+        walletAddress, // Use the wallet address from patient mapping or sanitized email
       });
 
       // Generate JWT token
@@ -151,7 +177,7 @@ class AuthController {
           name: user.name,
           email: user.email,
           role: user.role,
-          walletAddress: user.fabric_enrollment_id,
+          walletAddress: user.fabric_enrollment_id || walletAddress,
         },
         message: 'Registration successful',
       });

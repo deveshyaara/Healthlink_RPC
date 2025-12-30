@@ -266,15 +266,40 @@ class DoctorSathiController {
                 // Prepare patient context as JSON string
                 const contextJson = JSON.stringify(doctorContext);
 
-                // Spawn Python process
-                const pythonProcess = spawn('python', [
-                    pythonAgentPath,
-                    userId,
-                    userName,
-                    message,
-                    threadId,
-                    contextJson,
-                ]);
+                // Try different Python executables (Windows/Unix compatibility)
+                const pythonExecutables = process.platform === 'win32'
+                    ? ['python', 'py', 'python3']  // Windows order
+                    : ['python3', 'python'];       // Unix order
+
+                let pythonProcess = null;
+                let lastError = null;
+
+                // Try to spawn with each executable
+                for (const pythonCmd of pythonExecutables) {
+                    try {
+                        pythonProcess = spawn(pythonCmd, [
+                            pythonAgentPath,
+                            userId,
+                            userName,
+                            message,
+                            threadId,
+                            contextJson,
+                        ]);
+
+                        // Successfully spawned, break the loop
+                        break;
+                    } catch (spawnError) {
+                        lastError = spawnError;
+                        logger.warn(`Failed to spawn with ${pythonCmd}:`, spawnError.message);
+                        continue;
+                    }
+                }
+
+                if (!pythonProcess) {
+                    const errorMsg = 'Python is not installed or not in PATH. Please install Python 3.8+ and ensure it is accessible.';
+                    logger.error(errorMsg);
+                    return reject(new Error(errorMsg));
+                }
 
                 let stdout = '';
                 let stderr = '';

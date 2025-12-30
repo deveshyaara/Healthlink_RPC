@@ -106,10 +106,21 @@ class HealthcareController {
         // or try to find the user account by email if patient is self-registering
         let userId = doctorId; // Default to doctor creating the patient
 
-        // If email matches an existing user, link to that user
-        const existingUser = await db.user?.findUnique?.({ where: { email } });
-        if (existingUser) {
-          userId = existingUser.id;
+        // If email matches an existing user, link to that user  
+        try {
+          if (db.user && typeof db.user.findUnique === 'function') {
+            const existingUser = await db.user.findUnique({
+              where: { email },
+              select: { id: true, email: true }
+            });
+            if (existingUser) {
+              userId = existingUser.id;
+            }
+          }
+        } catch (userLookupError) {
+          // If user lookup fails, just use the doctor ID as fallback
+          logger.warn(`Could not lookup existing user by email: ${userLookupError.message}`);
+          userId = doctorId;
         }
 
         patientMapping = await db.patientWalletMapping.create({
@@ -1121,21 +1132,24 @@ class HealthcareController {
         });
       }
 
-      // Validate frequency (from req.body, need to extract it first)
+      // Get frequency and duration from request body (optional, will be combined into instructions)
       const { frequency, duration } = req.body;
 
-      if (!frequency || frequency.trim().length === 0) {
-        return res.status(400).json({
-          success: false,
-          error: 'Frequency is required (e.g., "twice daily", "once per day", "every 8 hours")',
-        });
+      // Build comprehensive instructions from frequency and duration if provided
+      // This field is optional but recommended for better prescription clarity
+      let combinedInstructions = instructions || '';
+
+      if (frequency && duration) {
+        combinedInstructions = `${frequency} for ${duration}${instructions ? '. ' + instructions : ''}`;
+      } else if (frequency) {
+        combinedInstructions = `${frequency}${instructions ? '. ' + instructions : ''}`;
+      } else if (duration) {
+        combinedInstructions = `For ${duration}${instructions ? '. ' + instructions : ''}`;
       }
 
-      if (!duration || duration.trim().length === 0) {
-        return res.status(400).json({
-          success: false,
-          error: 'Duration is required (e.g., "7 days", "2 weeks", "1 month")',
-        });
+      // If no instructions provided at all, use dosage as fallback
+      if (!combinedInstructions || combinedInstructions.trim().length === 0) {
+        combinedInstructions = `Take ${dosage}`;
       }
 
       // Resolve patientId from email and fetch patient record
@@ -1168,7 +1182,7 @@ class HealthcareController {
               prescriptionId,
               medication: med,
               dosage,
-              instructions,
+              instructions: combinedInstructions, // Use combined instructions with frequency and duration
               expiryDate: expiryDate ? new Date(expiryDate) : null,
               status: 'ACTIVE',
               patientId: patient.id || patientId,
@@ -1870,10 +1884,18 @@ class HealthcareController {
         throw err; // Re-throw the error as in-memory fallback is removed
       }
 
+      // Flatten response for easier frontend consumption
+      const flattenedAppointments = appointments.map(apt => ({
+        ...apt,
+        patientName: apt.patient?.name || 'Unknown Patient',
+        patientEmail: apt.patient?.email || '',
+        patientWallet: apt.patient?.walletAddress || '',
+      }));
+
       res.status(200).json({
         success: true,
-        data: appointments,
-        count: appointments.length,
+        data: flattenedAppointments,
+        count: flattenedAppointments.length,
         message: 'Appointments retrieved successfully',
       });
     } catch (error) {

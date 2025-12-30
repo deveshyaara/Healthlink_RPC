@@ -184,7 +184,7 @@ export function AppointmentCalendar({
                                             {new Date(apt.appointmentDate).toLocaleTimeString('en-US', {
                                                 hour: '2-digit',
                                                 minute: '2-digit'
-                                            })} - {apt.patientName || apt.patientId.slice(0, 8)}
+                                            })} - {apt.patientName || apt.doctorName || apt.patientId?.slice(0, 8) || apt.doctorId?.slice(0, 8) || 'Appointment'}
                                         </div>
                                     ))}
                                     {dayAppointments.length > 2 && (

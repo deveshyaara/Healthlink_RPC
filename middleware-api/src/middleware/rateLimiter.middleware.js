@@ -19,7 +19,7 @@ import logger from '../utils/logger.js';
  */
 export const authLimiter = rateLimit({
   windowMs: parseInt(process.env.AUTH_RATE_LIMIT_WINDOW_MS) || 15 * 60 * 1000, // 15 minutes
-  max: parseInt(process.env.AUTH_RATE_LIMIT_MAX_ATTEMPTS) || 5, // Only 5 attempts
+  max: parseInt(process.env.AUTH_RATE_LIMIT_MAX_ATTEMPTS) || 50, // Increased from 5 to 50 for development
   message: 'Too many authentication attempts from this IP, please try again after 15 minutes.',
   standardHeaders: true,
   legacyHeaders: false,
@@ -48,7 +48,7 @@ export const authLimiter = rateLimit({
  */
 export const generalLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, // 100 requests per window
+  max: 1000, // Increased from 100 to 1000 for development
   message: 'Too many requests from this IP, please try again later.',
   standardHeaders: true,
   legacyHeaders: false,

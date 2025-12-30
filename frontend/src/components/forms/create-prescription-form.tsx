@@ -259,12 +259,30 @@ export function CreatePrescriptionForm({
               <Label htmlFor="medication.frequency" className="text-xs">
                 Frequency <span className="text-red-500">*</span>
               </Label>
-              <Input
-                id="medication.frequency"
-                placeholder="e.g., twice daily"
-                {...register('medication.frequency')}
+              <Select
+                value={watch('medication.frequency')}
+                onValueChange={(value) => setValue('medication.frequency', value)}
                 disabled={isSubmitting}
-              />
+              >
+                <SelectTrigger id="medication.frequency">
+                  <SelectValue placeholder="Select frequency" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="once daily">Once daily</SelectItem>
+                  <SelectItem value="twice daily">Twice daily</SelectItem>
+                  <SelectItem value="three times daily">Three times daily</SelectItem>
+                  <SelectItem value="four times daily">Four times daily</SelectItem>
+                  <SelectItem value="every 4 hours">Every 4 hours</SelectItem>
+                  <SelectItem value="every 6 hours">Every 6 hours</SelectItem>
+                  <SelectItem value="every 8 hours">Every 8 hours</SelectItem>
+                  <SelectItem value="every 12 hours">Every 12 hours</SelectItem>
+                  <SelectItem value="once weekly">Once weekly</SelectItem>
+                  <SelectItem value="as needed">As needed (PRN)</SelectItem>
+                  <SelectItem value="before meals">Before meals</SelectItem>
+                  <SelectItem value="after meals">After meals</SelectItem>
+                  <SelectItem value="at bedtime">At bedtime</SelectItem>
+                </SelectContent>
+              </Select>
               {errors.medication?.frequency && (
                 <p className="text-xs text-red-500">
                   {errors.medication.frequency.message}
@@ -277,12 +295,29 @@ export function CreatePrescriptionForm({
               <Label htmlFor="medication.duration" className="text-xs">
                 Duration <span className="text-red-500">*</span>
               </Label>
-              <Input
-                id="medication.duration"
-                placeholder="e.g., 7 days"
-                {...register('medication.duration')}
+              <Select
+                value={watch('medication.duration')}
+                onValueChange={(value) => setValue('medication.duration', value)}
                 disabled={isSubmitting}
-              />
+              >
+                <SelectTrigger id="medication.duration">
+                  <SelectValue placeholder="Select duration" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="3 days">3 days</SelectItem>
+                  <SelectItem value="5 days">5 days</SelectItem>
+                  <SelectItem value="7 days">7 days (1 week)</SelectItem>
+                  <SelectItem value="10 days">10 days</SelectItem>
+                  <SelectItem value="14 days">14 days (2 weeks)</SelectItem>
+                  <SelectItem value="21 days">21 days (3 weeks)</SelectItem>
+                  <SelectItem value="1 month">1 month</SelectItem>
+                  <SelectItem value="2 months">2 months</SelectItem>
+                  <SelectItem value="3 months">3 months</SelectItem>
+                  <SelectItem value="6 months">6 months</SelectItem>
+                  <SelectItem value="ongoing">Ongoing</SelectItem>
+                  <SelectItem value="as needed">As needed</SelectItem>
+                </SelectContent>
+              </Select>
               {errors.medication?.duration && (
                 <p className="text-xs text-red-500">
                   {errors.medication.duration.message}

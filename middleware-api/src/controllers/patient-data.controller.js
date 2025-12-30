@@ -176,11 +176,18 @@ class PatientDataController {
         orderBy: { scheduledAt: 'desc' },
       }) || [];
 
+      // Flatten response for easier frontend consumption
+      const flattenedAppointments = appointments.map(apt => ({
+        ...apt,
+        doctorName: apt.doctor?.fullName || apt.doctor?.name || 'Unknown Doctor',
+        doctorEmail: apt.doctor?.email || '',
+      }));
+
       res.json({
         success: true,
-        data: appointments,
-        appointments: appointments, // Alias for compatibility
-        count: appointments.length,
+        data: flattenedAppointments,
+        appointments: flattenedAppointments, // Alias for compatibility
+        count: flattenedAppointments.length,
       });
     } catch (error) {
       logger.error('Failed to fetch appointments:', error);

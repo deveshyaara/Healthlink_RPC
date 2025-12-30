@@ -320,7 +320,7 @@ class DatabaseService {
       throw new Error('Database not connected');
     }
 
-    const user = await this.prisma.user.findUnique({
+    const user = await this.prisma.user.findFirst({
       where: {
         email: email.toLowerCase(),
         isActive: true,

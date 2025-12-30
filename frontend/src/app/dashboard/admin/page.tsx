@@ -21,22 +21,34 @@ export default function AdminPage() {
       try {
         setLoading(true);
         const [dStats, users, h] = await Promise.all([
-          dashboardApi.getStats(),
-          usersApi.getUsers(),
-          healthApi.check(),
+          dashboardApi.getStats().catch(() => ({ totalRecords: 0, activeRecords: 0 })),
+          usersApi.getUsers().catch(() => []),
+          healthApi.check().catch(() => ({ status: 'down', blockchainSync: 'Unknown' })),
         ]);
 
-        const doctors = users.filter((u: any) => u.role === 'doctor').length;
-        const patients = users.filter((u: any) => u.role === 'patient').length;
-        const pendingVerifications = users.filter((u: any) => u.isVerified === false && u.role === 'doctor').length;
-        const flaggedAccounts = users.filter((u: any) => u.flagged === true).length;
+        // Defensive null checks for users array
+        const safeUsers = Array.isArray(users) ? users : [];
+        const doctors = safeUsers.filter((u: any) => u?.role === 'doctor').length;
+        const patients = safeUsers.filter((u: any) => u?.role === 'patient').length;
+        const pendingVerifications = safeUsers.filter((u: any) => u?.isVerified === false && u?.role === 'doctor').length;
+        const flaggedAccounts = safeUsers.filter((u: any) => u?.flagged === true).length;
 
-        setStats({ doctors, patients, records: dStats.totalRecords ?? dStats.activeRecords ?? 0 });
-        setHealth({ online: h?.status !== 'down', blockchainSync: h?.blockchainSync ?? 'Unknown' });
+        // Defensive null checks for stats
+        const totalRecords = dStats?.totalRecords ?? dStats?.activeRecords ?? 0;
+        const online = h?.status !== 'down';
+        const blockchainSync = h?.blockchainSync ?? 'Unknown';
+
+        setStats({ doctors, patients, records: totalRecords });
+        setHealth({ online, blockchainSync });
         setActionItems({ pendingVerifications, flaggedAccounts });
       } catch (e) {
         console.error('Failed to load admin dashboard', e);
         toast({ title: 'Error', description: 'Failed to load admin dashboard data', variant: 'destructive' });
+
+        // Set safe defaults on error
+        setStats({ doctors: 0, patients: 0, records: 0 });
+        setHealth({ online: false, blockchainSync: 'Unknown' });
+        setActionItems({ pendingVerifications: 0, flaggedAccounts: 0 });
       } finally {
         setLoading(false);
       }

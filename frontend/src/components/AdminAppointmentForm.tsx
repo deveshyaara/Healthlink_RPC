@@ -18,7 +18,21 @@ export default function AdminAppointmentForm(): JSX.Element {
       return;
     }
 
-    const unix = Math.floor(new Date(time).getTime() / 1000);
+    // Client-side validation: Ensure appointment is not in the past
+    const appointmentDate = new Date(time);
+    const now = new Date();
+
+    if (isNaN(appointmentDate.getTime())) {
+      setNotice('Invalid date format. Please select a valid date and time.');
+      return;
+    }
+
+    if (appointmentDate < now) {
+      setNotice('Appointment cannot be scheduled in the past. Please select a future date and time.');
+      return;
+    }
+
+    const unix = Math.floor(appointmentDate.getTime() / 1000);
     const payload = {
       appointmentId: `appt-${Date.now()}`,
       patientEmail: patientEmail,
@@ -75,6 +89,7 @@ export default function AdminAppointmentForm(): JSX.Element {
             type="datetime-local"
             value={time}
             onChange={(e) => setTime(e.target.value)}
+            min={new Date().toISOString().slice(0, 16)} // Prevent past dates in picker
             className="mt-1 block w-full rounded-md border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
           />
         </div>
