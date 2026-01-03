@@ -98,8 +98,8 @@ export function PatientList() {
                     <TableRow>
                         <TableHead>Name</TableHead>
                         <TableHead>Email</TableHead>
-                        <TableHead>Age</TableHead>
-                        <TableHead>Gender</TableHead>
+                        {/* <TableHead>Age</TableHead> */}
+                        {/* <TableHead>Gender</TableHead> */}
                         <TableHead className="text-right">Actions</TableHead>
                     </TableRow>
                 </TableHeader>
@@ -112,12 +112,12 @@ export function PatientList() {
                             <TableCell>
                                 {patient.email || "N/A"}
                             </TableCell>
-                            <TableCell>
+                            {/* <TableCell>
                                 {patient.publicData?.age || patient.age || "N/A"}
                             </TableCell>
                             <TableCell className="capitalize">
                                 {patient.publicData?.gender || patient.gender || "N/A"}
-                            </TableCell>
+                            </TableCell> */}
                             <TableCell className="text-right">
                                 <Button
                                     variant="ghost"

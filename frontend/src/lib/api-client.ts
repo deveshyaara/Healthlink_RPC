@@ -1145,13 +1145,31 @@ export const doctorsathiApi = {
    * Send message to DoctorSathi AI assistant
    * Backend route: POST /api/doctorsathi/chat
    */
-  chat: async (message: string, threadId?: string): Promise<{ success: boolean; response: string; threadId: string; timestamp: string }> => {
-    return fetchApi<{ success: boolean; response: string; threadId: string; timestamp: string }>('/api/doctorsathi/chat', {
+  chat: async (message: string, threadId?: string): Promise<{ success: boolean; response: string; actions?: any[]; threadId: string; timestamp: string }> => {
+    return fetchApi<{
+      success: boolean;
+      response: string;
+      actions?: any[];
+      threadId: string;
+      timestamp: string;
+    }>('/api/doctorsathi/chat', {
       method: 'POST',
-      body: JSON.stringify({
-        message,
-        threadId: threadId || `thread-${Date.now()}`,
-      }),
+      body: JSON.stringify({ message, threadId }),
+    });
+  },
+
+  /**
+   * Execute an action suggested by DoctorSathi AI assistant
+   * Backend route: POST /api/doctorsathi/execute
+   */
+  executeAction: async (actionId: string, actionType: string, actionData: any): Promise<{ success: boolean; message: string; data?: any }> => {
+    return fetchApi<{
+      success: boolean;
+      message: string;
+      data?: any;
+    }>('/api/doctorsathi/execute', {
+      method: 'POST',
+      body: JSON.stringify({ actionId, actionType, actionData }),
     });
   },
 };

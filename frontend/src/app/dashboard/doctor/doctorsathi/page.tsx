@@ -10,11 +10,12 @@ import { Loader2, Send, Sparkles, RefreshCw, Zap, Brain, Activity, TrendingUp } 
 import { toast } from 'sonner';
 import { motion, AnimatePresence } from 'framer-motion';
 import { doctorsathiApi } from '@/lib/api-client';
+import ActionCard from '@/components/doctor/ActionCard';
 
 interface Message {
     role: 'user' | 'assistant';
     content: string;
-    actions?: string[];
+    actions?: any[];  // Changed from string[] to any[] for full action objects
     timestamp: Date;
 }
 
@@ -77,6 +78,7 @@ export default function DoctorSathiPage() {
             const assistantMessage: Message = {
                 role: 'assistant',
                 content: data.response,
+                actions: data.actions || [],  // Include actions from AI
                 timestamp: new Date(),
             };
 
@@ -99,7 +101,22 @@ export default function DoctorSathiPage() {
         }
     };
 
-    const handleExampleClick = (prompt: string) => {
+    const handleExecuteAction = async (actionId: string, actionType: string, actionData: any) => {
+        try {
+            const result = await doctorsathiApi.executeAction(actionId, actionType, actionData);
+
+            if (result.success) {
+                toast.success(result.message || 'Action executed successfully!');
+            } else {
+                toast.error(result.message || 'Failed to execute action');
+            }
+        } catch (error: any) {
+            toast.error(error.message || 'Failed to execute action');
+            throw error;  // Re-throw so ActionCard can handle it
+        }
+    };
+
+    const handleUsePrompt = (prompt: string) => {
         setInput(prompt);
         inputRef.current?.focus();
     };
@@ -254,7 +271,7 @@ export default function DoctorSathiPage() {
                                                 animate={{ opacity: 1, y: 0 }}
                                                 transition={{ delay: idx * 0.1 }}
                                                 whileHover={{ scale: 1.05, y: -5 }}
-                                                onClick={() => handleExampleClick(example.prompt)}
+                                                onClick={() => handleUsePrompt(example.prompt)}
                                                 className="cursor-pointer backdrop-blur-xl bg-gradient-to-br from-white/10 to-white/5 border border-white/20 rounded-2xl p-4 hover:border-blue-400/50 transition-all"
                                             >
                                                 <div className="text-3xl mb-2">{example.icon}</div>
@@ -292,24 +309,22 @@ export default function DoctorSathiPage() {
                                                         animate={{ opacity: 1, height: 'auto' }}
                                                         className="mt-4 pt-4 border-t border-white/20"
                                                     >
-                                                        <div className="flex items-center gap-2 mb-2">
-                                                            <Zap className="h-3 w-3 text-yellow-400" />
-                                                            <span className="text-xs font-semibold">Actions Completed:</span>
+                                                        <div className="flex items-center gap-2 mb-3">
+                                                            <Zap className="h-4 w-4 text-yellow-400" />
+                                                            <span className="text-sm font-semibold">Recommended Actions:</span>
                                                         </div>
-                                                        <div className="flex flex-wrap gap-2">
+                                                        <div className="space-y-3">
                                                             {msg.actions.map((action, i) => (
                                                                 <motion.div
-                                                                    key={i}
-                                                                    initial={{ scale: 0 }}
-                                                                    animate={{ scale: 1 }}
+                                                                    key={action.id || i}
+                                                                    initial={{ scale: 0.9, opacity: 0 }}
+                                                                    animate={{ scale: 1, opacity: 1 }}
                                                                     transition={{ delay: i * 0.1 }}
                                                                 >
-                                                                    <Badge
-                                                                        variant="secondary"
-                                                                        className="bg-white/20 text-white border-white/30"
-                                                                    >
-                                                                        ✓ {action}
-                                                                    </Badge>
+                                                                    <ActionCard
+                                                                        action={action}
+                                                                        onExecute={handleExecuteAction}
+                                                                    />
                                                                 </motion.div>
                                                             ))}
                                                         </div>
@@ -368,7 +383,7 @@ export default function DoctorSathiPage() {
                                             handleSend();
                                         }
                                     }}
-                                    placeholder="Type your instruction... (e.g., 'Schedule appointment for John tomorrow at 3 PM')"
+                                    placeholder="Type your instruction... (e.g., 'Schedule appointment for Rajesh Kumar tomorrow at 3 PM')"
                                     className="min-h-[70px] resize-none bg-white/10 border-white/20 text-white placeholder:text-slate-400 focus:ring-2 focus:ring-blue-400 rounded-xl"
                                     disabled={isLoading}
                                 />

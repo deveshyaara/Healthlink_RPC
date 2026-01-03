@@ -19,4 +19,11 @@ Object.getOwnPropertyNames(Object.getPrototypeOf(controller)).forEach((name) => 
  */
 router.post('/chat', authenticateJWT, requireDoctor, controller.chat);
 
+/**
+ * @route   POST /api/doctorsathi/execute
+ * @desc    Execute AI-generated action
+ * @access  Private (Doctor only)
+ */
+router.post('/execute', authenticateJWT, requireDoctor, controller.executeAction);
+
 export default router;

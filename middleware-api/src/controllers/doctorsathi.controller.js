@@ -1,8 +1,10 @@
 import { spawn } from 'child_process';
-import path from 'path';
+import path, { dirname } from 'path';
 import { fileURLToPath } from 'url';
 import logger from '../utils/logger.js';
 import dbService from '../services/db.service.prisma.js';
+import { validateActionData } from '../types/actions.js';
+import actionExecutor from '../services/action-executor.service.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -42,10 +44,10 @@ class DoctorSathiController {
             const userName = req.user.name || req.user.email || 'Doctor';
 
             // Fetch doctor's context from database
-            const doctorContext = await this.fetchDoctorContext(userId);
+            const doctorContext = await this.fetchDoctorContext(userId, userName);
 
             // Generate thread ID if not provided
-            const effectiveThreadId = threadId || `thread-${userId}-${Date.now()}`;
+            const effectiveThreadId = threadId || `thread - ${userId} -${Date.now()} `;
 
             // Invoke Python agent
             const agentResponse = await this.invokePythonAgent(
@@ -59,6 +61,7 @@ class DoctorSathiController {
             return res.status(200).json({
                 success: true,
                 response: agentResponse.response,
+                actions: agentResponse.actions || [],  // Include actions
                 threadId: effectiveThreadId,
                 timestamp: new Date().toISOString(),
             });
@@ -72,10 +75,77 @@ class DoctorSathiController {
     }
 
     /**
+     * POST /api/doctorsathi/execute
+     * Execute AI-generated action
+     */
+    async executeAction(req, res) {
+        try {
+            const { actionId, actionType, actionData } = req.body;
+            const userId = req.user?.id;
+            const userRole = req.user?.role;
+
+            // Validate request
+            if (!actionType || !actionData) {
+                return res.status(400).json({
+                    success: false,
+                    error: 'Action type and data are required',
+                });
+            }
+
+            // Verify user is a doctor
+            if (userRole !== 'doctor') {
+                return res.status(403).json({
+                    success: false,
+                    error: 'Only doctors can execute actions',
+                });
+            }
+
+            logger.info('Executing action', { actionId, actionType, doctorId: userId });
+
+            // Validate action data
+            const validation = validateActionData(actionType, actionData);
+            if (!validation.valid) {
+                return res.status(400).json({
+                    success: false,
+                    error: 'Invalid action data',
+                    errors: validation.errors,
+                });
+            }
+
+            // Execute action
+            const result = await actionExecutor.executeAction(
+                { type: actionType, data: actionData },
+                userId
+            );
+
+            if (!result.success) {
+                return res.status(400).json({
+                    success: false,
+                    error: result.message,
+                });
+            }
+
+            logger.info('Action executed successfully', { actionId, result: result.data });
+
+            return res.status(200).json({
+                success: true,
+                message: result.message,
+                data: result.data,
+            });
+        } catch (error) {
+            logger.error('Error executing action:', error);
+            return res.status(500).json({
+                success: false,
+                error: error.message || 'Failed to execute action',
+            });
+        }
+    }
+
+    /**
      * Fetch doctor's context from database
      * @private
      */
-    async fetchDoctorContext(userId) {
+    async fetchDoctorContext(userId, userName = 'Doctor') {
         try {
             // Get doctor's appointments with patient information
             const appointments = await dbService.prisma.appointment.findMany({
@@ -84,12 +154,14 @@ class DoctorSathiController {
                 orderBy: { scheduledAt: 'desc' },
                 select: {
                     id: true,
+                    appointmentId: true,
                     patientId: true,
+                    title: true,
+                    description: true,
                     scheduledAt: true,
                     status: true,
-                    type: true,
-                    reason: true,
                     notes: true,
+                    location: true,
                     patient: {
                         select: {
                             name: true,
@@ -106,12 +178,12 @@ class DoctorSathiController {
                 orderBy: { createdAt: 'desc' },
                 select: {
                     id: true,
+                    prescriptionId: true,
                     patientId: true,
                     medication: true,
                     dosage: true,
-                    frequency: true,
-                    duration: true,
                     instructions: true,
+                    expiryDate: true,
                     status: true,
                     createdAt: true,
                     patient: {
@@ -130,11 +202,13 @@ class DoctorSathiController {
                 orderBy: { createdAt: 'desc' },
                 select: {
                     id: true,
+                    recordId: true,
                     patientId: true,
-                    diagnosis: true,
-                    treatment: true,
-                    notes: true,
+                    title: true,
+                    description: true,
                     recordType: true,
+                    ipfsHash: true,
+                    fileName: true,
                     createdAt: true,
                     patient: {
                         select: {
@@ -152,12 +226,13 @@ class DoctorSathiController {
                 orderBy: { createdAt: 'desc' },
                 select: {
                     id: true,
+                    testId: true,
                     patientId: true,
-                    testType: true,
                     testName: true,
-                    status: true,
+                    testType: true,
                     results: true,
-                    priority: true,
+                    status: true,
+                    performedAt: true,
                     createdAt: true,
                     patient: {
                         select: {
@@ -169,12 +244,35 @@ class DoctorSathiController {
             });
 
             // Get stats
+            // Get all unique patients for this doctor
+            const patientIds = new Set();
+            appointments.forEach(a => patientIds.add(a.patientId));
+            prescriptions.forEach(p => patientIds.add(p.patientId));
+            records.forEach(r => patientIds.add(r.patientId));
+            labTests.forEach(l => patientIds.add(l.patientId));
+
+            const patients = await dbService.prisma.patientWalletMapping.findMany({
+                where: {
+                    id: { in: Array.from(patientIds) },
+                },
+                select: {
+                    id: true,
+                    name: true,
+                    email: true,
+                    walletAddress: true,
+                },
+            });
+
+            // Get stats
             const totalAppointments = await dbService.prisma.appointment.count({
                 where: { doctorId: userId },
             });
 
             const pendingAppointments = await dbService.prisma.appointment.count({
-                where: { doctorId: userId, status: 'pending' },
+                where: {
+                    doctorId: userId,
+                    status: 'SCHEDULED'  // Valid enum value for pending appointments
+                },
             });
 
             const totalPrescriptions = await dbService.prisma.prescription.count({
@@ -186,54 +284,67 @@ class DoctorSathiController {
             });
 
             return {
+                name: userName || 'Doctor',  // Add doctor's name for the AI
                 appointments: appointments.map((a) => ({
                     id: a.id,
+                    appointmentId: a.appointmentId,
                     patientId: a.patientId,
                     patientName: a.patient?.name || 'Unknown',
                     patientEmail: a.patient?.email,
+                    title: a.title,
+                    description: a.description,
                     scheduledAt: a.scheduledAt?.toISOString(),
                     status: a.status,
-                    type: a.type,
-                    reason: a.reason,
                     notes: a.notes,
+                    location: a.location,
                 })),
                 prescriptions: prescriptions.map((p) => ({
                     id: p.id,
+                    prescriptionId: p.prescriptionId,
                     patientId: p.patientId,
                     patientName: p.patient?.name || 'Unknown',
                     patientEmail: p.patient?.email,
                     medication: p.medication,
                     dosage: p.dosage,
-                    frequency: p.frequency,
-                    duration: p.duration,
                     instructions: p.instructions,
+                    expiryDate: p.expiryDate?.toISOString(),
                     status: p.status,
                     createdAt: p.createdAt?.toISOString(),
                 })),
                 records: records.map((r) => ({
                     id: r.id,
+                    recordId: r.recordId,
                     patientId: r.patientId,
                     patientName: r.patient?.name || 'Unknown',
                     patientEmail: r.patient?.email,
-                    diagnosis: r.diagnosis,
-                    treatment: r.treatment,
-                    notes: r.notes,
+                    title: r.title,
+                    description: r.description,
                     recordType: r.recordType,
+                    ipfsHash: r.ipfsHash,
+                    fileName: r.fileName,
                     createdAt: r.createdAt?.toISOString(),
                 })),
                 labTests: labTests.map((l) => ({
                     id: l.id,
+                    testId: l.testId,
                     patientId: l.patientId,
                     patientName: l.patient?.name || 'Unknown',
                     patientEmail: l.patient?.email,
-                    testType: l.testType,
                     testName: l.testName,
-                    status: l.status,
+                    testType: l.testType,
                     results: l.results,
-                    priority: l.priority,
+                    status: l.status,
+                    performedAt: l.performedAt?.toISOString(),
                     createdAt: l.createdAt?.toISOString(),
                 })),
+                patients: patients.map((p) => ({
+                    id: p.id,
+                    name: p.name,
+                    email: p.email,
+                    walletAddress: p.walletAddress,
+                })),
                 stats: {
+                    totalPatients: patients.length,
                     totalAppointments,
                     pendingAppointments,
                     totalPrescriptions,
@@ -259,12 +370,24 @@ class DoctorSathiController {
      */
     async invokePythonAgent(userId, userName, message, threadId, doctorContext) {
         return new Promise((resolve, reject) => {
+            let timeout;  // Declare timeout variable
+
             try {
                 // Path to Python agent
                 const pythonAgentPath = path.join(__dirname, '../../python_agent/run_agent.py');
 
                 // Prepare patient context as JSON string
                 const contextJson = JSON.stringify(doctorContext);
+
+                // Debug: Log context being sent to Python
+                logger.info(`Doctor context being sent to Python agent: `, {
+                    patientsCount: doctorContext.patients?.length || 0,
+                    appointmentsCount: doctorContext.appointments?.length || 0,
+                    prescriptionsCount: doctorContext.prescriptions?.length || 0,
+                    recordsCount: doctorContext.records?.length || 0,
+                    labTestsCount: doctorContext.labTests?.length || 0,
+                    stats: doctorContext.stats
+                });
 
                 // Try different Python executables (Windows/Unix compatibility)
                 const pythonExecutables = process.platform === 'win32'
@@ -290,7 +413,7 @@ class DoctorSathiController {
                         break;
                     } catch (spawnError) {
                         lastError = spawnError;
-                        logger.warn(`Failed to spawn with ${pythonCmd}:`, spawnError.message);
+                        logger.warn(`Failed to spawn with ${pythonCmd}: `, spawnError.message);
                         continue;
                     }
                 }
@@ -320,7 +443,7 @@ class DoctorSathiController {
                     if (code !== 0) {
                         logger.error('Python agent exited with code:', code);
                         logger.error('stderr:', stderr);
-                        return reject(new Error(`Python agent failed with exit code ${code}`));
+                        return reject(new Error(`Python agent failed with exit code ${code} `));
                     }
 
                     try {
@@ -341,15 +464,16 @@ class DoctorSathiController {
 
                 // Handle process errors
                 pythonProcess.on('error', (error) => {
+                    clearTimeout(timeout); // Clear timeout on error
                     logger.error('Failed to start Python agent:', error);
                     reject(new Error('Failed to start Python agent: ' + error.message));
                 });
 
-                // Set timeout (30 seconds)
-                setTimeout(() => {
+                // Timeout after 60 seconds (increased for LLM processing)
+                timeout = setTimeout(() => {
                     pythonProcess.kill();
                     reject(new Error('Python agent timeout'));
-                }, 30000);
+                }, 60000);
             } catch (error) {
                 logger.error('Error invoking Python agent:', error);
                 reject(error);

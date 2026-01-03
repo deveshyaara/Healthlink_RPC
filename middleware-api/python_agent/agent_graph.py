@@ -1,8 +1,12 @@
 """
-LangGraph implementation for healthcare chatbot with patient context
+LangGraph implementation for DoctorSathi - Doctor workflow automation assistant
 Integrated with HealthLink Ethereum blockchain system
 """
 import os
+import sys
+import time
+import json
+import re
 from typing import TypedDict, List, Dict, Any
 from dotenv import load_dotenv
 
@@ -20,11 +24,11 @@ load_dotenv()
 class AgentState(TypedDict):
     """
     State object that flows through the graph nodes.
-    Contains all data needed for personalized medical responses.
+    Contains all data needed for doctor workflow automation.
     """
     messages: List[AnyMessage]  # Conversation history
-    user_id: str  # Patient/user identifier
-    patient_context: Dict[str, Any]  # Fetched patient data
+    user_id: str  # Doctor identifier
+    patient_context: Dict[str, Any]  # Doctor's workflow data
     response: str  # Final AI response
 
 
@@ -33,123 +37,202 @@ class AgentState(TypedDict):
 # -----------------
 def fetch_patient_context(state: AgentState) -> Dict[str, Any]:
     """
-    Node 1: Use patient data provided by Node.js backend
+    Node 1: Use doctor data provided by Node.js backend
     
-    The patient context is now fetched from the database by Node.js
+    The doctor context is fetched from the database by Node.js
     and passed to this agent as part of the initial state.
     """
     existing_context = state.get("patient_context", {})
     
-    # Patient context is already provided by Node.js with real database data
-    # No need to query again - just structure it for the LLM
+    # Doctor context is already provided by Node.js with real database data
+    # Structure it for the LLM
     
-    patient_context = {
-        "name": existing_context.get("name", "Patient"),
-        "age": existing_context.get("age", "Unknown"),
-        "gender": existing_context.get("gender", "Not specified"),
-        "email": existing_context.get("email", "Not provided"),
+    doctor_context = {
+        "name": existing_context.get("name", "Doctor"),
         "appointments": existing_context.get("appointments", []),
         "prescriptions": existing_context.get("prescriptions", []),
         "records": existing_context.get("records", []),
-        "diagnoses": existing_context.get("diagnoses", []),
-        "medications": existing_context.get("medications", []),
-        "last_visit": existing_context.get("last_visit", "N/A"),
+        "labTests": existing_context.get("labTests", []),
+        "patients": existing_context.get("patients", []),
         "stats": existing_context.get("stats", {})
     }
     
-    return {"patient_context": patient_context}
+    return {"patient_context": doctor_context}
 
 
 # -----------------
-# 3. CHATBOT NODE (LLM Response Generation)
+# 3. DOCTOR WORKFLOW AUTOMATION NODE
 # -----------------
 def generate_response(state: AgentState) -> Dict[str, Any]:
     """
-    Node 2: Generate personalized medical response using Google Gemini LLM
+    Node 2: Generate intelligent doctor workflow automation responses using Google Gemini LLM
+    Helps doctors with scheduling, prescriptions, lab orders, patient lookup, and insights
     """
     patient_context = state["patient_context"]
     messages = state["messages"]
     
-    # Extract patient details from real database data
-    name = patient_context.get("name", "Patient")
-    age = patient_context.get("age", "Unknown")
-    gender = patient_context.get("gender", "Not specified")
-    
-    # Real data from database
+    # Extract doctor's real data from database
+    doctor_name = patient_context.get("name", "Doctor")
     appointments = patient_context.get("appointments", [])
     prescriptions = patient_context.get("prescriptions", [])
     records = patient_context.get("records", [])
-    diagnoses = patient_context.get("diagnoses", [])
-    medications = patient_context.get("medications", [])
+    lab_tests = patient_context.get("labTests", [])
+    patients = patient_context.get("patients", [])
+    stats = patient_context.get("stats", {})
     
-    # Format medical history from records
-    medical_history = "No medical records on file"
-    if records:
-        recent_records = records[:3]  # Most recent 3
-        medical_history = "; ".join([
-            f"{r.get('diagnosis', 'Unknown diagnosis')} (treated with {r.get('treatment', 'N/A')})"
-            for r in recent_records
-        ])
-    
-    # Format recent appointments
-    recent_appointments = "No recent appointments"
+    # Format appointments summary
+    appointments_summary = "No appointments on record"
     if appointments:
-        recent_apts = appointments[:2]
-        recent_appointments = "; ".join([
-            f"{a.get('scheduledAt', 'Unknown date')} - {a.get('status', 'Unknown status')}"
-            for a in recent_apts
-        ])
+        pending_apts = [a for a in appointments if a.get('status') == 'SCHEDULED']
+        completed_apts = [a for a in appointments if a.get('status') == 'COMPLETED']
+        cancelled_apts = [a for a in appointments if a.get('status') == 'CANCELLED']
+        appointments_summary = f"{len(appointments)} total appointments ({len(pending_apts)} scheduled, {len(completed_apts)} completed, {len(cancelled_apts)} cancelled)"
+        
+        # Show recent appointments with patient details
+        recent_apts_list = []
+        for a in appointments[:5]:
+            patient_name = a.get('patientName', 'Unknown')
+            scheduled = a.get('scheduledAt', 'Unknown date')
+            status = a.get('status', 'Unknown')
+            title = a.get('title', a.get('description', 'No title'))  # Use title or description
+            recent_apts_list.append(f"• {patient_name} - {scheduled} - {status} - {title}")
+        appointments_summary += "\n" + "\n".join(recent_apts_list)
     
-    # Format detailed prescriptions list
-    prescriptions_details = "No prescriptions on record"
+    # Format prescriptions summary
+    prescriptions_summary = "No prescriptions on record"
     if prescriptions:
-        prescriptions_list = []
-        for p in prescriptions:
-            p_id = p.get('prescriptionId', 'N/A')
-            med = p.get('medication', 'Unknown')
-            dose = p.get('dosage', 'N/A')
-            freq = p.get('frequency', 'N/A')
-            dur = p.get('duration', 'N/A')
-            status = p.get('status', 'ACTIVE')
-            prescriptions_list.append(f"- ID: {p_id} | Med: {med} | Dose: {dose} | Freq: {freq} | Duration: {dur} | Status: {status}")
-        prescriptions_details = "\n".join(prescriptions_list)
-
-    # Format current medications from prescriptions (simplified list)
-    current_meds = "None on record"
-    if medications:
-        current_meds = ", ".join(medications)
-    elif prescriptions:
-        current_meds = ", ".join([f"{p.get('medication', 'Unknown')} ({p.get('dosage', '')})" for p in prescriptions[:5]])
+        prescriptions_summary = f"{len(prescriptions)} total prescriptions"
+        recent_presc_list = []
+        for p in prescriptions[:5]:
+            patient_name = p.get('patientName', 'Unknown')
+            medication = p.get('medication', 'Unknown')
+            dosage = p.get('dosage', 'N/A')
+            status = p.get('status', 'Unknown')
+            recent_presc_list.append(f"• {patient_name}: {medication} {dosage} - Status: {status}")
+        prescriptions_summary += "\n" + "\n".join(recent_presc_list)
     
-    diagnoses_str = ", ".join(diagnoses) if diagnoses else "None on record"
+    # Format medical records summary
+    records_summary = "No medical records on file"
+    if records:
+        records_summary = f"{len(records)} total medical records"
+        recent_records_list = []
+        for r in records[:5]:
+            patient_name = r.get('patientName', 'Unknown')
+            title = r.get('title', 'Untitled')
+            description = r.get('description', 'No description')
+            record_type = r.get('recordType', 'General')
+            recent_records_list.append(f"• {patient_name}: {title} - {description[:50]}... - Type: {record_type}")
+        records_summary += "\n" + "\n".join(recent_records_list)
     
-    # Construct dynamic system prompt with REAL patient context
-    system_prompt = f"""You are a helpful and empathetic medical assistant AI for HealthLink, an Ethereum-based healthcare platform.
+    # Format lab tests summary
+    lab_tests_summary = "No lab tests on record"
+    if lab_tests:
+        pending_tests = [t for t in lab_tests if t.get('status') in ['PENDING', 'IN_PROGRESS']]
+        completed_tests = [t for t in lab_tests if t.get('status') == 'COMPLETED']
+        lab_tests_summary = f"{len(lab_tests)} total lab tests ({len(pending_tests)} pending, {len(completed_tests)} completed)"
+        
+        recent_tests_list = []
+        for t in lab_tests[:5]:
+            patient_name = t.get('patientName', 'Unknown')
+            test_name = t.get('testName', 'Unknown')
+            test_type = t.get('testType', 'N/A')
+            status = t.get('status', 'Unknown')
+            recent_tests_list.append(f"• {patient_name}: {test_name} ({test_type}) - {status}")
+        lab_tests_summary += "\n" + "\n".join(recent_tests_list)
+    
+    # Format patient list
+    patients_summary = "No patients on record"
+    if patients:
+        patients_summary = f"{len(patients)} total patients"
+        patient_list = []
+        for p in patients[:20]:  # Show up to 20 patients
+            name = p.get('name', 'Unknown')
+            email = p.get('email', 'N/A')
+            patient_list.append(f"• {name} ({email})")
+            print(f"DEBUG: Patient found - Name: {name}, Email: {email}", file=sys.stderr)
+        patients_summary += "\n" + "\n".join(patient_list)
+    
+    print(f"DEBUG: Patients summary being sent to LLM:", file=sys.stderr)
+    print(f"{patients_summary}", file=sys.stderr)
+    
+    # Get statistics
+    total_patients = stats.get("totalPatients", 0)
+    total_appointments = stats.get("totalAppointments", 0)
+    pending_appointments = stats.get("pendingAppointments", 0)
+    total_prescriptions = stats.get("totalPrescriptions", 0)
+    total_lab_tests = stats.get("totalLabTests", 0)
+    total_records = stats.get("totalRecords", 0)
+    
+    
+    # Construct dynamic system prompt for DOCTOR workflow automation
+    system_prompt = f"""You are DoctorSathi AI, an intelligent medical workflow automation assistant for doctors on the HealthLink platform.
 
-You are currently speaking to **{name}**, who is **{age} years old** and identifies as **{gender}**.
+You are currently assisting **{doctor_name}**, a medical professional.
 
-**Patient Medical Context (Real Data from Database):**
-- **Recent Medical History:** {medical_history}
-- **Current Diagnoses:** {diagnoses_str}
-- **Current Medications:** {current_meds}
-- **Recent Appointments:** {recent_appointments}
-- **Total Prescriptions on File:** {len(prescriptions)}
-- **Total Medical Records:** {len(records)}
+**Doctor's Current Workload (Real Data from Database):**
 
-**Detailed Prescription Records:**
-{prescriptions_details}
+📊 **Statistics:**
+- Total Patients: {total_patients}
+- Total Appointments: {total_appointments} ({pending_appointments} scheduled)
+- Active Prescriptions: {total_prescriptions}
+- Lab Tests Ordered: {total_lab_tests}
+- Medical Records: {total_records}
 
-**Important Guidelines:**
-1. Provide personalized advice based on the patient's ACTUAL medical context shown above
-2. Always be empathetic and supportive in your tone
-3. DO NOT provide medical diagnoses or prescribe new medications
-4. Reference their specific conditions, medications, and appointments when relevant
-5. If the question requires immediate medical attention, advise the patient to contact their healthcare provider
-6. Be clear that you are an AI assistant and not a replacement for professional medical advice
-7. Use the patient's name naturally in conversation
+👥 **Your Patients:**
+{patients_summary}
 
-Answer the patient's question based on their medical context while following these guidelines."""
+📅 **Recent Appointments:**
+{appointments_summary}
 
+💊 **Recent Prescriptions:**
+{prescriptions_summary}
+
+📋 **Medical Records:**
+{records_summary}
+
+🔬 **Lab Tests:**
+{lab_tests_summary}
+
+---
+
+## Semi-Automated Workflow System:
+
+When doctors request actions, generate JSON formatted actions they can review and execute with one click.
+
+### Supported Actions:
+
+**1. CREATE_PRESCRIPTION** - For new prescriptions
+**2. SCHEDULE_APPOINTMENT** - For new appointments  
+**3. ORDER_LAB_TEST** - For lab test orders
+**4. UPDATE_MEDICAL_RECORD** - For adding medical records
+
+### Response Format for Actions:
+
+When generating an action, use this format:
+
+**ACTION_START**
+{{"type": "ACTION_TYPE", "data": {{...}}, "description": "..."}}
+**ACTION_END**
+
+### Example:
+Request: "Create prescription for Devesh Tiwari - Amoxicillin 500mg twice daily for 7 days"
+
+Response:
+I'll prepare a prescription for Devesh Tiwari.
+
+**ACTION_START**
+{{"type": "CREATE_PRESCRIPTION", "data": {{"patientId": "clabcdefgh123", "patientName": "Devesh Tiwari", "medication": "Amoxicillin", "dosage": "500mg", "instructions": "Take twice daily with food for 7 days", "expiryDate": "2026-01-10"}}, "description": "Prescription: Amoxicillin 500mg for Devesh Tiwari"}}
+**ACTION_END**
+
+**Rules:**
+1. Validate patient names against the list above
+2. Extract patient IDs from context
+3. Be specific with dosages and timing
+4. Ask for clarification if needed
+5. Only generate actions for clear requests
+
+Answer professionally and save doctors time."""
+    
     try:
         # Initialize Google Gemini LLM
         llm = ChatGoogleGenerativeAI(
@@ -165,21 +248,66 @@ Answer the patient's question based on their medical context while following the
         response = llm.invoke(full_messages)
         ai_response = response.content
         
+        # Parse actions from response
+        actions = parse_actions_from_response(ai_response)
+        
+        # Remove action blocks from display text
+        clean_response = remove_action_blocks(ai_response)
+        
         # Update messages with AI response
-        updated_messages = messages + [AIMessage(content=ai_response)]
+        updated_messages = messages + [AIMessage(content=clean_response)]
         
         return {
             "messages": updated_messages,
-            "response": ai_response
+            "response": clean_response,
+            "actions": actions  # Include parsed actions
         }
         
     except Exception as e:
-        error_response = "I apologize, but I'm having trouble processing your request right now. Please try again or contact your healthcare provider if this is urgent."
+        error_response = f"I apologize, but I'm experiencing technical difficulties right now. Error: {str(e)}\n\nPlease try again in a moment or contact support if this persists."
         
         return {
             "messages": messages + [AIMessage(content=error_response)],
-            "response": error_response
+            "response": error_response,
+            "actions": []
         }
+
+
+def parse_actions_from_response(response_text):
+    """
+    Parse action JSON blocks from LLM response
+    Format: **ACTION_START** {json} **ACTION_END**
+    """
+    
+    actions = []
+    pattern = r'\*\*ACTION_START\*\*(.*?)\*\*ACTION_END\*\*'
+    matches = re.findall(pattern, response_text, re.DOTALL)
+    
+    for match in matches:
+        try:
+            # Parse JSON from match
+            action_json = json.loads(match.strip())
+            
+            # Add unique ID and timestamp
+            action_json['id'] = f"action-{int(time.time() * 1000)}"
+            action_json['status'] = 'pending'
+            action_json['priority'] = action_json.get('priority', 'medium')
+            
+            actions.append(action_json)
+        except json.JSONDecodeError:
+            # Skip invalid JSON
+            continue
+    
+    return actions
+
+
+def remove_action_blocks(response_text):
+    """
+    Remove action JSON blocks from response for clean display
+    """
+    pattern = r'\*\*ACTION_START\*\*.*?\*\*ACTION_END\*\*'
+    clean_text = re.sub(pattern, '', response_text, flags=re.DOTALL)
+    return clean_text.strip()
 
 
 # -----------------
@@ -187,7 +315,7 @@ Answer the patient's question based on their medical context while following the
 # -----------------
 def create_healthcare_agent() -> StateGraph:
     """
-    Creates and compiles the LangGraph workflow for the healthcare chatbot.
+    Creates and compiles the LangGraph workflow for DoctorSathi AI.
     
     Flow: START -> fetch_patient_context -> generate_response -> END
     """
@@ -220,14 +348,14 @@ healthcare_agent = create_healthcare_agent()
 # -----------------
 def invoke_agent(user_id: str, user_name: str, message: str, thread_id: str = None, patient_context: Dict[str, Any] = None) -> Dict[str, Any]:
     """
-    Helper function to invoke the healthcare agent.
+    Helper function to invoke the DoctorSathi agent.
     
     Args:
-        user_id: Patient/user identifier
-        user_name: Patient/user display name
-        message: User's question/message
+        user_id: Doctor identifier
+        user_name: Doctor display name
+        message: Doctor's question/command
         thread_id: Optional thread ID for conversation tracking
-        patient_context: Patient medical context from Node.js (real database data)
+        patient_context: Doctor workflow context from Node.js (real database data)
         
     Returns:
         Dictionary containing response and metadata
@@ -236,16 +364,16 @@ def invoke_agent(user_id: str, user_name: str, message: str, thread_id: str = No
         # Prepare config with thread ID
         config = {"configurable": {"thread_id": thread_id or f"thread-{user_id}"}}
         
-        # Merge provided patient context with user name
-        initial_patient_context = {"name": user_name}
+        # Merge provided doctor context with user name
+        initial_doctor_context = {"name": user_name}
         if patient_context:
-            initial_patient_context.update(patient_context)
+            initial_doctor_context.update(patient_context)
         
         # Prepare initial state
         initial_state = {
             "messages": [HumanMessage(content=message)],
             "user_id": user_id,
-            "patient_context": initial_patient_context,
+            "patient_context": initial_doctor_context,
             "response": ""
         }
         
@@ -254,6 +382,7 @@ def invoke_agent(user_id: str, user_name: str, message: str, thread_id: str = No
         
         return {
             "response": final_state.get("response", ""),
+            "actions": final_state.get("actions", []),  # Include actions
             "user_id": user_id,
             "thread_id": config["configurable"]["thread_id"],
             "patient_context": final_state.get("patient_context", {})

@@ -101,12 +101,12 @@ export function GovernmentFooter() {
             <ul className="space-y-3 text-sm">
               <li className="flex items-start gap-2">
                 <MapPin className="h-4 w-4 mt-1 flex-shrink-0" />
-                <span>HealthLink Pro HQ<br />San Francisco, CA - 94105</span>
+                <span>HealthLink Pro HQ<br />Bangalore, India - 560097</span>
               </li>
               <li className="flex items-center gap-2">
                 <Phone className="h-4 w-4" />
                 <a href="tel:1800-XXX-XXXX" className="hover:text-government-blue transition-colors">
-                  1-800-HEALTH-PRO (Toll Free)
+                  +91-800-HEALTH-PRO (Toll Free)
                 </a>
               </li>
               <li className="flex items-center gap-2">
