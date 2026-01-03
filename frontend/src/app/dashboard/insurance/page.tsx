@@ -327,13 +327,98 @@ export default function InsuranceDashboard() {
                         <CardHeader>
                             <CardTitle>Insurance Analytics</CardTitle>
                             <CardDescription>
-                                View claims trends and statistics
+                                Claims trends and approval statistics
                             </CardDescription>
                         </CardHeader>
                         <CardContent>
-                            <p className="text-muted-foreground text-center py-8">
-                                Analytics charts coming soon...
-                            </p>
+                            <div className="space-y-6">
+                                {/* Claims Status Distribution */}
+                                <div>
+                                    <h3 className="font-semibold mb-4">Claims by Status</h3>
+                                    <div className="space-y-3">
+                                        <div className="flex items-center gap-4">
+                                            <div className="flex-1">
+                                                <div className="flex justify-between text-sm mb-1">
+                                                    <span>Approved</span>
+                                                    <span className="font-semibold text-green-600">
+                                                        {stats.approvedClaims} ({claims.length > 0 ? Math.round((stats.approvedClaims / claims.length) * 100) : 0}%)
+                                                    </span>
+                                                </div>
+                                                <div className="w-full bg-gray-200 rounded-full h-3">
+                                                    <div
+                                                        className="bg-green-500 h-3 rounded-full transition-all"
+                                                        style={{ width: `${claims.length > 0 ? (stats.approvedClaims / claims.length) * 100 : 0}%` }}
+                                                    />
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div className="flex items-center gap-4">
+                                            <div className="flex-1">
+                                                <div className="flex justify-between text-sm mb-1">
+                                                    <span>Active / Pending</span>
+                                                    <span className="font-semibold text-blue-600">
+                                                        {stats.activeClaims} ({claims.length > 0 ? Math.round((stats.activeClaims / claims.length) * 100) : 0}%)
+                                                    </span>
+                                                </div>
+                                                <div className="w-full bg-gray-200 rounded-full h-3">
+                                                    <div
+                                                        className="bg-blue-500 h-3 rounded-full transition-all"
+                                                        style={{ width: `${claims.length > 0 ? (stats.activeClaims / claims.length) * 100 : 0}%` }}
+                                                    />
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div className="flex items-center gap-4">
+                                            <div className="flex-1">
+                                                <div className="flex justify-between text-sm mb-1">
+                                                    <span>Rejected</span>
+                                                    <span className="font-semibold text-red-600">
+                                                        {stats.rejectedClaims} ({claims.length > 0 ? Math.round((stats.rejectedClaims / claims.length) * 100) : 0}%)
+                                                    </span>
+                                                </div>
+                                                <div className="w-full bg-gray-200 rounded-full h-3">
+                                                    <div
+                                                        className="bg-red-500 h-3 rounded-full transition-all"
+                                                        style={{ width: `${claims.length > 0 ? (stats.rejectedClaims / claims.length) * 100 : 0}%` }}
+                                                    />
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Overall Stats */}
+                                <div className="border-t pt-6">
+                                    <h3 className="font-semibold mb-4">Key Metrics</h3>
+                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                        <div className="p-4 border rounded-lg text-center">
+                                            <p className="text-sm text-muted-foreground">Total Claims</p>
+                                            <p className="text-3xl font-bold mt-1">{claims.length}</p>
+                                        </div>
+                                        <div className="p-4 border rounded-lg text-center bg-green-50 dark:bg-green-900/20">
+                                            <p className="text-sm text-muted-foreground">Approval Rate</p>
+                                            <p className="text-3xl font-bold mt-1 text-green-600">
+                                                {claims.length > 0 ? Math.round((stats.approvedClaims / claims.length) * 100) : 0}%
+                                            </p>
+                                        </div>
+                                        <div className="p-4 border rounded-lg text-center bg-blue-50 dark:bg-blue-900/20">
+                                            <p className="text-sm text-muted-foreground">Avg Processing Time</p>
+                                            <p className="text-3xl font-bold mt-1 text-blue-600">3.2d</p>
+                                            <p className="text-xs text-muted-foreground mt-1">Sample data</p>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {claims.length === 0 && (
+                                    <div className="text-center py-8 text-muted-foreground">
+                                        <TrendingUp className="h-12 w-12 mx-auto mb-2 opacity-50" />
+                                        <p>No claims data available yet</p>
+                                        <p className="text-sm mt-1">Submit claims to see analytics</p>
+                                    </div>
+                                )}
+                            </div>
                         </CardContent>
                     </Card>
                 </TabsContent>

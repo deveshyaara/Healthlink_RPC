@@ -161,6 +161,9 @@ router.get('/appointment/:appointmentId', async (req, res, next) => {
     try {
         const { appointmentId } = req.params;
 
+        logger.info('=== APPOINTMENT VERIFICATION REQUEST ===');
+        logger.info('Appointment ID:', appointmentId);
+
         if (!appointmentId) {
             return res.status(400).json({
                 success: false,
@@ -168,7 +171,31 @@ router.get('/appointment/:appointmentId', async (req, res, next) => {
             });
         }
 
-        const db = getPrismaClient();
+        // Check database connection
+        let db;
+        try {
+            db = getPrismaClient();
+            logger.info('✅ Database connection successful');
+        } catch (dbError) {
+            logger.error('❌ Database connection failed:', dbError);
+            return res.status(503).json({
+                success: false,
+                error: 'Service temporarily unavailable. Please try again later.',
+            });
+        }
+
+        // First check if appointment exists
+        try {
+            const appointmentExists = await db.appointment.findUnique({
+                where: { appointmentId },
+            });
+            logger.info('Raw appointment lookup result:', appointmentExists ? 'FOUND' : 'NOT FOUND');
+            if (appointmentExists) {
+                logger.info('Appointment data:', JSON.stringify(appointmentExists, null, 2));
+            }
+        } catch (checkError) {
+            logger.error('Error checking appointment existence:', checkError);
+        }
 
         const appointment = await db.appointment.findUnique({
             where: { appointmentId },
@@ -177,7 +204,7 @@ router.get('/appointment/:appointmentId', async (req, res, next) => {
                     select: {
                         id: true,
                         fullName: true,
-                        specialization: true,
+                        doctorSpecialization: true,
                     },
                 },
                 patient: {
@@ -190,21 +217,27 @@ router.get('/appointment/:appointmentId', async (req, res, next) => {
         });
 
         if (!appointment) {
+            logger.warn('❌ Appointment NOT found for ID:', appointmentId);
             return res.status(404).json({
                 success: false,
                 error: 'Appointment not found',
             });
         }
 
+        logger.info('✅ Appointment found with includes');
+        logger.info('Doctor data:', appointment.doctor);
+        logger.info('Patient data:', appointment.patient);
+
         // Return only public-safe data
         const publicData = {
             appointmentId: appointment.appointmentId,
-            title: appointment.title,
+            type: appointment.title || 'General Consultation',
             scheduledAt: appointment.scheduledAt,
             status: appointment.status,
+            notes: appointment.notes,
             doctor: {
-                name: appointment.doctor?.fullName || 'Unknown',
-                specialization: appointment.doctor?.specialization,
+                fullName: appointment.doctor?.fullName || 'Unknown',
+                specialization: appointment.doctor?.doctorSpecialization,
             },
             patient: {
                 name: appointment.patient?.name || 'Patient',

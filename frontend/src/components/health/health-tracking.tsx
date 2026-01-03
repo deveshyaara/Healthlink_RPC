@@ -198,21 +198,123 @@ export function HealthGoals({ goals, onAddGoal }: HealthGoalsProps) {
 
 // Sample health metrics chart component
 export function HealthMetricsChart() {
+    // Sample data for demonstration (7 days of readings)
+    const sampleData = [
+        { day: 'Mon', heartRate: 72, bloodPressure: 118, bloodSugar: 95 },
+        { day: 'Tue', heartRate: 75, bloodPressure: 120, bloodSugar: 98 },
+        { day: 'Wed', heartRate: 70, bloodPressure: 115, bloodSugar: 92 },
+        { day: 'Thu', heartRate: 73, bloodPressure: 119, bloodSugar: 96 },
+        { day: 'Fri', heartRate: 71, bloodPressure: 117, bloodSugar: 94 },
+        { day: 'Sat', heartRate: 74, bloodPressure: 121, bloodSugar: 99 },
+        { day: 'Sun', heartRate: 72, bloodPressure: 118, bloodSugar: 95 },
+    ];
+
+    const maxHeartRate = 100;
+    const maxBloodPressure = 140;
+    const maxBloodSugar = 120;
+
+    const chartWidth = 600;
+    const chartHeight = 200;
+    const padding = 20;
+
+    const createPath = (data: number[], max: number) => {
+        const points = data.map((value, index) => {
+            const x = padding + (index / (data.length - 1)) * (chartWidth - 2 * padding);
+            const y = chartHeight - padding - ((value / max) * (chartHeight - 2 * padding));
+            return `${x},${y}`;
+        });
+        return `M ${points.join(' L ')}`;
+    };
+
     return (
         <Card>
             <CardHeader>
                 <CardTitle>Health Trends</CardTitle>
-                <CardDescription>View your health metrics over time</CardDescription>
+                <CardDescription>View your health metrics over the past 7 days</CardDescription>
             </CardHeader>
             <CardContent>
-                <div className="h-64 flex items-center justify-center border-2 border-dashed rounded-lg">
-                    <div className="text-center">
-                        <Activity className="h-12 w-12 mx-auto text-muted-foreground mb-2" />
-                        <p className="text-muted-foreground">Chart visualization coming soon</p>
-                        <p className="text-sm text-muted-foreground mt-1">
-                            Record more vitals to see trends
-                        </p>
+                <div className="space-y-4">
+                    {/* Legend */}
+                    <div className="flex gap-4 text-sm">
+                        <div className="flex items-center gap-2">
+                            <div className="w-3 h-3 rounded-full bg-blue-500"></div>
+                            <span>Heart Rate (bpm)</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <div className="w-3 h-3 rounded-full bg-green-500"></div>
+                            <span>Blood Pressure (mmHg)</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <div className="w-3 h-3 rounded-full bg-purple-500"></div>
+                            <span>Blood Sugar (mg/dL)</span>
+                        </div>
                     </div>
+
+                    {/* Chart */}
+                    <div className="border rounded-lg p-4 bg-gray-50 dark:bg-gray-900">
+                        <svg
+                            viewBox={`0 0 ${chartWidth} ${chartHeight}`}
+                            className="w-full h-64"
+                            preserveAspectRatio="xMidYMid meet"
+                        >
+                            {/* Grid lines */}
+                            {[0, 1, 2, 3, 4].map((i) => (
+                                <line
+                                    key={i}
+                                    x1={padding}
+                                    y1={padding + (i * (chartHeight - 2 * padding)) / 4}
+                                    x2={chartWidth - padding}
+                                    y2={padding + (i * (chartHeight - 2 * padding)) / 4}
+                                    stroke="currentColor"
+                                    strokeOpacity="0.1"
+                                    strokeDasharray="4 4"
+                                />
+                            ))}
+
+                            {/* Heart Rate Line */}
+                            <path
+                                d={createPath(sampleData.map(d => d.heartRate), maxHeartRate)}
+                                fill="none"
+                                stroke="rgb(59, 130, 246)"
+                                strokeWidth="2"
+                            />
+
+                            {/* Blood Pressure Line */}
+                            <path
+                                d={createPath(sampleData.map(d => d.bloodPressure), maxBloodPressure)}
+                                fill="none"
+                                stroke="rgb(34, 197, 94)"
+                                strokeWidth="2"
+                            />
+
+                            {/* Blood Sugar Line */}
+                            <path
+                                d={createPath(sampleData.map(d => d.bloodSugar), maxBloodSugar)}
+                                fill="none"
+                                stroke="rgb(168, 85, 247)"
+                                strokeWidth="2"
+                            />
+
+                            {/* X-axis labels */}
+                            {sampleData.map((d, i) => (
+                                <text
+                                    key={i}
+                                    x={padding + (i / (sampleData.length - 1)) * (chartWidth - 2 * padding)}
+                                    y={chartHeight - 5}
+                                    textAnchor="middle"
+                                    fontSize="12"
+                                    fill="currentColor"
+                                    opacity="0.6"
+                                >
+                                    {d.day}
+                                </text>
+                            ))}
+                        </svg>
+                    </div>
+
+                    <p className="text-xs text-muted-foreground text-center">
+                        💡 Record your vitals daily to see personalized trends
+                    </p>
                 </div>
             </CardContent>
         </Card>

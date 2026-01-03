@@ -12,6 +12,7 @@ import { ScheduleAppointmentDialog } from '@/components/doctor/DoctorActions';
 import { useRouter } from 'next/navigation';
 import type { AppointmentStatus } from '@/types';
 import { AppointmentCalendar } from '@/components/calendar/appointment-calendar';
+import { useAuth } from '@/contexts/auth-context';
 
 interface Appointment {
   appointmentId: string;
@@ -37,12 +38,15 @@ interface Appointment {
 }
 
 export default function AppointmentsPage() {
+  const { user } = useAuth();
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showScheduleDialog, setShowScheduleDialog] = useState(false);
   const [viewMode, setViewMode] = useState<'calendar' | 'list'>('list');
   const router = useRouter();
+
+  const isDoctor = user?.role?.toLowerCase() === 'doctor';
 
   const fetchAppointments = async () => {
     try {
@@ -160,43 +164,48 @@ export default function AppointmentsPage() {
         <div>
           <h1 className="text-3xl font-bold text-government-navy dark:text-white">Appointments</h1>
           <p className="text-neutral-600 dark:text-neutral-400 mt-1">
-            Manage patient appointments and schedules
+            {isDoctor ? 'Manage patient appointments and schedules' : 'View your appointments'}
           </p>
         </div>
         <div className="flex items-center gap-2">
-          {/* View Toggle */}
-          <div className="flex items-center bg-gray-100 dark:bg-gray-800 rounded-lg p-1">
+          {/* View Toggle - Only show for doctors */}
+          {isDoctor && (
+            <div className="flex items-center bg-gray-100 dark:bg-gray-800 rounded-lg p-1">
+              <Button
+                variant={viewMode === 'calendar' ? 'default' : 'ghost'}
+                size="sm"
+                onClick={() => setViewMode('calendar')}
+                className="gap-2"
+              >
+                <CalendarDays className="h-4 w-4" />
+                Calendar
+              </Button>
+              <Button
+                variant={viewMode === 'list' ? 'default' : 'ghost'}
+                size="sm"
+                onClick={() => setViewMode('list')}
+                className="gap-2"
+              >
+                <LayoutList className="h-4 w-4" />
+                List
+              </Button>
+            </div>
+          )}
+          {/* Schedule Appointment - Only show for doctors */}
+          {isDoctor && (
             <Button
-              variant={viewMode === 'calendar' ? 'default' : 'ghost'}
-              size="sm"
-              onClick={() => setViewMode('calendar')}
-              className="gap-2"
+              className="bg-government-blue hover:bg-government-blue/90"
+              onClick={() => setShowScheduleDialog(true)}
             >
-              <CalendarDays className="h-4 w-4" />
-              Calendar
+              <PlusCircle className="mr-2 h-4 w-4" />
+              Schedule Appointment
             </Button>
-            <Button
-              variant={viewMode === 'list' ? 'default' : 'ghost'}
-              size="sm"
-              onClick={() => setViewMode('list')}
-              className="gap-2"
-            >
-              <LayoutList className="h-4 w-4" />
-              List
-            </Button>
-          </div>
-          <Button
-            className="bg-government-blue hover:bg-government-blue/90"
-            onClick={() => setShowScheduleDialog(true)}
-          >
-            <PlusCircle className="mr-2 h-4 w-4" />
-            Schedule Appointment
-          </Button>
+          )}
         </div>
       </div>
 
       {/* Calendar or Table View */}
-      {viewMode === 'calendar' ? (
+      {isDoctor && viewMode === 'calendar' ? (
         <AppointmentCalendar
           appointments={appointments.map(apt => ({
             ...apt,
@@ -276,8 +285,8 @@ export default function AppointmentsPage() {
         </Card>
       )}
 
-      {/* Schedule Appointment Dialog */}
-      {showScheduleDialog && (
+      {/* Schedule Appointment Dialog - Only for doctors */}
+      {isDoctor && showScheduleDialog && (
         <ScheduleAppointmentDialog
           open={showScheduleDialog}
           onOpenChange={setShowScheduleDialog}

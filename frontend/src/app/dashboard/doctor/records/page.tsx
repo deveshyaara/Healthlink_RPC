@@ -17,6 +17,7 @@ import { FileText, Search, Eye, Download, Filter, Upload } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { RequireDoctor } from '@/components/auth/RequireRole';
 import { authUtils } from '@/lib/auth-utils';
+import { useRouter } from 'next/navigation';
 
 interface MedicalRecord {
   recordId: string;
@@ -44,6 +45,7 @@ export default function DoctorRecordsPage() {
 
 function DoctorRecordsPageContent() {
   const { user } = useAuth();
+  const router = useRouter();
   const [records, setRecords] = useState<MedicalRecord[]>([]);
   const [filteredRecords, setFilteredRecords] = useState<MedicalRecord[]>([]);
   const [loading, setLoading] = useState(true);
@@ -102,6 +104,11 @@ function DoctorRecordsPageContent() {
   }, [searchQuery, recordTypeFilter, records]);
 
   const recordTypes = Array.from(new Set(records.map((r) => r.recordType).filter(Boolean)));
+
+  const handleViewRecord = (record: MedicalRecord) => {
+    // Navigate to the patient-specific records page filtered to this record
+    router.push(`/dashboard/doctor/patients?patientId=${record.patientId}&recordId=${record.recordId}`);
+  };
 
   const handleDownloadFile = async (hash: string, recordId: string) => {
     try {
@@ -253,7 +260,11 @@ function DoctorRecordsPageContent() {
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center gap-2">
-                        <Button variant="outline" size="sm">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleViewRecord(record)}
+                        >
                           <Eye className="mr-2 h-4 w-4" />
                           View
                         </Button>

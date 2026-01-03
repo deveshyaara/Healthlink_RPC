@@ -9,6 +9,7 @@ import { SkeletonTable } from "@/components/ui/skeleton-table";
 import { EmptyState } from "@/components/ui/empty-state";
 import { useToast } from "@/hooks/use-toast";
 import { Calendar, Eye } from "lucide-react";
+import { useAuth } from "@/contexts/auth-context";
 import {
     Table,
     TableBody,
@@ -65,9 +66,12 @@ function formatAppointmentDateTime(appointment: Appointment): string {
 export function AppointmentHistory() {
     const router = useRouter();
     const { toast } = useToast();
+    const { user } = useAuth();
     const [appointments, setAppointments] = useState<Appointment[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
+
+    const isDoctor = user?.role?.toLowerCase() === 'doctor';
 
     useEffect(() => {
         fetchAppointments();
@@ -124,12 +128,15 @@ export function AppointmentHistory() {
             <EmptyState
                 icon="inbox"
                 title="No Appointments Found"
-                description="You don't have any appointments yet. Schedule one to get started."
-                action={{
+                description={isDoctor
+                    ? "You don't have any appointments yet. Schedule one to get started."
+                    : "You don't have any appointments scheduled yet."
+                }
+                action={isDoctor ? {
                     label: "Schedule Appointment",
                     onClick: handleScheduleAppointment,
                     icon: <Calendar className="mr-2 h-4 w-4" />,
-                }}
+                } : undefined}
             />
         );
     }

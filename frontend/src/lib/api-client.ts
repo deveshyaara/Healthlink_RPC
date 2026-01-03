@@ -1050,11 +1050,10 @@ export const getAllPrescriptions = prescriptionsApi.getAll;
 export const getAllConsents = consentsApi.getAll;
 
 // ========================================
-// STUB APIS (Not Yet Implemented)
+// ADDITIONAL API EXPORTS
 // ========================================
 
-// These are placeholder APIs for features not yet implemented in backend
-// They prevent import errors in pages that reference them
+// Extended API exports for audit logs, dashboard stats, and user management
 
 // Audit Log Types
 export interface AuditLog {

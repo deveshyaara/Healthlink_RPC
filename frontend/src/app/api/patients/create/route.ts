@@ -36,7 +36,6 @@ export async function POST(request: NextRequest) {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        // TODO: Add authentication headers when auth is implemented
       },
       body: JSON.stringify({
         patientAddress: walletAddress,

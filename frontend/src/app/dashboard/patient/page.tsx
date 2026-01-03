@@ -205,13 +205,7 @@ export default function PatientDashboard() {
           <CardDescription>Common tasks</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="grid gap-2 md:grid-cols-4">
-            <Link href="/dashboard/appointments">
-              <Button variant="outline" className="w-full">
-                <Calendar className="mr-2 h-4 w-4" />
-                Book Appointment
-              </Button>
-            </Link>
+          <div className="grid gap-2 md:grid-cols-3">
             <Link href="/dashboard/records">
               <Button variant="outline" className="w-full">
                 <FileText className="mr-2 h-4 w-4" />

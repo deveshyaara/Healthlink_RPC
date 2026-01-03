@@ -120,14 +120,11 @@ export function AuditLogViewer({ limit = 20, className }: AuditLogViewerProps) {
             const errorMessage = err instanceof Error ? err.message : "Failed to fetch audit logs";
             setError(errorMessage);
 
-            // Only show toast if it's not a 404 (endpoint not implemented)
-            if (!errorMessage.includes("404")) {
-                toast({
-                    variant: "destructive",
-                    title: "Error Loading Audit Logs",
-                    description: errorMessage,
-                });
-            }
+            toast({
+                variant: "destructive",
+                title: "Error Loading Audit Logs",
+                description: errorMessage,
+            });
         } finally {
             setLoading(false);
         }
