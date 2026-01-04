@@ -49,8 +49,20 @@ export default function PatientDashboard() {
         const appts = extractArray(apptsRes);
         const recs = extractArray(recsRes);
 
+        // Filter for FUTURE appointments only
+        const now = new Date();
+        const upcomingAppts = appts.filter((apt: any) => {
+          const aptDate = new Date(apt.scheduledAt || apt.appointmentDate);
+          return aptDate > now; // Only future appointments
+        }).sort((a: any, b: any) => {
+          // Sort by date ascending (nearest first)
+          const dateA = new Date(a.scheduledAt || a.appointmentDate);
+          const dateB = new Date(b.scheduledAt || b.appointmentDate);
+          return dateA.getTime() - dateB.getTime();
+        });
+
         if (!mounted) return;
-        setAppointments(appts);
+        setAppointments(upcomingAppts); // Use filtered appointments
         setRecentRecords(recs.slice(0, 5));
       } catch (err) {
         console.error('Failed to load patient dashboard data:', err);

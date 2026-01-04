@@ -9,9 +9,52 @@ import { DoctorStats } from '@/components/dashboard/DoctorStats';
 import { AddPatientDialog, ScheduleAppointmentDialog } from '@/components/doctor/DoctorActions';
 import { CreatePrescriptionDialog } from '@/components/doctor/CreatePrescriptionDialog';
 import { RequireDoctor } from '@/components/auth/RequireRole';
+import { useState, useEffect } from 'react';
+import { appointmentsApi } from '@/lib/api-client';
 
 export default function DoctorDashboard() {
   const { user } = useAuth();
+  const [upcomingAppointments, setUpcomingAppointments] = useState<any[]>([]);
+  const [loadingAppointments, setLoadingAppointments] = useState(true);
+
+  useEffect(() => {
+    let mounted = true;
+    const loadUpcoming = async () => {
+      setLoadingAppointments(true);
+      try {
+        const result: any = await appointmentsApi.getAll();
+        const appts = Array.isArray(result) ? result : (result?.data || result?.appointments || []);
+
+        // Filter for FUTURE appointments only
+        const now = new Date();
+        const upcoming = appts.filter((apt: any) => {
+          const aptDate = new Date(apt.scheduledAt || apt.appointmentDate);
+          return aptDate > now; // Only future appointments
+        }).sort((a: any, b: any) => {
+          // Sort by date ascending (nearest first)
+          const dateA = new Date(a.scheduledAt || a.appointmentDate);
+          const dateB = new Date(b.scheduledAt || b.appointmentDate);
+          return dateA.getTime() - dateB.getTime();
+        });
+
+        if (mounted) {
+          setUpcomingAppointments(upcoming.slice(0, 5)); // Show next 5 appointments
+        }
+      } catch (error) {
+        console.error('Failed to load upcoming appointments:', error);
+        if (mounted) {
+          setUpcomingAppointments([]);
+        }
+      } finally {
+        if (mounted) {
+          setLoadingAppointments(false);
+        }
+      }
+    };
+
+    loadUpcoming();
+    return () => { mounted = false; };
+  }, []);
 
   return (
     <RequireDoctor>
@@ -38,39 +81,41 @@ export default function DoctorDashboard() {
 
         {/* Main Content Areas */}
         <div className="grid gap-6 md:grid-cols-2">
-          {/* Today's Schedule */}
+          {/* Upcoming Appointments - Now with real data */}
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Calendar className="h-5 w-5" />
-                Today&apos;s Schedule
+                Upcoming Appointments
               </CardTitle>
-              <CardDescription>Your appointments for today</CardDescription>
+              <CardDescription>Your next scheduled appointments</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="space-y-4">
-                <div className="flex items-center justify-between border-b pb-2">
-                  <div>
-                    <p className="font-medium">Rahul Sharma</p>
-                    <p className="text-sm text-muted-foreground">10:00 AM - Checkup</p>
-                  </div>
-                  <Button variant="outline" size="sm">View</Button>
+              {loadingAppointments ? (
+                <div className="text-center py-6">
+                  <p className="text-sm text-muted-foreground">Loading appointments...</p>
                 </div>
-                <div className="flex items-center justify-between border-b pb-2">
-                  <div>
-                    <p className="font-medium">Jane Smith</p>
-                    <p className="text-sm text-muted-foreground">11:30 AM - Follow-up</p>
-                  </div>
-                  <Button variant="outline" size="sm">View</Button>
+              ) : upcomingAppointments.length > 0 ? (
+                <div className="space-y-4">
+                  {upcomingAppointments.map((apt) => (
+                    <div key={apt.appointmentId || apt.id} className="flex items-center justify-between border-b pb-2 last:border-0">
+                      <div>
+                        <p className="font-medium">{apt.patient?.name || apt.patientName || 'Patient'}</p>
+                        <p className="text-sm text-muted-foreground">
+                          {new Date(apt.scheduledAt || apt.appointmentDate).toLocaleString()} - {apt.title || apt.type || 'Visit'}
+                        </p>
+                      </div>
+                      <Link href={`/dashboard/appointments/${apt.appointmentId || apt.id}`}>
+                        <Button variant="outline" size="sm">View</Button>
+                      </Link>
+                    </div>
+                  ))}
                 </div>
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="font-medium">Bob Johnson</p>
-                    <p className="text-sm text-muted-foreground">2:00 PM - Consultation</p>
-                  </div>
-                  <Button variant="outline" size="sm">View</Button>
+              ) : (
+                <div className="text-center py-6">
+                  <p className="text-sm text-muted-foreground">No upcoming appointments scheduled</p>
                 </div>
-              </div>
+              )}
               <Link href="/dashboard/appointments">
                 <Button className="w-full mt-4" variant="secondary">View All Appointments</Button>
               </Link>
