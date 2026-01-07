@@ -1088,7 +1088,152 @@ export const auditApi = {
   getById: async (id: string): Promise<AuditLog> => {
     return fetchApi<AuditLog>(`/api/v1/audit/logs/${id}`, { method: 'GET' });
   },
+
+  /**
+   * Get recent activity for dashboard
+   * For admins: Fetches audit logs
+   * For other users: Aggregates activity from appointments, prescriptions, and records
+   */
+  getRecentActivity: async (limit: number = 10): Promise<any[]> => {
+    try {
+      // Check user role
+      const user = typeof window !== 'undefined' ? JSON.parse(localStorage.getItem('user') || '{}') : {};
+      const role = user.role?.toLowerCase();
+
+      // Admin users can access audit logs
+      if (role === 'admin') {
+        const response: any = await fetchApi<any>(`/api/v1/audit/logs?limit=${limit}`, { method: 'GET' }, true);
+        const logs = response.data || response || [];
+
+        // Transform audit logs into activity items
+        return logs.map((log: AuditLog) => {
+          let type = 'record';
+          let description = log.action;
+
+          // Map actions to activity types
+          if (log.action.toLowerCase().includes('appointment')) {
+            type = 'appointment';
+            description = log.metadata?.description || 'Appointment activity';
+          } else if (log.action.toLowerCase().includes('prescription')) {
+            type = 'prescription';
+            description = log.metadata?.description || 'Prescription activity';
+          } else if (log.action.toLowerCase().includes('consent')) {
+            type = 'consent';
+            description = log.metadata?.description || 'Consent activity';
+          } else if (log.action.toLowerCase().includes('record')) {
+            type = 'record';
+            description = log.metadata?.description || 'Medical record activity';
+          } else {
+            description = log.action.replace(/_/g, ' ').toLowerCase();
+          }
+
+          return {
+            id: log.id,
+            type,
+            description,
+            user: log.metadata?.userName || log.metadata?.user || 'System',
+            timestamp: formatTimestamp(log.created_at),
+          };
+        });
+      }
+
+      // For non-admin users, aggregate activity from multiple sources
+      const activities: any[] = [];
+
+      try {
+        // Fetch recent appointments
+        const endpoint = role === 'doctor' ? '/api/doctor/appointments' : '/api/patient/appointments';
+        const apptResponse: any = await fetchApi<any>(endpoint, { method: 'GET' }, true);
+        const appointments = apptResponse.appointments || apptResponse.data || [];
+
+        appointments.slice(0, 3).forEach((apt: any) => {
+          activities.push({
+            id: `apt-${apt.appointmentId || apt.id}`,
+            type: 'appointment',
+            description: role === 'doctor'
+              ? `Appointment with ${apt.patient?.name || apt.patientName || 'patient'}`
+              : `Appointment with Dr. ${apt.doctor?.fullName || apt.doctorName || 'Doctor'}`,
+            user: role === 'doctor' ? apt.patient?.name || apt.patientName || 'Patient' : apt.doctor?.fullName || apt.doctorName || 'Doctor',
+            timestamp: formatTimestamp(apt.createdAt || apt.scheduledAt || apt.appointmentDate),
+            rawDate: new Date(apt.createdAt || apt.scheduledAt || apt.appointmentDate),
+          });
+        });
+      } catch (err) {
+        console.warn('Failed to fetch appointments for activity:', err);
+      }
+
+      try {
+        // Fetch recent prescriptions
+        const endpoint = role === 'doctor' ? '/api/doctor/prescriptions' : '/api/patient/prescriptions';
+        const presResponse: any = await fetchApi<any>(endpoint, { method: 'GET' }, true);
+        const prescriptions = presResponse.prescriptions || presResponse.data || [];
+
+        prescriptions.slice(0, 2).forEach((presc: any) => {
+          activities.push({
+            id: `presc-${presc.prescriptionId || presc.id}`,
+            type: 'prescription',
+            description: role === 'doctor'
+              ? `Prescribed ${presc.medications?.[0]?.name || 'medication'}`
+              : `New prescription received`,
+            user: role === 'doctor' ? 'You' : presc.doctor?.fullName || presc.doctorName || 'Doctor',
+            timestamp: formatTimestamp(presc.createdAt),
+            rawDate: new Date(presc.createdAt),
+          });
+        });
+      } catch (err) {
+        console.warn('Failed to fetch prescriptions for activity:', err);
+      }
+
+      try {
+        // Fetch recent medical records
+        const endpoint = role === 'doctor' ? '/api/doctor/medical-records' : '/api/patient/medical-records';
+        const recResponse: any = await fetchApi<any>(endpoint, { method: 'GET' }, true);
+        const records = recResponse.records || recResponse.data || [];
+
+        records.slice(0, 2).forEach((rec: any) => {
+          activities.push({
+            id: `rec-${rec.recordId || rec.id}`,
+            type: 'record',
+            description: rec.description || rec.fileName || 'Medical record uploaded',
+            user: rec.doctorName || rec.doctor?.fullName || (role === 'doctor' ? 'You' : 'Doctor'),
+            timestamp: formatTimestamp(rec.createdAt),
+            rawDate: new Date(rec.createdAt),
+          });
+        });
+      } catch (err) {
+        console.warn('Failed to fetch medical records for activity:', err);
+      }
+
+      // Sort by date (most recent first) and limit
+      return activities
+        .sort((a, b) => (b.rawDate?.getTime() || 0) - (a.rawDate?.getTime() || 0))
+        .slice(0, limit)
+        .map(({ rawDate, ...activity }) => activity); // Remove rawDate from final result
+
+    } catch (error) {
+      console.warn('[Audit API] Failed to fetch recent activity:', error);
+      return [];
+    }
+  },
 };
+
+/**
+ * Helper function to format timestamps relative to now
+ */
+function formatTimestamp(timestamp: string): string {
+  const now = new Date();
+  const then = new Date(timestamp);
+  const diffMs = now.getTime() - then.getTime();
+  const diffMins = Math.floor(diffMs / 60000);
+  const diffHours = Math.floor(diffMs / 3600000);
+  const diffDays = Math.floor(diffMs / 86400000);
+
+  if (diffMins < 1) return 'Just now';
+  if (diffMins < 60) return `${diffMins} minute${diffMins !== 1 ? 's' : ''} ago`;
+  if (diffHours < 24) return `${diffHours} hour${diffHours !== 1 ? 's' : ''} ago`;
+  if (diffDays < 7) return `${diffDays} day${diffDays !== 1 ? 's' : ''} ago`;
+  return then.toLocaleDateString();
+}
 
 export const dashboardApi = {
   getStats: async (): Promise<DashboardStats> => {

@@ -10,18 +10,23 @@ import { AddPatientDialog, ScheduleAppointmentDialog } from '@/components/doctor
 import { CreatePrescriptionDialog } from '@/components/doctor/CreatePrescriptionDialog';
 import { RequireDoctor } from '@/components/auth/RequireRole';
 import { useState, useEffect } from 'react';
-import { appointmentsApi } from '@/lib/api-client';
+import { appointmentsApi, auditApi } from '@/lib/api-client';
 
 export default function DoctorDashboard() {
   const { user } = useAuth();
   const [upcomingAppointments, setUpcomingAppointments] = useState<any[]>([]);
   const [loadingAppointments, setLoadingAppointments] = useState(true);
+  const [recentActivity, setRecentActivity] = useState<any[]>([]);
+  const [loadingActivity, setLoadingActivity] = useState(true);
 
   useEffect(() => {
     let mounted = true;
-    const loadUpcoming = async () => {
+    const loadData = async () => {
       setLoadingAppointments(true);
+      setLoadingActivity(true);
+
       try {
+        // Load appointments
         const result: any = await appointmentsApi.getAll();
         const appts = Array.isArray(result) ? result : (result?.data || result?.appointments || []);
 
@@ -50,9 +55,26 @@ export default function DoctorDashboard() {
           setLoadingAppointments(false);
         }
       }
+
+      try {
+        // Load recent activity from audit logs
+        const activity = await auditApi.getRecentActivity(5);
+        if (mounted) {
+          setRecentActivity(activity);
+        }
+      } catch (error) {
+        console.error('Failed to load recent activity:', error);
+        if (mounted) {
+          setRecentActivity([]);
+        }
+      } finally {
+        if (mounted) {
+          setLoadingActivity(false);
+        }
+      }
     };
 
-    loadUpcoming();
+    loadData();
     return () => { mounted = false; };
   }, []);
 
@@ -132,29 +154,47 @@ export default function DoctorDashboard() {
               <CardDescription>Latest updates and actions</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="space-y-4">
-                <div className="flex gap-3">
-                  <div className="mt-1 h-2 w-2 rounded-full bg-blue-500" />
-                  <div className="flex-1">
-                    <p className="text-sm font-medium">Lab results received</p>
-                    <p className="text-xs text-muted-foreground">Patient: Rahul Sharma - 2 hours ago</p>
-                  </div>
+              {loadingActivity ? (
+                <div className="space-y-4">
+                  {[1, 2, 3].map((i) => (
+                    <div key={i} className="flex gap-3 animate-pulse">
+                      <div className="mt-1 h-2 w-2 rounded-full bg-gray-200" />
+                      <div className="flex-1 space-y-2">
+                        <div className="h-4 bg-gray-200 rounded w-3/4" />
+                        <div className="h-3 bg-gray-200 rounded w-1/2" />
+                      </div>
+                    </div>
+                  ))}
                 </div>
-                <div className="flex gap-3">
-                  <div className="mt-1 h-2 w-2 rounded-full bg-green-500" />
-                  <div className="flex-1">
-                    <p className="text-sm font-medium">Prescription approved</p>
-                    <p className="text-xs text-muted-foreground">Patient: Jane Smith - 4 hours ago</p>
-                  </div>
+              ) : recentActivity.length > 0 ? (
+                <div className="space-y-4">
+                  {recentActivity.map((activity) => {
+                    const colorMap: Record<string, string> = {
+                      appointment: 'bg-blue-500',
+                      prescription: 'bg-green-500',
+                      record: 'bg-purple-500',
+                      consent: 'bg-orange-500',
+                    };
+                    const color = colorMap[activity.type] || 'bg-gray-500';
+
+                    return (
+                      <div key={activity.id} className="flex gap-3">
+                        <div className={`mt-1 h-2 w-2 rounded-full ${color}`} />
+                        <div className="flex-1">
+                          <p className="text-sm font-medium">{activity.description}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {activity.user} - {activity.timestamp}
+                          </p>
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
-                <div className="flex gap-3">
-                  <div className="mt-1 h-2 w-2 rounded-full bg-yellow-500" />
-                  <div className="flex-1">
-                    <p className="text-sm font-medium">Appointment rescheduled</p>
-                    <p className="text-xs text-muted-foreground">Patient: Bob Johnson - 1 day ago</p>
-                  </div>
+              ) : (
+                <div className="text-center py-6">
+                  <p className="text-sm text-muted-foreground">No recent activity</p>
                 </div>
-              </div>
+              )}
             </CardContent>
           </Card>
         </div>
