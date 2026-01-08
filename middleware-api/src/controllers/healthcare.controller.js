@@ -949,7 +949,7 @@ class HealthcareController {
           }
 
           const patientOnchainId = (patient && patient.walletAddress) || patientId;
-          const doctorOnchainId = doctorWalletAddress || doctorId || '';
+          const doctorOnchainId = doctorWalletAddress || '';  // FIXED: removed undefined doctorId variable
 
           logger.info('Creating appointment on blockchain', {
             appointmentId: appointment.appointmentId,
@@ -1347,9 +1347,9 @@ class HealthcareController {
         }
 
         // Prefer explicit on-chain wallet addresses. Use patient.walletAddress when available,
-        // otherwise fall back to patient.id for local/in-memory flows. For doctor, use the wallet address from database.
+        // otherwise fall back to patient.id for local/in-memory flows. For doctor, MUST have wallet address.
         const patientOnchainId = (patient && (patient.walletAddress || patient.id)) || '';
-        const doctorOnchainId = doctorWalletAddress || doctorAddress || '';
+        const doctorOnchainId = doctorWalletAddress || '';  // FIXED: removed undefined doctorAddress variable
 
         if (!patientOnchainId || !doctorOnchainId) {
           logger.warn('Skipping blockchain prescription creation - missing patient or doctor on-chain address', {
