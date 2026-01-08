@@ -365,9 +365,46 @@ class HealthcareController {
         return res.status(503).json({ success: false, error: 'Blockchain transaction service is temporarily unavailable' });
       }
 
+      // Fetch doctor's wallet address from database for blockchain transaction
+      const doctorUserId = doctorId || req.user?.id || req.user?.userId;
+      let doctorWalletAddress = null;
+      try {
+        const dbInstance = getPrismaClient();
+        if (dbInstance && dbInstance.user && typeof dbInstance.user.findUnique === 'function') {
+          const doctorUser = await dbInstance.user.findUnique({
+            where: { id: doctorUserId },
+            select: { walletAddress: true }
+          });
+          doctorWalletAddress = doctorUser?.walletAddress;
+        }
+      } catch (dbError) {
+        logger.warn('Failed to fetch doctor wallet address from database:', dbError);
+      }
+
+      // Get patient wallet address
+      const db2 = getPrismaClient();
+      const patient = db2.patientWalletMapping && typeof db2.patientWalletMapping.findUnique === 'function'
+        ? await db2.patientWalletMapping.findUnique({ where: { id: patientId } })
+        : null;
+
+      const patientOnchainId = (patient && (patient.walletAddress || patient.id)) || patientId;
+      const doctorOnchainId = doctorWalletAddress || doctorUserId;
+
+      logger.info('Creating medical record on blockchain', {
+        recordId,
+        patientOnchainId,
+        doctorOnchainId,
+        doctorHasWalletInDB: !!doctorWalletAddress
+      });
+
       const result = await transactionService.createMedicalRecord(
-        recordId, patientId, doctorId, recordType, ipfsHash, metadata || '',
+        recordId, patientOnchainId, doctorOnchainId, recordType, ipfsHash, metadata || '',
       );
+
+      logger.info('Medical record created on blockchain successfully', {
+        recordId,
+        transactionHash: result?.data?.transactionHash
+      });
 
       // Persist a reference in the off-chain database when Prisma is available
       try {
@@ -711,9 +748,53 @@ class HealthcareController {
         });
       }
 
+      // Fetch grantee's (requester's) wallet address from database for blockchain transaction
+      const granteeUserId = req.user?.id || req.user?.userId;
+      let granteeWalletAddress = null;
+      try {
+        const dbInstance = getPrismaClient();
+        if (dbInstance && dbInstance.user && typeof dbInstance.user.findUnique === 'function') {
+          const granteeUser = await dbInstance.user.findUnique({
+            where: { id: granteeUserId },
+            select: { walletAddress: true }
+          });
+          granteeWalletAddress = granteeUser?.walletAddress;
+        }
+      } catch (dbError) {
+        logger.warn('Failed to fetch grantee wallet address from database:', dbError);
+      }
+
+      // Get patient wallet address if patientId is UUID
+      let patientOnchainId = patientId;
+      try {
+        const db2 = getPrismaClient();
+        if (db2.patientWalletMapping && typeof db2.patientWalletMapping.findUnique === 'function') {
+          const patient = await db2.patientWalletMapping.findUnique({ where: { id: patientId } });
+          if (patient && patient.walletAddress) {
+            patientOnchainId = patient.walletAddress;
+          }
+        }
+      } catch (err) {
+        logger.warn('Failed to fetch patient wallet address:', err);
+      }
+
+      const granteeOnchainAddress = granteeWalletAddress || doctorAddress || '';
+
+      logger.info('Creating consent on blockchain', {
+        consentId,
+        patientOnchainId,
+        granteeOnchainAddress,
+        granteeHasWalletInDB: !!granteeWalletAddress
+      });
+
       const result = await transactionService.createConsent(
-        consentId, patientId, doctorAddress, validityDays,
+        consentId, patientOnchainId, granteeOnchainAddress, validityDays,
       );
+
+      logger.info('Consent created on blockchain successfully', {
+        consentId,
+        transactionHash: result?.data?.transactionHash
+      });
 
       res.status(201).json(result);
     } catch (error) {
@@ -852,15 +933,45 @@ class HealthcareController {
         if (!transactionService || typeof transactionService.createAppointment !== 'function') {
           logger.warn('Transaction service unavailable when attempting to create appointment on blockchain');
         } else {
+          // Fetch doctor's wallet address from database for blockchain transaction
+          let doctorWalletAddress = null;
+          try {
+            const dbInstance = getPrismaClient();
+            if (dbInstance && dbInstance.user && typeof dbInstance.user.findUnique === 'function') {
+              const doctorUser = await dbInstance.user.findUnique({
+                where: { id: req.user.id },
+                select: { walletAddress: true }
+              });
+              doctorWalletAddress = doctorUser?.walletAddress;
+            }
+          } catch (dbError) {
+            logger.warn('Failed to fetch doctor wallet address from database:', dbError);
+          }
+
+          const patientOnchainId = (patient && patient.walletAddress) || patientId;
+          const doctorOnchainId = doctorWalletAddress || doctorId || '';
+
+          logger.info('Creating appointment on blockchain', {
+            appointmentId: appointment.appointmentId,
+            patientOnchainId,
+            doctorOnchainId,
+            doctorHasWalletInDB: !!doctorWalletAddress
+          });
+
           const result = await transactionService.createAppointment(
             appointment.appointmentId,
-            (patient && patient.walletAddress) || patientId,
-            doctorAddress || doctorId || '',
+            patientOnchainId,
+            doctorOnchainId,
             Math.floor(new Date(scheduledAt).getTime() / 1000),
             title,
             description || notes || '',
           );
           blockchainResult = result;
+
+          logger.info('Appointment created on blockchain successfully', {
+            appointmentId: appointment.appointmentId,
+            transactionHash: result?.data?.transactionHash
+          });
         }
       } catch (blockchainError) {
         logger.error('Failed to create appointment on blockchain:', blockchainError);
@@ -1220,17 +1331,43 @@ class HealthcareController {
       try {
         const expiryTimestamp = expiryDate ? Math.floor(new Date(expiryDate).getTime() / 1000) : 0;
 
+        // Fetch doctor's wallet address from database
+        let doctorWalletAddress = null;
+        try {
+          const dbInstance = getPrismaClient();
+          if (dbInstance && dbInstance.user && typeof dbInstance.user.findUnique === 'function') {
+            const doctorUser = await dbInstance.user.findUnique({
+              where: { id: doctorUserId },
+              select: { walletAddress: true }
+            });
+            doctorWalletAddress = doctorUser?.walletAddress;
+          }
+        } catch (dbError) {
+          logger.warn('Failed to fetch doctor wallet address from database:', dbError);
+        }
+
         // Prefer explicit on-chain wallet addresses. Use patient.walletAddress when available,
-        // otherwise fall back to patient.id for local/in-memory flows. For doctor, prefer req.user.walletAddress.
+        // otherwise fall back to patient.id for local/in-memory flows. For doctor, use the wallet address from database.
         const patientOnchainId = (patient && (patient.walletAddress || patient.id)) || '';
-        const doctorOnchainId = (req.user && req.user.walletAddress) || doctorAddress || '';
+        const doctorOnchainId = doctorWalletAddress || doctorAddress || '';
 
         if (!patientOnchainId || !doctorOnchainId) {
-          logger.warn('Skipping blockchain prescription creation - missing patient or doctor on-chain address', { patientOnchainId, doctorOnchainId });
+          logger.warn('Skipping blockchain prescription creation - missing patient or doctor on-chain address', {
+            patientOnchainId,
+            doctorOnchainId,
+            doctorUserId,
+            doctorHasWalletInDB: !!doctorWalletAddress
+          });
         } else {
           if (!transactionService || typeof transactionService.createPrescription !== 'function') {
             logger.warn('Transaction service unavailable when attempting to create prescription on blockchain');
           } else {
+            logger.info('Creating prescription on blockchain', {
+              prescriptionId,
+              patientOnchainId,
+              doctorOnchainId,
+              medication: med.substring(0, 50)
+            });
             const result = await transactionService.createPrescription(
               prescriptionId,
               patientOnchainId,
@@ -1241,6 +1378,10 @@ class HealthcareController {
               expiryTimestamp,
             );
             blockchainResult = result;
+            logger.info('Prescription created on blockchain successfully', {
+              prescriptionId,
+              transactionHash: result?.data?.transactionHash
+            });
           }
         }
       } catch (blockchainError) {

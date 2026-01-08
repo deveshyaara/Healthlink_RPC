@@ -134,6 +134,9 @@ model User {
   // Hyperledger Fabric Integration
   fabricEnrollmentId String @unique @map("fabric_enrollment_id") @db.VarChar(255)
   
+  // Ethereum Blockchain Integration
+  walletAddress String? @unique @map("wallet_address") @db.VarChar(42)
+  
   // User Profile Metadata
   fullName    String  @map("full_name") @db.VarChar(255)
   phoneNumber String? @map("phone") @db.VarChar(20)
@@ -212,6 +215,7 @@ model User {
   @@index([email], name: "idx_users_email")
   @@index([role], name: "idx_users_role")
   @@index([fabricEnrollmentId], name: "idx_users_fabric_enrollment_id")
+  @@index([walletAddress], name: "idx_users_wallet_address")
   @@index([createdAt(sort: Desc)], name: "idx_users_created_at")
   @@map("users")
 }
