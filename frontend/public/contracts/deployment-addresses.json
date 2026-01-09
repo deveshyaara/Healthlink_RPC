@@ -1,13 +1,13 @@
 {
   "network": "sepolia",
   "chainId": 11155111,
-  "deployer": "0x7C5c1D2A8ED6d47Bb3334AF5ac61558Dc1342742",
-  "timestamp": "2025-12-14T09:06:20.986Z",
+  "deployer": "0x38a82C7B5Df148eE345dA4F69d4f8C1eB600b424",
+  "timestamp": "2026-01-09T18:38:11.072Z",
   "contracts": {
-    "HealthLink": "0xA94AFCbFF804527315391EA52890c826f897A757",
-    "PatientRecords": "0xC6b6412fcf144Ce107eD79935cdBEfDC5cE1Cc8F",
-    "Appointments": "0x1A3F11F1735bB703587274478EEc323dC180304a",
-    "Prescriptions": "0xBC5BfBF99CE6087034863149B04A2593E562854b",
-    "DoctorCredentials": "0x7415A95125b64Ed491088FFE153a8D7773Fb1859"
+    "HealthLink": "0x4F20aFa5552f3FE609296567527979F143aBEc86",
+    "PatientRecords": "0xe19de503f89774b00abEA25e3F9F24c04944813e",
+    "Appointments": "0xBA9DEe87364F7Eec6934fcbB82091ac2633f97A9",
+    "Prescriptions": "0xB1e565Af53B93F30c001B834aECCE32Fe5c299af",
+    "DoctorCredentials": "0x8a14031c66797b81E7900cB2C4f97d343E8f50e5"
   }
 }

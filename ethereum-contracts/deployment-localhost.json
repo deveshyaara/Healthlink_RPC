@@ -1,0 +1,13 @@
+{
+  "network": "hardhat",
+  "chainId": 1337,
+  "deployer": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+  "timestamp": "2026-01-09T15:46:09.667Z",
+  "contracts": {
+    "HealthLink": "0xE6d89a5E180590EF83ea56F2352E9Aebff2B6A38",
+    "PatientRecords": "0x6131CC0b0fa0899ecDbf7dcab050281d21E2C60B",
+    "Appointments": "0xFf566A1caaa85fFD15144067C7d7315538EC5C4b",
+    "Prescriptions": "0xbb03333eBc3d5f42FdE690aD8cf4C01c0de65460",
+    "DoctorCredentials": "0xA699260c6A023314785f262dBB2Ec2450aB237Ff"
+  }
+}
